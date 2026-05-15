@@ -23,6 +23,14 @@
 # misc
 .DS_Store
 *.pem
+*.key
+
+# supabase local dev
+.supabase
+
+# playwright output
+playwright-report
+test-results
 
 # debug
 npm-debug.log*
