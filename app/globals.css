@@ -56,82 +56,56 @@
   --radius-xl: calc(var(--radius) * 1.4);
 }
 
-/* AdFlow raw design tokens */
-:root {
-  --adflow-base:    #0D0D1A;
-  --adflow-surface: #13131F;
-  --adflow-border:  #1E1E2E;
-  --adflow-accent:  #E8390E;
-  --adflow-success: #10B981;
-  --adflow-data:    #3B82F6;
-  --adflow-warning: #F59E0B;
-  --adflow-danger:  #EF4444;
-  --adflow-fg:      #F1F5F9;
+/* AdFlow design tokens — dark-only app.
+   :root and .dark are identical by design: shadcn components read .dark,
+   but we default :root to dark values so there is never a light flash. */
+:root,
+.dark {
+  /* AdFlow semantic tokens */
+  --adflow-base:     #0D0D1A;
+  --adflow-surface:  #13131F;
+  --adflow-border:   #1E1E2E;
+  --adflow-accent:   #E8390E;
+  --adflow-success:  #10B981;
+  --adflow-data:     #3B82F6;
+  --adflow-warning:  #F59E0B;
+  --adflow-danger:   #EF4444;
+  --adflow-fg:       #F1F5F9;
   --adflow-fg-muted: #94A3B8;
 
-  /* shadcn — dark theme values as default (dark-only app) */
-  --background: #0D0D1A;
-  --foreground: #F1F5F9;
-  --card: #13131F;
-  --card-foreground: #F1F5F9;
-  --popover: #13131F;
-  --popover-foreground: #F1F5F9;
-  --primary: #E8390E;
-  --primary-foreground: #ffffff;
-  --secondary: #1E1E2E;
-  --secondary-foreground: #F1F5F9;
-  --muted: #1E1E2E;
-  --muted-foreground: #94A3B8;
-  --accent: #1E1E2E;
-  --accent-foreground: #F1F5F9;
-  --destructive: #EF4444;
-  --border: #1E1E2E;
-  --input: #1E1E2E;
-  --ring: #E8390E;
-  --chart-1: #3B82F6;
-  --chart-2: #10B981;
-  --chart-3: #F59E0B;
-  --chart-4: #E8390E;
-  --chart-5: #8B5CF6;
-  --radius: 0.5rem;
-  --sidebar: #13131F;
-  --sidebar-foreground: #F1F5F9;
-  --sidebar-primary: #E8390E;
+  /* shadcn/ui CSS variable surface */
+  --background:             #0D0D1A;
+  --foreground:             #F1F5F9;
+  --card:                   #13131F;
+  --card-foreground:        #F1F5F9;
+  --popover:                #13131F;
+  --popover-foreground:     #F1F5F9;
+  --primary:                #E8390E;
+  --primary-foreground:     #ffffff;
+  --secondary:              #1E1E2E;
+  --secondary-foreground:   #F1F5F9;
+  --muted:                  #1E1E2E;
+  --muted-foreground:       #94A3B8;
+  --accent:                 #1E1E2E;
+  --accent-foreground:      #F1F5F9;
+  --destructive:            #EF4444;
+  --border:                 #1E1E2E;
+  --input:                  #1E1E2E;
+  --ring:                   #E8390E;
+  --chart-1:                #3B82F6;
+  --chart-2:                #10B981;
+  --chart-3:                #F59E0B;
+  --chart-4:                #E8390E;
+  --chart-5:                #8B5CF6;
+  --radius:                 0.5rem;
+  --sidebar:                #13131F;
+  --sidebar-foreground:     #F1F5F9;
+  --sidebar-primary:        #E8390E;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1E1E2E;
+  --sidebar-accent:         #1E1E2E;
   --sidebar-accent-foreground: #F1F5F9;
-  --sidebar-border: #1E1E2E;
-  --sidebar-ring: #E8390E;
-}
-
-/* dark class mirrors :root — dark-only app, but keep class for shadcn components */
-.dark {
-  --background: #0D0D1A;
-  --foreground: #F1F5F9;
-  --card: #13131F;
-  --card-foreground: #F1F5F9;
-  --popover: #13131F;
-  --popover-foreground: #F1F5F9;
-  --primary: #E8390E;
-  --primary-foreground: #ffffff;
-  --secondary: #1E1E2E;
-  --secondary-foreground: #F1F5F9;
-  --muted: #1E1E2E;
-  --muted-foreground: #94A3B8;
-  --accent: #1E1E2E;
-  --accent-foreground: #F1F5F9;
-  --destructive: #EF4444;
-  --border: #1E1E2E;
-  --input: #1E1E2E;
-  --ring: #E8390E;
-  --sidebar: #13131F;
-  --sidebar-foreground: #F1F5F9;
-  --sidebar-primary: #E8390E;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1E1E2E;
-  --sidebar-accent-foreground: #F1F5F9;
-  --sidebar-border: #1E1E2E;
-  --sidebar-ring: #E8390E;
+  --sidebar-border:         #1E1E2E;
+  --sidebar-ring:           #E8390E;
 }
 
 @layer base {

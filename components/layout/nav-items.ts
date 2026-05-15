@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import {
   LayoutDashboard,
   Megaphone,
@@ -12,7 +13,7 @@ import {
 export type NavItem = {
   label: string;
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
 };
 
 export const NAV_ITEMS: NavItem[] = [

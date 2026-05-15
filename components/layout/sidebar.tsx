@@ -77,7 +77,7 @@ export function MobileSidebarTrigger() {
   const [open, setOpen] = useState(false);
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={(isOpen) => setOpen(isOpen)}>
       <SheetTrigger
         aria-label="Open navigation menu"
         className="md:hidden p-2 rounded-md text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-fg)] hover:bg-[color:var(--adflow-border)] transition-colors"

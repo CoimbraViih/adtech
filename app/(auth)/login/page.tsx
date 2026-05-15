@@ -17,7 +17,7 @@ export default function LoginPage() {
         </div>
 
         {/* Magic link form */}
-        <div className="space-y-3">
+        <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
           <div className="space-y-1.5">
             <label
               htmlFor="email"
@@ -29,13 +29,14 @@ export default function LoginPage() {
               id="email"
               type="email"
               placeholder="voce@agencia.com"
+              autoComplete="email"
               className="w-full bg-[color:var(--adflow-surface)] border border-[color:var(--adflow-border)] rounded-md px-3 py-2 text-sm text-[color:var(--adflow-fg)] placeholder:text-[color:var(--adflow-fg-muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--adflow-accent)] transition-shadow"
             />
           </div>
-          <Button className="w-full bg-[color:var(--adflow-accent)] hover:bg-[color:var(--adflow-accent)]/90 text-white">
+          <Button type="submit" className="w-full bg-[color:var(--adflow-accent)] hover:bg-[color:var(--adflow-accent)]/90 text-white">
             Enviar link mágico
           </Button>
-        </div>
+        </form>
 
         {/* Divider */}
         <div className="relative">
@@ -51,6 +52,7 @@ export default function LoginPage() {
 
         {/* Google OAuth */}
         <Button
+          type="button"
           variant="outline"
           className="w-full border-[color:var(--adflow-border)] text-[color:var(--adflow-fg)] hover:bg-[color:var(--adflow-surface)] bg-transparent"
         >
