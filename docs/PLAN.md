@@ -8,7 +8,7 @@
 
 | # | Milestone | Branch | Depende de |
 |---|-----------|--------|------------|
-| M0 | Setup & Design System | `feat/m0-setup` | — |
+| M0 | Setup & Design System | `feat/m0-setup` ✅ | — |
 | M1 | Autenticação & Shell | `feat/m1-auth` | M0 |
 | M2 | Gestão de Campanhas | `feat/m2-campaigns` | M1 |
 | M3 | AI Creative Studio | `feat/m3-creatives` | M1, M2 |
@@ -22,33 +22,35 @@
 
 ---
 
-## M0 — Setup & Design System
+## M0 — Setup & Design System ✅ CONCLUÍDO
 
-**Branch:** `feat/m0-setup`  
+**Branch:** `feat/m0-setup` → mergeado em `main` via PR #1  
 **Objetivo:** Repositório configurado, design system funcional, zero código de produto ainda — só a fundação visual e de tooling.
 
 ### Interface
-- [ ] Scaffold Next.js 15 com App Router, TypeScript strict, Tailwind v4
-- [ ] Instalar e configurar shadcn/ui
-- [ ] Definir tokens de cor em `app/globals.css` (`--color-base`, `--color-surface`, `--color-border`, `--color-muted`, `--color-accent`, `--color-success`, `--color-data`, `--color-warning`, `--color-danger`)
-- [ ] Configurar fonte Inter + JetBrains Mono via `next/font/google` no root layout
-- [ ] Criar página `/` provisória com as cores e tipografia do design system para validação visual
-- [ ] Adicionar `tailwind.config.ts` mapeando os tokens CSS como classes utilitárias (`bg-base`, `text-accent`, etc.)
+- [x] Scaffold Next.js 15 com App Router, TypeScript strict, Tailwind v4
+- [x] Instalar e configurar shadcn/ui
+- [x] Definir tokens de cor em `app/globals.css` (`--adflow-base`, `--adflow-surface`, `--adflow-border`, `--adflow-muted`, `--adflow-accent`, `--adflow-success`, `--adflow-data`, `--adflow-warning`, `--adflow-danger`)
+- [x] Configurar fonte Inter + JetBrains Mono via `next/font/google` no root layout
+- [x] App shell completo: sidebar colapsável (desktop) + Sheet hamburger (mobile), topbar, org-switcher, user-menu
+- [x] Dashboard placeholder com 4 KPI cards (ROAS, CPA, Spend, Conversões)
+- [x] Auth pages: login (magic link + Google OAuth) e signup
+- [x] Tokens CSS mapeados como classes Tailwind via `@theme inline` no `globals.css`
 
 ### Backend / Config
-- [ ] Criar `.env.local.example` com todas as variáveis necessárias
-- [ ] Configurar `next.config.ts` (domínios de imagem, headers de segurança)
-- [ ] Configurar `tsconfig.json` com path alias `@/*`
-- [ ] Instalar e configurar Vitest (`vitest.config.ts`)
-- [ ] Instalar e configurar Playwright (`playwright.config.ts`)
-- [ ] Criar `app/api/health/route.ts` retornando `{ status: "ok" }`
-- [ ] Escrever teste unitário do health endpoint
+- [x] Criar `.env.local.example` com todas as variáveis necessárias
+- [x] Configurar `next.config.ts` (domínios de imagem, CSP + headers de segurança)
+- [x] Configurar `tsconfig.json` com path alias `@/*`
+- [x] Instalar e configurar Vitest (`vitest.config.ts`)
+- [x] Instalar e configurar Playwright (`playwright.config.ts`)
+- [x] Criar `app/api/health/route.ts` retornando `{ status: "ok" }`
+- [x] Escrever teste unitário do health endpoint
 
-### Commit final
-```
-git checkout main && git merge feat/m0-setup
-git commit -m "feat(m0): project setup, design system tokens, tooling"
-```
+### Entregáveis
+- PR #1 mergeado: https://github.com/CoimbraViih/adtech/pull/1
+- `tsc --noEmit` zero erros
+- `vitest run` 1/1 passando
+- Dark mode permanente via `class="dark"` no `<html>`
 
 ---
 
