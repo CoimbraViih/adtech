@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type Workspace = { id: string; name: string; plan: string };
 
@@ -25,22 +25,22 @@ export function OrgSwitcher() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-2 text-sm text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-fg)] hover:bg-[color:var(--adflow-border)] max-w-[200px] h-8 px-2"
-        >
-          <Building2 className="w-3.5 h-3.5 shrink-0 text-[color:var(--adflow-accent)]" />
-          <span className="truncate font-medium text-[color:var(--adflow-fg)]">
-            {selected.name}
-          </span>
-          <ChevronDown className="w-3 h-3 shrink-0 opacity-50" />
-        </Button>
+      <DropdownMenuTrigger
+        className={cn(
+          "inline-flex items-center gap-2 h-8 px-2 rounded-md text-sm",
+          "text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-fg)]",
+          "hover:bg-[color:var(--adflow-border)] transition-colors max-w-[200px]",
+          "outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--adflow-accent)]"
+        )}
+      >
+        <Building2 className="w-3.5 h-3.5 shrink-0 text-[color:var(--adflow-accent)]" />
+        <span className="truncate font-medium text-[color:var(--adflow-fg)]">
+          {selected.name}
+        </span>
+        <ChevronDown className="w-3 h-3 shrink-0 opacity-50" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        align="start"
         className="w-56 bg-[color:var(--adflow-surface)] border-[color:var(--adflow-border)]"
       >
         <DropdownMenuLabel className="text-[color:var(--adflow-fg-muted)] text-xs font-normal uppercase tracking-wide">
@@ -52,7 +52,7 @@ export function OrgSwitcher() {
           <DropdownMenuItem
             key={ws.id}
             onClick={() => setSelected(ws)}
-            className="flex items-center justify-between text-[color:var(--adflow-fg)] hover:bg-[color:var(--adflow-border)] cursor-pointer focus:bg-[color:var(--adflow-border)]"
+            className="flex items-center justify-between text-[color:var(--adflow-fg)] cursor-pointer"
           >
             <div className="flex flex-col">
               <span className="text-sm">{ws.name}</span>
@@ -67,7 +67,7 @@ export function OrgSwitcher() {
         ))}
 
         <DropdownMenuSeparator className="bg-[color:var(--adflow-border)]" />
-        <DropdownMenuItem className="gap-2 text-[color:var(--adflow-fg-muted)] hover:bg-[color:var(--adflow-border)] cursor-pointer focus:bg-[color:var(--adflow-border)]">
+        <DropdownMenuItem className="gap-2 text-[color:var(--adflow-fg-muted)] cursor-pointer">
           <Plus className="w-3.5 h-3.5" />
           <span className="text-sm">Novo workspace</span>
         </DropdownMenuItem>

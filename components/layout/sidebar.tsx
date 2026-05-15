@@ -36,7 +36,7 @@ function DesktopSidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <TooltipProvider delayDuration={0}>
+    <TooltipProvider delay={0}>
       <aside
         aria-label="Main navigation"
         className={cn(
@@ -78,16 +78,16 @@ export function MobileSidebarTrigger() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <button
-          aria-label="Open navigation menu"
-          className="md:hidden p-2 rounded-md text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-fg)] hover:bg-[color:var(--adflow-border)] transition-colors"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+      <SheetTrigger
+        aria-label="Open navigation menu"
+        className="md:hidden p-2 rounded-md text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-fg)] hover:bg-[color:var(--adflow-border)] transition-colors"
+      >
+        <Menu className="w-5 h-5" />
       </SheetTrigger>
+
       <SheetContent
         side="left"
+        showCloseButton={false}
         className="w-64 p-0 bg-[color:var(--adflow-surface)] border-r border-[color:var(--adflow-border)]"
       >
         <SheetHeader className="sr-only">
@@ -95,7 +95,7 @@ export function MobileSidebarTrigger() {
         </SheetHeader>
         <div className="flex flex-col h-full">
           <AdFlowLogo collapsed={false} />
-          <TooltipProvider delayDuration={0}>
+          <TooltipProvider delay={0}>
             <SidebarNav collapsed={false} onNavigate={() => setOpen(false)} />
           </TooltipProvider>
         </div>

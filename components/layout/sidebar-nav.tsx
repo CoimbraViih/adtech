@@ -28,35 +28,45 @@ function NavLink({
 }) {
   const Icon = item.icon;
 
-  const link = (
-    <Link
-      href={item.href}
-      onClick={onNavigate}
-      className={cn(
-        "flex items-center gap-3 rounded-md px-2 py-1.5 text-sm transition-colors select-none",
-        collapsed ? "justify-center" : "",
-        active
-          ? "bg-[color:var(--adflow-accent)]/10 text-[color:var(--adflow-accent)] font-medium"
-          : "text-[color:var(--adflow-fg-muted)] hover:bg-[color:var(--adflow-border)] hover:text-[color:var(--adflow-fg)]"
-      )}
-    >
-      <Icon className="w-4 h-4 shrink-0" />
-      {!collapsed && <span>{item.label}</span>}
-    </Link>
+  const linkClasses = cn(
+    "flex items-center gap-3 rounded-md px-2 py-1.5 text-sm transition-colors select-none w-full",
+    collapsed ? "justify-center" : "",
+    active
+      ? "bg-[color:var(--adflow-accent)]/10 text-[color:var(--adflow-accent)] font-medium"
+      : "text-[color:var(--adflow-fg-muted)] hover:bg-[color:var(--adflow-border)] hover:text-[color:var(--adflow-fg)]"
   );
 
   if (collapsed) {
     return (
-      <Tooltip key={item.href}>
-        <TooltipTrigger asChild>{link}</TooltipTrigger>
-        <TooltipContent side="right" className="bg-[color:var(--adflow-surface)] border-[color:var(--adflow-border)] text-[color:var(--adflow-fg)]">
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Link
+              href={item.href}
+              onClick={onNavigate}
+              className={linkClasses}
+              aria-label={item.label}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+            </Link>
+          }
+        />
+        <TooltipContent
+          side="right"
+          className="bg-[color:var(--adflow-surface)] border border-[color:var(--adflow-border)] text-[color:var(--adflow-fg)] text-xs"
+        >
           {item.label}
         </TooltipContent>
       </Tooltip>
     );
   }
 
-  return link;
+  return (
+    <Link href={item.href} onClick={onNavigate} className={linkClasses}>
+      <Icon className="w-4 h-4 shrink-0" />
+      <span>{item.label}</span>
+    </Link>
+  );
 }
 
 export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
