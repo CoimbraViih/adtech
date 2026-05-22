@@ -1,6 +1,6 @@
 import { requireServerSession } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { PixelTable } from "@/components/pixel/pixel-table";
+import { PixelListClient } from "@/components/pixel/pixel-list-client";
 import { CreatePixelDialog } from "@/components/pixel/create-pixel-dialog";
 import type { Pixel } from "@/types/database";
 
@@ -48,7 +48,7 @@ export default async function PixelPage() {
         </div>
         <CreatePixelDialog />
       </div>
-      <PixelTable pixels={pixels} />
+      <PixelListClient pixels={pixels} />
     </div>
   );
 }
