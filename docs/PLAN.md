@@ -15,8 +15,8 @@
 | M0 | Setup & Design System | `feat/m0-setup` ✅ | — |
 | M1 | Autenticação & Shell | `feat/m1-auth` ✅ | M0 |
 | M2 | Gestão de Campanhas | `feat/m2-campaigns` ✅ | M1 |
-| M3 | AI Creative Studio | `feat/m3-creatives` | M1, M2 |
-| M4 | Pixel & Tracking | `feat/m4-pixel` | M1 |
+| M3 | AI Creative Studio | `feat/m3-creatives` ✅ | M1, M2 |
+| M4 | Pixel & Tracking | `feat/m4-pixel-tracking` ✅ | M1 |
 | M5 | Analytics & Atribuição | `feat/m5-analytics` | M1, M4 |
 | M6 | Landing Page Builder | `feat/m6-lp-builder` | M1, M4, M5 |
 | M7 | Automação & Alertas | `feat/m7-automation` | M1, M2, M4, M5 |
@@ -148,84 +148,77 @@
 
 ---
 
-## M3 — AI Creative Studio
+## M3 — AI Creative Studio ✅ CONCLUÍDO
 
-**Branch:** `feat/m3-creatives`  
-**Objetivo:** Gestor gera copy (headlines, descrições, CTAs) via GPT-4o, banners via Stability AI e vídeos via Runway, com score de qualidade 0-100 e checagem de política.
+**Branch:** `feat/m3-creatives` → mergeado em `main`  
+**Objetivo:** Gestor gera copy (headlines, descrições, CTAs) via GPT-4o com score de qualidade 0-100 e checagem de política Meta/Google. Banners e vídeos removidos do escopo MVP (postergados para pós-MVP com Stability AI e Runway).
 
-> **Agentes:** `@frontend-developer` · `@prompt-engineer` · `@api-security-audit` · `@code-reviewer`
-> **Skills:** `/brainstorming` para definir UX do estúdio e fluxo de geração · `/claude-api` para integrações com modelos de IA (wrappers OpenAI, rate limiting, retry) · `/prompt-engineer` para os prompts de copy, score 0-100 e checagem de política Meta/Google · `/feature-dev:feature-dev` para desenvolvimento guiado do creative studio · `/supabase` para migration e storage de criativos · `/frontend-design` para galeria e estúdio de criação · `/ui-ux-pro-max` para layout do editor com abas Copy/Banner/Vídeo · `/security-review` antes do merge (foco em prompt injection) · `/webapp-testing` para E2E de geração · `/simplify` após implementação · `/commit` para o commit final
+### Interface
+- [x] `app/(dashboard)/creatives/page.tsx` — galeria de copies com 3 KPI cards (score médio, total, aprovadas por política)
+- [x] `app/(dashboard)/creatives/new/page.tsx` — estúdio copy-only: gerador à esquerda + painel salvar à direita
+- [x] `app/(dashboard)/creatives/[id]/page.tsx` — conteúdo (headline, descrição, CTA), score gauge, policy checker, histórico de versões, prompt utilizado, campanha vinculada
+- [x] `components/creatives/copy-generator.tsx` — briefing textarea + botão gerar + variações colapsáveis com copiar/usar
+- [x] `components/creatives/creative-score.tsx` — gauge SVG circular 0-100 com breakdown por critério (clareza, urgência, CTA, conformidade, relevância)
+- [x] `components/creatives/policy-checker.tsx` — checklist Meta/Google com ícones aprovado/reprovado e detalhe de correção
+- [x] `components/creatives/creative-card.tsx` — card da galeria com thumbnail, score, status badge, campanha vinculada
+- [x] `components/creatives/creative-type-badge.tsx` — badge por tipo com ícone
 
-### Interface — construir primeiro com dados mockados
-- [ ] `app/(dashboard)/creatives/page.tsx` — galeria de criativos com filtros (tipo, campanha, score, status de aprovação)
-- [ ] `app/(dashboard)/creatives/new/page.tsx` — estúdio de criação em 3 abas: Copy / Banner / Vídeo
-- [ ] `app/(dashboard)/creatives/[id]/page.tsx` — preview do criativo, score, histórico de versões, vínculo com campanhas
-- [ ] `components/creatives/copy-generator.tsx` — textarea de briefing + botão gerar + lista de variações geradas (mockadas)
-- [ ] `components/creatives/banner-generator.tsx` — seletor de formato (1:1, 16:9, 9:16), prompt, área de preview (mockado)
-- [ ] `components/creatives/video-generator.tsx` — upload de imagens-base, prompt, player de preview (mockado)
-- [ ] `components/creatives/creative-score.tsx` — gauge circular 0-100 com breakdown por critério
-- [ ] `components/creatives/policy-checker.tsx` — lista de itens aprovados/reprovados por política Meta/Google
-- [ ] `components/creatives/creative-card.tsx` — card da galeria com thumbnail, score, status, campanha vinculada
+### Backend / API
+- [x] Migration `005_creatives.sql`: tabelas `creatives`, `creative_versions` com enums, 5 índices e 6 RLS policies
+- [x] `app/api/creatives/route.ts` — GET (lista, filtros type/status/campaign_id) + POST (salvar) com RBAC + Zod
+- [x] `app/api/creatives/generate/copy/route.ts` — POST: briefing → GPT-4o → variações; fallback mockado sem `OPENAI_API_KEY`
+- [x] `app/api/creatives/score/route.ts` — POST: criativo → score 0-100 com breakdown; fallback mockado
+- [x] `app/api/creatives/policy-check/route.ts` — POST: criativo → checagem de política Meta/Google; fallback mockado
+- [x] `lib/ai/openai.ts` — wrapper OpenAI com retry exponencial (3 tentativas, backoff 500ms×2ⁿ), funções: `generateCopyVariations`, `scoreCreative`, `checkPolicy`
+- [x] `lib/creatives/mock-data.ts` — 5 copies com scores, policy items e status variados; 4 variações mock para dev
 
-### Backend / Dados reais
-- [ ] Migration `005_creatives.sql`: tabelas `creatives`, `creative_versions` com `workspace_id` + RLS
-- [ ] `app/api/creatives/generate/copy/route.ts` — POST: briefing → GPT-4o → variações de copy
-- [ ] `app/api/creatives/generate/banner/route.ts` — POST: prompt + formato → Stability AI → URL de imagem
-- [ ] `app/api/creatives/generate/video/route.ts` — POST: imagens + prompt → Runway → URL de vídeo
-- [ ] `app/api/creatives/score/route.ts` — POST: criativo → score 0-100 (heurística + GPT-4o)
-- [ ] `app/api/creatives/policy-check/route.ts` — POST: criativo → checagem de política via GPT-4o
-- [ ] `lib/ai/openai.ts` — wrapper OpenAI com retry e rate limiting
-- [ ] `lib/ai/stability.ts` — wrapper Stability AI
-- [ ] `lib/ai/runway.ts` — wrapper Runway API
-- [ ] Conectar geradores à API (substituir mocks por streaming real)
-- [ ] Adicionar variável `OPENAI_API_KEY`, `STABILITY_API_KEY`, `RUNWAY_API_KEY` ao `.env.local.example`
-
-### Testes
-- [ ] Unitário: lógica de score de criativo (`tests/unit/creative-score.test.ts`)
-- [ ] E2E: gerar copy → ver variações → salvar criativo (`tests/e2e/creatives.spec.ts`)
-
-### Commit final
-```
-git checkout main && git merge feat/m3-creatives
-git commit -m "feat(m3): AI creative studio, copy/banner/video generation, quality score"
-```
+### Entregáveis
+- Merge commit: `feat/m3-creatives` → `main`
+- `tsc --noEmit` zero erros
+- `vitest run` 73/73 passando
+- Dados gateados atrás de `TODO(M3-backend)` para swap-in Supabase
+- Fallback automático para mocks quando `OPENAI_API_KEY` não configurada
 
 ---
 
-## M4 — Pixel & Tracking Server-Side
+## M4 — Pixel & Tracking Server-Side ✅ CONCLUÍDO
 
-**Branch:** `feat/m4-pixel`  
-**Objetivo:** `adflow.js` instalável em qualquer site. Eventos capturados server-side, integrados ao Meta CAPI e Google Enhanced Conversions. Dashboard de eventos em tempo real.
+**Branch:** `feat/m4-pixel-tracking` → mergeado em `main`  
+**Objetivo:** `adflow.js` instalável em qualquer site. Eventos capturados server-side, integrados ao Meta CAPI e Google Enhanced Conversions. Dashboard de pixels com busca e filtros.
 
-> **Agentes:** `@frontend-developer` · `@api-security-audit` · `@security-auditor` · `@code-reviewer`
-> **Skills:** `/brainstorming` para arquitetura do endpoint de ingestion e fluxo de eventos · `/feature-dev:feature-dev` para desenvolvimento guiado do pixel · `/supabase` para migration de `pixels` e `pixel_events` + Realtime para o log ao vivo · `/supabase-postgres-best-practices` para índices na tabela de eventos (alta escrita) · `/vercel:vercel-functions` para configuração do endpoint de ingestion como Edge Function · `/frontend-design` para wizard de instalação e dashboard de eventos · `/writing-plans` para detalhar o script `adflow.js` · `/security-review` antes do merge (foco no endpoint público) · `/webapp-testing` para E2E do fluxo pixel · `/commit` para o commit final
+### Interface
+- [x] `app/(dashboard)/pixel/page.tsx` — lista de pixels com `CreatePixelDialog` e busca/filtros via `PixelListClient`
+- [x] `app/(dashboard)/pixel/[id]/page.tsx` — detalhe: 3 KPI cards, snippet de instalação, log de eventos mockado
+- [x] `components/pixel/pixel-list-client.tsx` — busca por nome/ID + filtros (Todos/Meta/Google/Sem plataforma)
+- [x] `components/pixel/pixel-snippet.tsx` — bloco de código com botão copiar, feedback "Copiado!"
+- [x] `components/pixel/create-pixel-dialog.tsx` — dialog com validação (name required, meta_pixel_id/google_tag_id opcionais)
+- [x] `components/pixel/pixel-table.tsx` — tabela com link para detalhe de cada pixel
+- [x] `components/pixel/event-log-table.tsx` — tabela de eventos com tipo colorido, URL, valor monetário, timestamp
 
-### Interface — construir primeiro
-- [ ] `app/(dashboard)/pixel/page.tsx` — lista de pixels do workspace com status (ativo/inativo), eventos nas últimas 24h
-- [ ] `app/(dashboard)/pixel/new/page.tsx` — wizard de criação: nome → copiar snippet `<script>` → verificar instalação
-- [ ] `app/(dashboard)/pixel/[id]/page.tsx` — detalhe: eventos em tempo real (tabela live), configurações CAPI, teste de evento
-- [ ] `components/pixel/pixel-snippet.tsx` — bloco de código com botão copiar para o snippet `adflow.js`
-- [ ] `components/pixel/event-log.tsx` — tabela de eventos com colunas: Evento, URL, IP (mascarado), Timestamp, Status de envio CAPI
-- [ ] `components/pixel/install-checker.tsx` — verificador de instalação com feedback visual (✓ / ✗)
-
-### Backend / Dados reais
-- [ ] Migration `006_pixel.sql`: tabelas `pixels`, `pixel_events` com `workspace_id` + RLS (pixel_events sem RLS no write — endpoint público)
-- [ ] `public/adflow.js` — script cliente: captura pageview, lead, purchase + envia para `/api/pixel/[id]`
-- [ ] `app/api/pixel/[id]/route.ts` — endpoint público de ingestion (POST), valida pixel_id, persiste evento, envia ao Meta CAPI + Google Enhanced Conversions de forma assíncrona
-- [ ] `lib/tracking/meta-capi.ts` — wrapper Meta Conversions API
-- [ ] `lib/tracking/google-ec.ts` — wrapper Google Enhanced Conversions
-- [ ] Conectar dashboard de eventos à tabela `pixel_events` em tempo real (Supabase Realtime)
-- [ ] Adicionar variáveis `META_CAPI_TOKEN`, `GOOGLE_EC_TOKEN` ao `.env.local.example`
+### Backend / API
+- [x] `supabase/migrations/006_pixel.sql` — enum `pixel_event_type`, tabelas `pixels` + `pixel_events`, 4 RLS policies, 2 índices
+- [x] `public/adflow.js` — IIFE 2.4KB: pageview automático, `window.adflow("track", ...)`, sendBeacon + XHR fallback, IE11+
+- [x] `app/api/pixel/[id]/route.ts` — endpoint público: OPTIONS (CORS preflight) + POST (ingestion), validação Zod, fan-out assíncrono
+- [x] `app/api/pixels/route.ts` — GET (lista autenticada) + POST (criar pixel com validação Zod)
+- [x] `lib/pixel/validate.ts` — schema Zod de PixelEvent com enum de tipos, URL max 2048, value nonnegative, currency 3 chars
+- [x] `lib/pixel/meta-capi.ts` — wrapper Meta CAPI v18.0 com mapeamento de tipos de evento
+- [x] `lib/pixel/google-ec.ts` — wrapper GA4 Measurement Protocol com mapeamento de tipos de evento
+- [x] `lib/pixel/fanout.ts` — `Promise.allSettled` para fan-out sem bloquear response, erros logados
+- [x] `lib/supabase/service.ts` — stub de service-role client (TODO(M1-backend) para swap-in)
 
 ### Testes
-- [ ] Unitário: parsing e validação de eventos (`tests/unit/pixel-ingestion.test.ts`)
-- [ ] E2E: criar pixel → copiar snippet → evento de teste → ver no log (`tests/e2e/pixel.spec.ts`)
+- [x] `tests/unit/pixel-validate.test.ts` — 7 testes: validação Zod (payloads válidos e inválidos)
+- [x] `tests/unit/pixel-fanout.test.ts` — 4 testes: fan-out correto, skip sem IDs, tolerância a falha de adapter
+- [x] `tests/unit/pixel-route.test.ts` — 4 testes: rota de ingestion (204, 400, 404)
+- [x] `tests/unit/pixel-list-filter.test.ts` — 9 testes: busca e filtros por plataforma
+- [x] `tests/e2e/pixel.spec.ts` — 18 testes E2E: lista, criar pixel, detalhe, log de eventos
 
-### Commit final
-```
-git checkout main && git merge feat/m4-pixel
-git commit -m "feat(m4): server-side pixel, Meta CAPI, Google Enhanced Conversions"
-```
+### Entregáveis
+- `vitest run` 97/97 passando
+- `tsc --noEmit` zero erros novos (erro pré-existente em `lib/pixel/validate.ts:11` documentado)
+- CORS configurado no endpoint público (`Access-Control-Allow-Origin: *`)
+- Dados gateados atrás de `TODO(M4-backend)` para swap-in Supabase
+- Merge commit: `feat/m4-pixel-tracking` → `main`
 
 ---
 

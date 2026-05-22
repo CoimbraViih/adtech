@@ -1,0 +1,56 @@
+import type { PixelEvent } from "@/types/database";
+
+const META_CAPI_URL = "https://graph.facebook.com/v18.0";
+
+export async function sendMetaCapiEvent(
+  event: PixelEvent,
+  metaPixelId: string
+): Promise<void> {
+  const accessToken = process.env.META_CAPI_ACCESS_TOKEN;
+  if (!accessToken) {
+    console.warn("[meta-capi] META_CAPI_ACCESS_TOKEN not set — skipping");
+    return;
+  }
+
+  const payload = {
+    data: [
+      {
+        event_name: mapEventName(event.event_type, event.event_name),
+        event_time: Math.floor(new Date(event.received_at).getTime() / 1000),
+        action_source: "website",
+        event_source_url: event.url ?? undefined,
+        user_data: {
+          client_ip_address: event.ip ?? undefined,
+          client_user_agent: event.user_agent ?? undefined,
+        },
+        custom_data:
+          event.value != null
+            ? { value: event.value, currency: event.currency ?? "BRL" }
+            : undefined,
+      },
+    ],
+  };
+
+  const res = await fetch(`${META_CAPI_URL}/${metaPixelId}/events?access_token=${accessToken}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`[meta-capi] HTTP ${res.status}: ${body}`);
+  }
+}
+
+function mapEventName(eventType: PixelEvent["event_type"], eventName: string | null): string {
+  const map: Record<string, string> = {
+    page_view: "PageView",
+    add_to_cart: "AddToCart",
+    purchase: "Purchase",
+    lead: "Lead",
+    sign_up: "CompleteRegistration",
+    custom: eventName ?? "CustomEvent",
+  };
+  return map[eventType] ?? "CustomEvent";
+}

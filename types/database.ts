@@ -167,6 +167,89 @@ export type CampaignCreateInput = {
   };
 };
 
+// ─── M3: AI Creative Studio ──────────────────────────────────────────────────
+
+export type CreativeType = "copy" | "banner" | "video";
+export type CreativeStatus = "draft" | "approved" | "rejected" | "in_review";
+export type BannerFormat = "1:1" | "16:9" | "9:16" | "4:5" | "1.91:1";
+
+export type PolicyItem = {
+  rule: string;
+  passed: boolean;
+  detail: string | null;
+};
+
+export type ScoreBreakdown = {
+  clarity: number;       // 0-20
+  urgency: number;       // 0-20
+  cta_strength: number;  // 0-20
+  compliance: number;    // 0-20
+  relevance: number;     // 0-20
+};
+
+export type Creative = {
+  id: string;
+  workspace_id: string;
+  campaign_id: string | null;
+  type: CreativeType;
+  status: CreativeStatus;
+  name: string;
+  // copy fields
+  headline: string | null;
+  description: string | null;
+  cta: string | null;
+  // banner/video fields
+  asset_url: string | null;
+  thumbnail_url: string | null;
+  format: BannerFormat | null;
+  // AI metadata
+  prompt: string | null;
+  model_used: string | null;
+  // quality
+  score: number | null;         // 0-100
+  score_breakdown: ScoreBreakdown | null;
+  policy_items: PolicyItem[] | null;
+  policy_passed: boolean | null;
+  // versioning
+  version: number;
+  parent_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreativeVersion = {
+  id: string;
+  creative_id: string;
+  workspace_id: string;
+  version: number;
+  snapshot: Record<string, unknown>;
+  created_at: string;
+};
+
+export type CopyVariation = {
+  headline: string;
+  description: string;
+  cta: string;
+};
+
+export type CreativeCreateInput = {
+  type: CreativeType;
+  name: string;
+  campaign_id?: string | null;
+  headline?: string | null;
+  description?: string | null;
+  cta?: string | null;
+  asset_url?: string | null;
+  thumbnail_url?: string | null;
+  format?: BannerFormat | null;
+  prompt?: string | null;
+  model_used?: string | null;
+  score?: number | null;
+  score_breakdown?: ScoreBreakdown | null;
+  policy_items?: PolicyItem[] | null;
+  policy_passed?: boolean | null;
+};
+
 // ─── Session ─────────────────────────────────────────────────────────────────
 
 // Session shape returned by getUser() / fake auth
@@ -184,3 +267,48 @@ export type SessionContext = {
   workspace: Workspace;
   role: OrgRole;
 };
+
+// ─── M4: Pixel & Tracking ─────────────────────────────────────────────────────
+
+export type PixelEventType =
+  | "page_view"
+  | "add_to_cart"
+  | "purchase"
+  | "lead"
+  | "sign_up"
+  | "custom";
+
+export type Pixel = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  meta_pixel_id: string | null;
+  google_tag_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PixelCreateInput = {
+  workspace_id: string;
+  name: string;
+  meta_pixel_id?: string | null;
+  google_tag_id?: string | null;
+};
+
+export type PixelEvent = {
+  id: string;
+  pixel_id: string;
+  event_type: PixelEventType;
+  event_name: string | null;
+  url: string | null;
+  referrer: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  session_id: string | null;
+  value: number | null;
+  currency: string | null;
+  properties: Record<string, unknown> | null;
+  received_at: string;
+};
+
+export type PixelEventInsert = Omit<PixelEvent, "id" | "received_at">;

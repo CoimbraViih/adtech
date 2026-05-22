@@ -104,15 +104,15 @@ CREATE INDEX ads_workspace_id_idx ON ads(workspace_id);
 
 CREATE TRIGGER campaigns_updated_at
   BEFORE UPDATE ON campaigns
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER ad_sets_updated_at
   BEFORE UPDATE ON ad_sets
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER ads_updated_at
   BEFORE UPDATE ON ads
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ── RLS ────────────────────────────────────────────────────────────────────────
 
