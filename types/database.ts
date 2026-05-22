@@ -312,3 +312,54 @@ export type PixelEvent = {
 };
 
 export type PixelEventInsert = Omit<PixelEvent, "id" | "received_at">;
+
+// ─── M5: Analytics & Attribution ──────────────────────────────────────────────
+
+export type AttributionModel = "last_click" | "linear" | "time_decay";
+
+export type DailyEventCount = {
+  workspace_id: string;
+  pixel_id: string;
+  pixel_name: string;
+  day: string;           // ISO date string e.g. "2026-05-22T00:00:00.000Z"
+  event_type: PixelEventType;
+  event_count: number;
+  total_value: number;
+};
+
+export type ConversionSession = {
+  session_id: string;
+  workspace_id: string;
+  pixel_id: string;
+  session_start: string;
+  session_end: string;
+  first_touch_url: string | null;
+  last_touch_url: string | null;
+  total_events: number;
+  purchases: number;
+  conversions: number;
+  revenue: number;
+};
+
+export type KpiSummary = {
+  total_events: number;
+  total_conversions: number;
+  total_revenue: number;
+  roas: number;
+  cpa: number;
+  avg_order_value: number;
+};
+
+export type ChannelAttribution = {
+  channel: string;
+  conversions: number;
+  revenue: number;
+  attribution_share: number;
+};
+
+export type FunnelStep = {
+  event_type: PixelEventType;
+  label: string;
+  count: number;
+  drop_off_rate: number;
+};
