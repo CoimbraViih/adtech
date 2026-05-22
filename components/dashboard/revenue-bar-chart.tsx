@@ -41,7 +41,10 @@ export function RevenueBarChart({ data }: Props) {
             contentStyle={{ background: "#13131F", border: "1px solid #1E1E2E", borderRadius: 6, fontSize: 12 }}
             labelStyle={{ color: "#F1F5F9", marginBottom: 4 }}
             itemStyle={{ color: "#94A3B8" }}
-            formatter={(v: unknown) => [BRL.format(v as number), "Receita"]}
+            formatter={(v) => {
+              const n = typeof v === "number" ? v : 0;
+              return [BRL.format(n), "Receita"];
+            }}
           />
           <Bar dataKey="value" fill="#3B82F6" radius={[2, 2, 0, 0]} maxBarSize={20} />
         </BarChart>

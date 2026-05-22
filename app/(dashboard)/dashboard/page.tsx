@@ -22,27 +22,26 @@ import {
 
 type SearchParams = { from?: string; to?: string; compare?: string };
 
-const VALID_COMPARES = ["prev_period", "prev_year", "none"] as const;
+function parseCompare(v: string | undefined): CompareMode {
+  if (v === "prev_period" || v === "prev_year" || v === "none") return v;
+  return "prev_period";
+}
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  let session;
   try {
-    session = await requireServerSession();
+    await requireServerSession();
   } catch {
     redirect("/login");
   }
-  const _workspaceId = session.workspace.id;
 
   const sp = await searchParams;
   const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
   const dateTo = sp.to ?? new Date().toISOString().slice(0, 10);
-  const compare: CompareMode = (VALID_COMPARES as readonly string[]).includes(sp.compare ?? "")
-    ? (sp.compare as CompareMode)
-    : "prev_period";
+  const compare = parseCompare(sp.compare);
 
   const kpis = getDashboardKpis();
   const deltas = getKpiDeltas();

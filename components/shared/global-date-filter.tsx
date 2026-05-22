@@ -149,7 +149,7 @@ export function GlobalDateFilter({ currentFrom, currentTo, currentCompare }: Pro
       </div>
 
       {/* Compare toggle */}
-      {currentCompare !== undefined && (
+      {(
         <div className="flex items-center gap-1 ml-2 border-l border-[color:var(--adflow-border)] pl-2">
           <span className="text-xs text-[color:var(--adflow-fg-muted)]">vs</span>
           {(["prev_period", "prev_year", "none"] as CompareMode[]).map((mode) => (

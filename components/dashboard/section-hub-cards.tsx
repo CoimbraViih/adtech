@@ -1,9 +1,10 @@
+import type { ElementType } from "react";
 import Link from "next/link";
 import { ArrowRight, Wand2, Radio, BarChart2 } from "lucide-react";
 
 type HubCardProps = {
   title: string;
-  icon: React.ElementType;
+  icon: ElementType;
   stats: { label: string; value: string }[];
   href: string;
   accentColor?: string;
@@ -43,9 +44,10 @@ type Props = {
   analyticsRevenue: number;
 };
 
+const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const NUM = new Intl.NumberFormat("pt-BR");
+
 export function SectionHubCards({ creatives, pixelEvents, pixelCount, analyticsConversions, analyticsRevenue }: Props) {
-  const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-  const NUM = new Intl.NumberFormat("pt-BR");
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

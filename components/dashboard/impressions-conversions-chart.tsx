@@ -63,7 +63,10 @@ export function ImpressionsConversionsChart({ data }: Props) {
           <Tooltip
             contentStyle={{ background: "#13131F", border: "1px solid #1E1E2E", borderRadius: 6, fontSize: 12 }}
             labelStyle={{ color: "#F1F5F9", marginBottom: 4 }}
-            formatter={(v: unknown) => [NUM.format(v as number), ""]}
+            formatter={(v, name) => {
+              const n = typeof v === "number" ? v : 0;
+              return [NUM.format(n), name];
+            }}
           />
           <Legend wrapperStyle={{ fontSize: 11, color: "#94A3B8", paddingTop: 8 }} />
           <Area yAxisId="imp" type="monotone" dataKey="primary" name="Impressões" stroke="#3B82F6" strokeWidth={2} fill="url(#gradImp)" dot={false} />
