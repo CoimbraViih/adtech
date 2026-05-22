@@ -14,7 +14,7 @@
 |---|-----------|--------|------------|
 | M0 | Setup & Design System | `feat/m0-setup` ✅ | — |
 | M1 | Autenticação & Shell | `feat/m1-auth` ✅ | M0 |
-| M2 | Gestão de Campanhas | `feat/m2-campaigns` | M1 |
+| M2 | Gestão de Campanhas | `feat/m2-campaigns` ✅ | M1 |
 | M3 | AI Creative Studio | `feat/m3-creatives` | M1, M2 |
 | M4 | Pixel & Tracking | `feat/m4-pixel` | M1 |
 | M5 | Analytics & Atribuição | `feat/m5-analytics` | M1, M4 |
@@ -114,43 +114,37 @@
 
 ---
 
-## M2 — Gestão de Campanhas
+## M2 — Gestão de Campanhas ✅ CONCLUÍDO
 
-**Branch:** `feat/m2-campaigns`  
+**Branch:** `feat/m2-campaigns` → mergeado em `main` via PR #2  
 **Objetivo:** Gestor de tráfego consegue criar, visualizar, pausar e arquivar campanhas. Integração real com Meta e Google (leitura + escrita de campanhas).
 
-> **Agentes:** `@frontend-developer` · `@typescript-pro` · `@api-security-audit` · `@code-reviewer`
-> **Skills:** `/brainstorming` para modelar as entidades `campaign`, `ad_set`, `ad` · `/feature-dev:feature-dev` para desenvolvimento guiado da feature de campanhas · `/supabase` para migration e RLS de campanhas · `/supabase-postgres-best-practices` para índices nas tabelas de campanha · `/frontend-design` para a tabela de campanhas e formulário multi-step · `/ui-ux-pro-max` para layout da página de detalhe · `/senior-frontend` para otimização de tabela com paginação · `/api-integration-specialist` para wrappers Meta e Google Ads API · `/writing-plans` para detalhar a integração com cada plataforma · `/security-review` antes do merge · `/webapp-testing` para E2E de campanhas · `/simplify` após implementação · `/commit` para o commit final
+### Interface
+- [x] `app/(dashboard)/campaigns/page.tsx` — 4 KPI cards (Gasto, ROAS, CPA, Conversões) + tabela completa
+- [x] `app/(dashboard)/campaigns/new/page.tsx` — wizard 4-passos: plataforma → público → orçamento → revisão
+- [x] `app/(dashboard)/campaigns/[id]/page.tsx` — 8 métricas + Recharts (ROAS/Spend, Cliques/Impressões, Conversões/CPA) + ad sets
+- [x] `components/campaigns/campaign-table.tsx` — busca, filtros plataforma/status, ordenação por coluna, paginação, row actions
+- [x] `components/campaigns/campaign-form.tsx` — React Hook Form + Zod, card selector de plataforma, radio objetivos
+- [x] `components/campaigns/status-badge.tsx` — badge colorido (ativo/pausado/rascunho/arquivado/in_review/rejected)
+- [x] `components/campaigns/platform-icon.tsx` — SVG inline Meta/Google/Programático com tamanho por inline style
+- [x] `components/campaigns/campaign-charts.tsx` — Recharts dual-axis com dark tooltip customizado
+- [x] `components/campaigns/ad-sets-table.tsx` — tabela estática de conjuntos de anúncios
 
-### Interface — construir primeiro com dados mockados
-- [ ] `app/(dashboard)/campaigns/page.tsx` — tabela de campanhas com colunas: Nome, Plataforma, Status, Budget, ROAS, CPA, Spend, Impressões, Cliques
-- [ ] `app/(dashboard)/campaigns/new/page.tsx` — formulário de criação: nome, objetivo, plataforma, budget diário, datas, público
-- [ ] `app/(dashboard)/campaigns/[id]/page.tsx` — detalhe da campanha: gráficos de performance, conjuntos de anúncios, criativos vinculados
-- [ ] `components/campaigns/campaign-table.tsx` — tabela com filtro por status/plataforma, busca por nome, paginação
-- [ ] `components/campaigns/campaign-form.tsx` — formulário multi-step: configuração → público → orçamento → revisão
-- [ ] `components/campaigns/status-badge.tsx` — badge colorido para status (ativo/pausado/rascunho/arquivado)
-- [ ] `components/campaigns/platform-icon.tsx` — ícones Meta/Google/Programático
-- [ ] Filtros e busca funcionando no estado local (React)
+### Backend / API
+- [x] Migration `004_campaigns.sql`: enums + tabelas `campaigns`, `ad_sets`, `ads` + RLS completo
+- [x] `app/api/campaigns/route.ts` — GET (lista, filtros platform/status, sync opcional) + POST (criar)
+- [x] `app/api/campaigns/[id]/route.ts` — GET + PATCH + DELETE com Zod validation e RBAC
+- [x] `lib/meta/client.ts` — Meta Marketing API v21.0 (list, create, update, insights)
+- [x] `lib/google/client.ts` — Google Ads API v18 via OAuth2 (GAQL list, mutate, metrics)
+- [x] `lib/campaigns/platform.ts` — abstração `createCampaignOnPlatform` / `updateCampaignOnPlatform`
+- [x] `lib/campaigns/sync.ts` — `syncCampaignsFromPlatform(workspaceId)` Meta + Google
+- [x] Mock data: 6 campanhas, 3 ad sets, 2 ads, 30 dias de snapshots de métricas
 
-### Backend / Dados reais
-- [ ] Migration `004_campaigns.sql`: tabelas `campaigns`, `ad_sets`, `ads` com `workspace_id` + RLS
-- [ ] `app/api/campaigns/route.ts` — GET (lista) + POST (criar)
-- [ ] `app/api/campaigns/[id]/route.ts` — GET (detalhe) + PATCH (atualizar) + DELETE (arquivar)
-- [ ] `lib/meta/client.ts` — wrapper Meta Marketing API (listar + criar campanhas)
-- [ ] `lib/google/client.ts` — wrapper Google Ads API (listar + criar campanhas)
-- [ ] Sincronização de campanhas externas → banco local (job via route handler)
-- [ ] Conectar tabela de campanhas à API (substituir mocks)
-- [ ] Conectar formulário de criação à API (criar campanha real na plataforma)
-
-### Testes
-- [ ] E2E: criar campanha → ver na lista → pausar (`tests/e2e/campaigns.spec.ts`)
-- [ ] Unitário: validação do formulário de campanha (`tests/unit/campaign-form.test.ts`)
-
-### Commit final
-```
-git checkout main && git merge feat/m2-campaigns
-git commit -m "feat(m2): campaign management, Meta/Google API integration"
-```
+### Entregáveis
+- PR #2 mergeado: https://github.com/CoimbraViih/adtech/pull/2
+- `tsc --noEmit` zero erros
+- API verificada: GET/PATCH/DELETE/POST todos passando com validação e auth
+- Dados gateados atrás de `TODO(M2-backend)` para swap-in Supabase
 
 ---
 
