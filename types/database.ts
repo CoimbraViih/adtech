@@ -167,6 +167,89 @@ export type CampaignCreateInput = {
   };
 };
 
+// ─── M3: AI Creative Studio ──────────────────────────────────────────────────
+
+export type CreativeType = "copy" | "banner" | "video";
+export type CreativeStatus = "draft" | "approved" | "rejected" | "in_review";
+export type BannerFormat = "1:1" | "16:9" | "9:16" | "4:5" | "1.91:1";
+
+export type PolicyItem = {
+  rule: string;
+  passed: boolean;
+  detail: string | null;
+};
+
+export type ScoreBreakdown = {
+  clarity: number;       // 0-20
+  urgency: number;       // 0-20
+  cta_strength: number;  // 0-20
+  compliance: number;    // 0-20
+  relevance: number;     // 0-20
+};
+
+export type Creative = {
+  id: string;
+  workspace_id: string;
+  campaign_id: string | null;
+  type: CreativeType;
+  status: CreativeStatus;
+  name: string;
+  // copy fields
+  headline: string | null;
+  description: string | null;
+  cta: string | null;
+  // banner/video fields
+  asset_url: string | null;
+  thumbnail_url: string | null;
+  format: BannerFormat | null;
+  // AI metadata
+  prompt: string | null;
+  model_used: string | null;
+  // quality
+  score: number | null;         // 0-100
+  score_breakdown: ScoreBreakdown | null;
+  policy_items: PolicyItem[] | null;
+  policy_passed: boolean | null;
+  // versioning
+  version: number;
+  parent_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreativeVersion = {
+  id: string;
+  creative_id: string;
+  workspace_id: string;
+  version: number;
+  snapshot: Record<string, unknown>;
+  created_at: string;
+};
+
+export type CopyVariation = {
+  headline: string;
+  description: string;
+  cta: string;
+};
+
+export type CreativeCreateInput = {
+  type: CreativeType;
+  name: string;
+  campaign_id?: string | null;
+  headline?: string | null;
+  description?: string | null;
+  cta?: string | null;
+  asset_url?: string | null;
+  thumbnail_url?: string | null;
+  format?: BannerFormat | null;
+  prompt?: string | null;
+  model_used?: string | null;
+  score?: number | null;
+  score_breakdown?: ScoreBreakdown | null;
+  policy_items?: PolicyItem[] | null;
+  policy_passed?: boolean | null;
+};
+
 // ─── Session ─────────────────────────────────────────────────────────────────
 
 // Session shape returned by getUser() / fake auth
