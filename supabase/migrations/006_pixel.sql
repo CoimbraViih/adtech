@@ -98,3 +98,9 @@ CREATE POLICY "pixel_events: workspace members can read"
       WHERE wm.user_id = auth.uid()
     )
   );
+
+-- Inserts are performed exclusively via the service role (bypasses RLS).
+-- This explicit deny policy prevents silent failures if the anon key is used accidentally.
+CREATE POLICY "pixel_events: deny direct insert"
+  ON pixel_events FOR INSERT
+  WITH CHECK (false);

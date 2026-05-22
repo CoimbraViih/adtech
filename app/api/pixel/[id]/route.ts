@@ -6,6 +6,17 @@ import type { Pixel, PixelEventInsert } from "@/types/database";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+export function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}
+
 export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextResponse> {
   const { id: pixelId } = await ctx.params;
 
@@ -82,5 +93,10 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
     (err) => console.error("[pixel/ingest] fanout error:", err)
   );
 
-  return new NextResponse(null, { status: 204 });
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 }

@@ -11,6 +11,15 @@ const EVENT_COLORS: Record<string, string> = {
   custom: "text-muted",
 };
 
+function safePathname(url: string | null): string {
+  if (!url) return "—";
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+}
+
 type Props = { events: PixelEvent[] };
 
 export function EventLogTable({ events }: Props) {
@@ -43,7 +52,7 @@ export function EventLogTable({ events }: Props) {
               </td>
               <td className="px-4 py-2 text-muted">{ev.event_name ?? "—"}</td>
               <td className="px-4 py-2 text-muted text-xs truncate max-w-[220px]" title={ev.url ?? ""}>
-                {ev.url ? new URL(ev.url).pathname : "—"}
+                {safePathname(ev.url)}
               </td>
               <td className="px-4 py-2 text-white">
                 {ev.value != null
