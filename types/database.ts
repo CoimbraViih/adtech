@@ -57,6 +57,118 @@ export type BillingEvent = {
   created_at: string;
 };
 
+// ─── M2: Campaigns ───────────────────────────────────────────────────────────
+
+export type CampaignPlatform = "meta" | "google" | "programmatic";
+export type CampaignStatus = "active" | "paused" | "draft" | "archived";
+export type CampaignObjective =
+  | "awareness"
+  | "traffic"
+  | "engagement"
+  | "leads"
+  | "sales"
+  | "app_promotion";
+
+export type AdSetStatus = "active" | "paused" | "archived";
+export type AdStatus = "active" | "paused" | "archived" | "in_review" | "rejected";
+
+export type Campaign = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  platform: CampaignPlatform;
+  status: CampaignStatus;
+  objective: CampaignObjective;
+  daily_budget: number;
+  lifetime_budget: number | null;
+  start_date: string;
+  end_date: string | null;
+  external_id: string | null;
+  // metrics (denormalized for list view, synced from platform)
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  cpa: number | null;
+  roas: number | null;
+  ctr: number | null;
+  cpc: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdSet = {
+  id: string;
+  campaign_id: string;
+  workspace_id: string;
+  name: string;
+  status: AdSetStatus;
+  daily_budget: number | null;
+  bid_amount: number | null;
+  targeting: Record<string, unknown>;
+  external_id: string | null;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Ad = {
+  id: string;
+  ad_set_id: string;
+  workspace_id: string;
+  name: string;
+  status: AdStatus;
+  creative_id: string | null;
+  headline: string | null;
+  description: string | null;
+  cta: string | null;
+  destination_url: string | null;
+  external_id: string | null;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  created_at: string;
+  updated_at: string;
+};
+
+// Daily metric snapshot for charts
+export type CampaignMetricSnapshot = {
+  date: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  roas: number;
+  cpa: number;
+  ctr: number;
+};
+
+// Shape for campaign creation form
+export type CampaignCreateInput = {
+  name: string;
+  platform: CampaignPlatform;
+  objective: CampaignObjective;
+  daily_budget: number;
+  lifetime_budget?: number | null;
+  start_date: string;
+  end_date?: string | null;
+  targeting?: {
+    age_min?: number;
+    age_max?: number;
+    genders?: string[];
+    locations?: string[];
+    interests?: string[];
+    custom_audiences?: string[];
+  };
+};
+
+// ─── Session ─────────────────────────────────────────────────────────────────
+
 // Session shape returned by getUser() / fake auth
 export type AuthUser = {
   id: string;
