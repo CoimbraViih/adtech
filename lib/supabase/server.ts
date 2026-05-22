@@ -1,0 +1,87 @@
+/**
+ * Supabase server client (per-request, cookies-based).
+ * Used in Server Components, Route Handlers, and Server Actions.
+ *
+ * TODO(M1-backend): replace body with:
+ *   import { createServerClient } from "@supabase/ssr";
+ *   import { cookies } from "next/headers";
+ *   import type { Database } from "@/types/supabase";
+ *
+ *   export async function getSupabaseServerClient() {
+ *     const cookieStore = await cookies();
+ *     return createServerClient<Database>(
+ *       process.env.NEXT_PUBLIC_SUPABASE_URL!,
+ *       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+ *       {
+ *         cookies: {
+ *           getAll: () => cookieStore.getAll(),
+ *           setAll: (toSet) => toSet.forEach(({ name, value, options }) =>
+ *             cookieStore.set(name, value, options)
+ *           ),
+ *         },
+ *       }
+ *     );
+ *   }
+ *
+ * IMPORTANT: always call `supabase.auth.getUser()` — NEVER `getSession()`.
+ * getSession() reads from local storage (tamper-able); getUser() validates
+ * the JWT server-side via the Supabase API.
+ */
+
+import { cookies } from "next/headers";
+import {
+  getSessionFromCookies,
+  FAKE_SESSION,
+} from "@/lib/auth/session";
+import type { SessionContext } from "@/types/database";
+
+/**
+ * Returns the current session from the fake cookie store.
+ * Returns null when unauthenticated (no cookie present).
+ */
+export async function getServerSession(): Promise<SessionContext | null> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get("adflow_session")?.value ?? null;
+  if (!raw) return null;
+
+  // Use the same decoder as the session helper
+  const { decodeSession } = await import("@/lib/auth/session");
+  return decodeSession(raw);
+}
+
+/**
+ * Returns the session or throws — use inside protected route handlers
+ * where you want an automatic 401 on missing session.
+ */
+export async function requireServerSession(): Promise<SessionContext> {
+  const session = await getServerSession();
+  if (!session) {
+    throw new Error("UNAUTHENTICATED");
+  }
+  return session;
+}
+
+/**
+ * Fake "getUser" — mirrors `supabase.auth.getUser()` shape.
+ * TODO(M1-backend): replace with real Supabase client call.
+ */
+export async function getUser() {
+  const session = await getServerSession();
+  if (!session) return { data: { user: null }, error: null };
+  return {
+    data: {
+      user: {
+        id: session.user.id,
+        email: session.user.email,
+        user_metadata: {
+          display_name: session.user.display_name,
+          avatar_url: session.user.avatar_url,
+        },
+      },
+    },
+    error: null,
+  };
+}
+
+// Suppress unused-import warning — exported for convenience
+export { getSessionFromCookies, FAKE_SESSION };

@@ -22,7 +22,8 @@
 | M7 | Automação & Alertas | `feat/m7-automation` | M1, M2, M4, M5 |
 | M8 | Programático DSP/SSP | `feat/m8-programmatic` | M1, M2, M4 |
 | M9 | White-label & SuperAdmin | `feat/m9-whitelabel` | M1–M8 |
-| M10 | Deploy & Produção | `feat/m10-deploy` | M1–M9 |
+| MS | Segurança & Hardening | `feat/ms-security` | M1–M9 |
+| M10 | Deploy & Produção | `feat/m10-deploy` | M1–M9, MS |
 
 ---
 
@@ -103,14 +104,6 @@
 - [ ] Conectar wizard de onboarding ao banco (criar org + workspace reais)
 - [ ] `types/database.ts` — tipos gerados do schema Supabase
 
-### Segurança
-- [ ] **Nunca usar `getSession()` server-side** — apenas `getUser()` que valida o JWT no servidor Supabase (resistente a adulteração de cookie)
-- [ ] Verificar que todas as rotas do grupo `(dashboard)` e `(superadmin)` redirecionam para `/login` se não autenticado — testar acessando URLs diretas sem sessão
-- [ ] Confirmar que role `superadmin` só é atribuída via banco (migration), nunca via input do usuário
-- [ ] RLS smoke-test: logar com usuário de role `viewer` e tentar acessar endpoint de escrita — deve retornar 403
-- [ ] Tokens Supabase (`SUPABASE_SERVICE_ROLE_KEY`) devem existir **somente** em variáveis server-side — jamais com prefixo `NEXT_PUBLIC_`
-- [ ] Validar que o callback OAuth (`/callback`) verifica o `state` CSRF antes de trocar o code por sessão
-
 ### Testes
 - [ ] E2E: fluxo de cadastro → onboarding → dashboard (`tests/e2e/auth.spec.ts`)
 - [ ] E2E: login com magic link (`tests/e2e/auth.spec.ts`)
@@ -151,13 +144,6 @@ git commit -m "feat(m1): auth, multi-tenant shell, RBAC, onboarding wizard"
 - [ ] Sincronização de campanhas externas → banco local (job via route handler)
 - [ ] Conectar tabela de campanhas à API (substituir mocks)
 - [ ] Conectar formulário de criação à API (criar campanha real na plataforma)
-
-### Segurança
-- [ ] **Tokens de API externa** (`META_ACCESS_TOKEN`, `GOOGLE_ADS_TOKEN`) armazenados apenas em variáveis server-side, nunca expostos ao cliente
-- [ ] Todos os endpoints `app/api/campaigns/` devem verificar autenticação **e** role do usuário antes de qualquer operação (usar helpers de `lib/auth/roles.ts`)
-- [ ] Validar e sanitizar todo input do formulário de campanha server-side (não confiar apenas na validação do frontend) — usar `zod` nos route handlers
-- [ ] Rate limiting no endpoint de criação de campanha (evitar abuso via loop)
-- [ ] Nunca logar tokens de acesso Meta/Google em `console.log` — verificar wrappers de API
 
 ### Testes
 - [ ] E2E: criar campanha → ver na lista → pausar (`tests/e2e/campaigns.spec.ts`)
@@ -203,13 +189,6 @@ git commit -m "feat(m2): campaign management, Meta/Google API integration"
 - [ ] Conectar geradores à API (substituir mocks por streaming real)
 - [ ] Adicionar variável `OPENAI_API_KEY`, `STABILITY_API_KEY`, `RUNWAY_API_KEY` ao `.env.local.example`
 
-### Segurança
-- [ ] **Prompt injection:** sanitizar o briefing do usuário antes de incluir no prompt OpenAI — remover instruções de sistema injetadas (ex.: "ignore previous instructions")
-- [ ] **Rate limiting por usuário** nos endpoints de geração (GPT-4o e Stability AI são caros) — limitar a N gerações/hora por workspace via Upstash Redis ou contador no banco
-- [ ] **Chaves de AI** (`OPENAI_API_KEY`, etc.) exclusivamente server-side — nunca com prefixo `NEXT_PUBLIC_`
-- [ ] Validar tipo e tamanho de arquivos de upload (banners/vídeos) antes de encaminhar à API externa — rejeitar tipos inesperados para evitar SSRF
-- [ ] Não armazenar URLs pré-assinadas de banners/vídeos gerados por tempo indefinido — definir TTL e revalidar antes de servir
-
 ### Testes
 - [ ] Unitário: lógica de score de criativo (`tests/unit/creative-score.test.ts`)
 - [ ] E2E: gerar copy → ver variações → salvar criativo (`tests/e2e/creatives.spec.ts`)
@@ -246,15 +225,6 @@ git commit -m "feat(m3): AI creative studio, copy/banner/video generation, quali
 - [ ] `lib/tracking/google-ec.ts` — wrapper Google Enhanced Conversions
 - [ ] Conectar dashboard de eventos à tabela `pixel_events` em tempo real (Supabase Realtime)
 - [ ] Adicionar variáveis `META_CAPI_TOKEN`, `GOOGLE_EC_TOKEN` ao `.env.local.example`
-
-### Segurança — atenção redobrada (endpoint público sem auth)
-- [ ] **Validar `pixel_id`** antes de persistir qualquer dado: checar se existe no banco e se está ativo — rejeitar IDs inválidos com 404 (não 403, para não vazar informação de existência)
-- [ ] **Rate limiting agressivo** no endpoint `/api/pixel/[id]`: ex. 1000 eventos/minuto por IP + 10.000/minuto por pixel_id — usar Vercel Edge Middleware ou Upstash Redis
-- [ ] **Nunca logar dados PII** (e-mail, CPF, telefone) recebidos nos eventos — mascarar antes de persistir no log de debug
-- [ ] **CORS restritivo** no endpoint de ingestion: aceitar apenas origens cadastradas para o pixel (domínios configurados pelo usuário)
-- [ ] **Tamanho máximo de payload**: rejeitar requests > 10KB para evitar ataques de amplificação
-- [ ] **IP mascarado** na exibição do dashboard: armazenar apenas os primeiros 3 octetos (`192.168.1.xxx`) — respeitar LGPD
-- [ ] `adflow.js` não deve enviar cookies de sessão ou localStorage de forma automática — apenas dados explicitamente disparados pelo site
 
 ### Testes
 - [ ] Unitário: parsing e validação de eventos (`tests/unit/pixel-ingestion.test.ts`)
@@ -295,11 +265,6 @@ git commit -m "feat(m4): server-side pixel, Meta CAPI, Google Enhanced Conversio
 - [ ] Conectar dashboard à API (substituir dados mockados)
 - [ ] Conectar exportação à API
 
-### Segurança
-- [ ] **Isolamento de dados entre tenants**: todas as queries de analytics devem filtrar por `workspace_id` extraído da sessão do usuário autenticado — nunca aceitar `workspace_id` como parâmetro de URL sem revalidar a permissão
-- [ ] **Exportação de CSV**: não incluir campos PII no export padrão (e-mail, telefone de leads) — oferecer como opt-in explícito com aviso LGPD
-- [ ] Verificar que usuário com role `viewer` só acessa dados de leitura — testar tentativa de POST em endpoints de analytics com token de viewer
-
 ### Testes
 - [ ] Unitário: cada modelo de atribuição (`tests/unit/attribution.test.ts`)
 - [ ] E2E: selecionar período → trocar modelo → exportar CSV (`tests/e2e/analytics.spec.ts`)
@@ -339,13 +304,6 @@ git commit -m "feat(m5): analytics dashboard, multi-touch attribution, CSV expor
 - [ ] `app/api/lp/[slug]/submit/route.ts` — recebe formulário de lead, persiste em `lp_submissions`, dispara pixel event
 - [ ] Configuração de domínio customizado (CNAME) via Vercel API
 
-### Segurança
-- [ ] **XSS via conteúdo do builder**: nunca renderizar HTML criado pelo usuário com `dangerouslySetInnerHTML` sem sanitização — usar `DOMPurify` server-side antes de persistir
-- [ ] **Submissão de lead (endpoint público)**: validar e sanitizar todos os campos do formulário — aplicar `zod` + rate limiting por IP (evitar spam de leads)
-- [ ] **Upload de imagens de blocos**: validar tipo MIME real (não só extensão), limitar tamanho (ex. 5MB), armazenar no Supabase Storage (não filesystem)
-- [ ] **Slug de LP**: não permitir slugs com caracteres especiais ou path traversal (`../`, `%2F`) — validar com regex `^[a-z0-9-]+$`
-- [ ] CAPTCHA (hCaptcha ou Cloudflare Turnstile) no formulário de lead para LPs públicas
-
 ### Testes
 - [ ] E2E: criar LP → adicionar bloco Hero + Formulário → publicar → submeter lead (`tests/e2e/lp-builder.spec.ts`)
 - [ ] Unitário: renderização de blocos (`tests/unit/lp-blocks.test.ts`)
@@ -384,13 +342,6 @@ git commit -m "feat(m6): no-code landing page builder, thank you page, lead capt
 - [ ] `app/api/alerts/check/route.ts` — job periódico (cron via Vercel Cron) que checa anomalias e dispara alertas
 - [ ] Conectar motor de automação ao pixel (evento de pixel → executa funil)
 
-### Segurança
-- [ ] **Chaves de mensageria** (`RESEND_API_KEY`, `TWILIO_AUTH_TOKEN`, `WHATSAPP_TOKEN`) exclusivamente server-side, nunca expostas ao cliente
-- [ ] **Validar assinatura de webhook** do motor de execução: usar HMAC-SHA256 para garantir que só o sistema interno dispara execuções
-- [ ] **Limitar frequência de envio por contato**: evitar spam — ex. máximo 3 e-mails/dia por lead no mesmo funil
-- [ ] Logs de execução de funil não devem conter conteúdo de e-mail/mensagem completo com dados PII
-- [ ] Alertas de anomalia não devem expor dados financeiros completos em notificações push/e-mail — resumir e redirecionar para o dashboard
-
 ### Testes
 - [ ] Unitário: motor de execução de funil (`tests/unit/funnel-engine.test.ts`)
 - [ ] Unitário: detecção de anomalia (`tests/unit/anomaly-detection.test.ts`)
@@ -426,13 +377,6 @@ git commit -m "feat(m7): visual funnel builder, email/SMS/WhatsApp automation, a
 - [ ] `lib/rtb/dmp.ts` — match de usuário com segmentos do DMP via cookie/fingerprint
 - [ ] Integração com SSP via OpenRTB (configurável por deal ID)
 - [ ] Job de atualização de segmentos lookalike (cron semanal)
-
-### Segurança
-- [ ] **Autenticação do endpoint de bid**: validar token ou IP allowlist do SSP parceiro — o endpoint OpenRTB não deve ser acessível publicamente sem credencial
-- [ ] **Validar schema do bid request** com `zod` antes de processar — bid requests malformados podem causar erros silenciosos ou injeção de dados
-- [ ] **DMP e LGPD**: usuários do DMP são identificados por cookie/fingerprint — implementar mecanismo de opt-out e exclusão de segmento mediante solicitação
-- [ ] Logs de bid request não devem conter IP completo do usuário final — anonimizar antes de persistir
-- [ ] Limitar o tamanho dos bid requests aceitos (ex. 50KB) — rejeitar payloads maiores para evitar amplificação
 
 ### Testes
 - [ ] Unitário: lógica de bid (`tests/unit/rtb-bidder.test.ts`)
@@ -470,13 +414,6 @@ git commit -m "feat(m8): OpenRTB 2.6 bidder, DMP, programmatic campaign manageme
 - [ ] Aplicar white-label config no layout do dashboard (logo, cores) baseado na org do usuário
 - [ ] Configuração de domínio customizado para white-label (Vercel API)
 
-### Segurança
-- [ ] **Rotas superadmin**: verificar `isSuperAdmin()` em **cada** route handler individualmente — não confiar apenas no middleware (defesa em profundidade)
-- [ ] **Isolamento cross-tenant**: testar com dois tenants distintos que um não consegue acessar dados do outro mesmo como admin
-- [ ] **Upload de logo white-label**: validar tipo MIME (somente `image/png`, `image/jpeg`, `image/svg+xml`), limitar a 2MB, sanitizar SVG para remover scripts embutidos
-- [ ] Cores white-label devem ser validadas como hex válido — rejeitar valores CSS arbitrários que poderiam injetar conteúdo malicioso via variáveis CSS
-- [ ] **Auditoria de ação do superadmin**: logar toda ação destrutiva (deletar tenant, alterar plano) com timestamp e user_id no banco
-
 ### Testes
 - [ ] E2E: superadmin lista tenants → visualiza detalhe (`tests/e2e/superadmin.spec.ts`)
 - [ ] Unitário: geração de tema white-label (`tests/unit/white-label-theme.test.ts`)
@@ -489,9 +426,103 @@ git commit -m "feat(m9): white-label for agencies, superadmin tenant management"
 
 ---
 
+## MS — Segurança & Hardening
+
+**Branch:** `feat/ms-security`  
+**Objetivo:** Consolidar toda a camada de segurança da plataforma após as features estarem estáveis. Auditoria completa, hardening de endpoints, compliance LGPD e testes de penetração internos.
+
+> **Agentes:** `@security-auditor` · `@api-security-audit` · `@code-reviewer`
+> **Skills:** `/security-review` em cada módulo · `/webapp-testing` para testes de segurança E2E · `/commit` para o commit final
+
+### Auth & Sessão (M1)
+- [ ] **Nunca usar `getSession()` server-side** — apenas `getUser()` que valida o JWT no servidor Supabase (resistente a adulteração de cookie)
+- [ ] Verificar que todas as rotas dos grupos `(dashboard)` e `(superadmin)` redirecionam para `/login` sem sessão — testar acessando URLs diretas
+- [ ] Confirmar que role `superadmin` só é atribuída via banco (migration), nunca via input do usuário
+- [ ] RLS smoke-test: logar com role `viewer` e tentar escrita — deve retornar 403
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` exclusivamente server-side — jamais com prefixo `NEXT_PUBLIC_`
+- [ ] Validar que o callback OAuth (`/callback`) verifica o `state` CSRF antes de trocar o code por sessão
+
+### Campanhas (M2)
+- [ ] Tokens de API externa (`META_ACCESS_TOKEN`, `GOOGLE_ADS_TOKEN`) exclusivamente server-side
+- [ ] Todos os endpoints `app/api/campaigns/` verificam autenticação **e** role antes de qualquer operação
+- [ ] Validar e sanitizar input do formulário de campanha server-side com `zod` nos route handlers
+- [ ] Rate limiting no endpoint de criação de campanha
+- [ ] Nunca logar tokens de acesso Meta/Google em `console.log` — verificar wrappers de API
+
+### AI Creative Studio (M3)
+- [ ] **Prompt injection:** sanitizar briefing do usuário antes de incluir no prompt OpenAI
+- [ ] **Rate limiting por usuário** nos endpoints de geração (GPT-4o e Stability AI são caros) — N gerações/hora por workspace via Upstash Redis ou contador no banco
+- [ ] Chaves de AI (`OPENAI_API_KEY`, etc.) exclusivamente server-side
+- [ ] Validar tipo e tamanho de uploads antes de encaminhar à API externa — rejeitar tipos inesperados para evitar SSRF
+- [ ] Definir TTL em URLs pré-assinadas de banners/vídeos — revalidar antes de servir
+
+### Pixel & Tracking (M4) — atenção redobrada (endpoint público)
+- [ ] **Validar `pixel_id`** antes de persistir: checar existência e status ativo — rejeitar IDs inválidos com 404 (não 403)
+- [ ] **Rate limiting agressivo**: 1000 eventos/min por IP + 10.000/min por pixel_id — Vercel Edge Middleware ou Upstash Redis
+- [ ] **Nunca logar PII** (e-mail, CPF, telefone) — mascarar antes de persistir no log de debug
+- [ ] **CORS restritivo**: aceitar apenas origens cadastradas para o pixel
+- [ ] **Payload máximo**: rejeitar requests > 10KB
+- [ ] **IP mascarado**: armazenar apenas os 3 primeiros octetos — respeitar LGPD
+- [ ] `adflow.js` não deve enviar cookies de sessão ou localStorage automaticamente
+
+### Analytics & Atribuição (M5)
+- [ ] Queries de analytics sempre filtram por `workspace_id` da sessão — nunca aceitar `workspace_id` de URL sem revalidar permissão
+- [ ] Exportação de CSV sem PII no padrão — oferecer como opt-in explícito com aviso LGPD
+- [ ] Verificar que role `viewer` não consegue POST em endpoints de analytics
+
+### Landing Page Builder (M6)
+- [ ] **XSS via builder**: nunca renderizar HTML do usuário com `dangerouslySetInnerHTML` sem sanitização — usar `DOMPurify` server-side antes de persistir
+- [ ] **Submissão de lead (endpoint público)**: `zod` + rate limiting por IP
+- [ ] **Upload de imagens**: validar tipo MIME real (não só extensão), limitar a 5MB, armazenar no Supabase Storage
+- [ ] **Slug de LP**: validar com regex `^[a-z0-9-]+$` — sem path traversal
+- [ ] CAPTCHA (hCaptcha ou Cloudflare Turnstile) no formulário de lead
+
+### Automação & Alertas (M7)
+- [ ] Chaves de mensageria (`RESEND_API_KEY`, `TWILIO_AUTH_TOKEN`, `WHATSAPP_TOKEN`) exclusivamente server-side
+- [ ] Validar assinatura HMAC-SHA256 no webhook do motor de execução
+- [ ] Limitar frequência de envio por contato — máximo 3 e-mails/dia por lead no mesmo funil
+- [ ] Logs de execução sem conteúdo completo de mensagens com PII
+- [ ] Alertas de anomalia não expõem dados financeiros completos — resumir e redirecionar ao dashboard
+
+### Programático DSP/SSP (M8)
+- [ ] Autenticar endpoint de bid com token ou IP allowlist do SSP parceiro
+- [ ] Validar schema do bid request com `zod` antes de processar
+- [ ] DMP e LGPD: implementar opt-out e exclusão de segmento
+- [ ] Anonimizar IP do usuário final nos logs de bid request
+- [ ] Limitar tamanho de bid requests aceitos a 50KB
+
+### White-label & SuperAdmin (M9)
+- [ ] Verificar `isSuperAdmin()` em **cada** route handler individualmente — defesa em profundidade
+- [ ] Isolamento cross-tenant: testar que admin de um tenant não acessa dados de outro
+- [ ] Upload de logo: validar tipo MIME (`image/png`, `image/jpeg`, `image/svg+xml`), limitar 2MB, sanitizar SVG
+- [ ] Cores white-label validadas como hex — rejeitar valores CSS arbitrários
+- [ ] Auditoria de ação do superadmin: logar ações destrutivas com timestamp e user_id
+
+### Auditoria final pré-produção
+- [ ] Rotação de secrets: gerar novas chaves de produção — nunca reusar as de desenvolvimento
+- [ ] Varredura de segredos no repositório: `trufflehog` ou `gitleaks` em toda a história do git
+- [ ] `npm audit` — corrigir vulnerabilidades `high` e `critical`
+- [ ] Rate limiting global confirmado em todos os endpoints públicos
+- [ ] Headers de segurança validados com securityheaders.com — mínimo nota A
+- [ ] Auditoria de RLS completa com Supabase de produção
+- [ ] `STRIPE_WEBHOOK_SECRET` de produção ativo — validação de assinatura confirmada
+- [ ] `vercel env ls` — nenhuma variável sensível marcada como `NEXT_PUBLIC_`
+- [ ] Página de Política de Privacidade e Termos de Uso presentes antes do go-live (LGPD)
+- [ ] `Referrer-Policy`, `Permissions-Policy` e `Cross-Origin-Opener-Policy` nos headers de produção
+- [ ] Revisão final com `@security-auditor` nos endpoints críticos: auth callback, pixel ingestion, bid RTB, Stripe webhook
+
+### Commit final
+```
+git checkout main && git merge feat/ms-security
+git commit -m "feat(ms): security hardening, LGPD compliance, full audit across all modules"
+```
+
+---
+
 ## M10 — Deploy & Produção
 
 **Branch:** `feat/m10-deploy`  
+**Depende de:** M1–M9, MS  
 **Objetivo:** Plataforma em produção na Vercel + AWS São Paulo, com CI/CD, monitoramento, Stripe real e domínio `adflow.app` configurado.
 
 > **Agentes:** `@security-auditor` · `@api-security-audit` · `@nextjs-architecture-expert` · `@code-reviewer`
@@ -517,19 +548,6 @@ git commit -m "feat(m9): white-label for agencies, superadmin tenant management"
 - [ ] Configurar Stripe Tax para emissão de nota fiscal (opcional, Brasil)
 - [ ] Testar fluxo completo: cadastro → free trial → upgrade para Pro → cobrança → downgrade
 
-### Segurança — auditoria final pré-produção
-- [ ] **Rotação de secrets**: gerar novas chaves de produção para Supabase, Stripe, OpenAI — nunca reusar chaves de desenvolvimento
-- [ ] **Varredura de segredos no repositório**: rodar `git log --all --full-history -- '*.env*'` e ferramentas como `trufflehog` ou `gitleaks` para garantir que nenhum secret foi commitado em algum momento da história do repo
-- [ ] **Dependências**: rodar `npm audit` e corrigir vulnerabilidades de nível `high` e `critical` antes do go-live
-- [ ] **Rate limiting global**: confirmar que Vercel Edge Middleware ou Upstash Redis aplica rate limiting em todos os endpoints públicos (`/api/pixel/*`, `/api/lp/*`, `/api/rtb/*`)
-- [ ] **Headers de segurança em produção**: validar com [securityheaders.com](https://securityheaders.com) — mínimo nota A
-- [ ] **Auditoria de RLS completa**: com Supabase de produção, testar cada política com usuário de role diferente
-- [ ] **Stripe webhook signature**: confirmar que `STRIPE_WEBHOOK_SECRET` é o de produção (não o do CLI de dev) e que a validação de assinatura está ativa
-- [ ] **Variáveis de ambiente**: rodar `vercel env ls` e confirmar que nenhuma variável sensível está marcada como `NEXT_PUBLIC_`
-- [ ] **LGPD**: confirmar presença de página de Política de Privacidade e Termos de Uso antes do go-live público
-- [ ] Configurar `Referrer-Policy`, `Permissions-Policy` e `Cross-Origin-Opener-Policy` nos headers de produção
-- [ ] **Revisão final** com `@security-auditor` nos endpoints críticos: auth callback, pixel ingestion, bid RTB, Stripe webhook
-
 ### Commit final
 ```
 git checkout main && git merge feat/m10-deploy
@@ -551,7 +569,8 @@ M0 (setup)
             ├─ M7 (automação)      ← depende M2 + M4 + M5
             └─ M8 (programático)   ← depende M2 + M4
                  └─ M9 (white-label)
-                      └─ M10 (deploy)
+                      └─ MS (segurança)
+                           └─ M10 (deploy)
 ```
 
 **Regra:** Interface mockada sempre antes do backend. Cada milestone deve estar demonstrável com dados reais antes de iniciar o próximo.
