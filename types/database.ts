@@ -267,3 +267,48 @@ export type SessionContext = {
   workspace: Workspace;
   role: OrgRole;
 };
+
+// ─── M4: Pixel & Tracking ─────────────────────────────────────────────────────
+
+export type PixelEventType =
+  | "page_view"
+  | "add_to_cart"
+  | "purchase"
+  | "lead"
+  | "sign_up"
+  | "custom";
+
+export type Pixel = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  meta_pixel_id: string | null;
+  google_tag_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PixelCreateInput = {
+  workspace_id: string;
+  name: string;
+  meta_pixel_id?: string | null;
+  google_tag_id?: string | null;
+};
+
+export type PixelEvent = {
+  id: string;
+  pixel_id: string;
+  event_type: PixelEventType;
+  event_name: string | null;
+  url: string | null;
+  referrer: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  session_id: string | null;
+  value: number | null;
+  currency: string | null;
+  properties: Record<string, unknown> | null;
+  received_at: string;
+};
+
+export type PixelEventInsert = Omit<PixelEvent, "id" | "received_at">;
