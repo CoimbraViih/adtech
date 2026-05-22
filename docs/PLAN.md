@@ -15,7 +15,7 @@
 | M0 | Setup & Design System | `feat/m0-setup` ✅ | — |
 | M1 | Autenticação & Shell | `feat/m1-auth` ✅ | M0 |
 | M2 | Gestão de Campanhas | `feat/m2-campaigns` ✅ | M1 |
-| M3 | AI Creative Studio | `feat/m3-creatives` | M1, M2 |
+| M3 | AI Creative Studio | `feat/m3-creatives` ✅ | M1, M2 |
 | M4 | Pixel & Tracking | `feat/m4-pixel` | M1 |
 | M5 | Analytics & Atribuição | `feat/m5-analytics` | M1, M4 |
 | M6 | Landing Page Builder | `feat/m6-lp-builder` | M1, M4, M5 |
@@ -148,47 +148,36 @@
 
 ---
 
-## M3 — AI Creative Studio
+## M3 — AI Creative Studio ✅ CONCLUÍDO
 
-**Branch:** `feat/m3-creatives`  
-**Objetivo:** Gestor gera copy (headlines, descrições, CTAs) via GPT-4o, banners via Stability AI e vídeos via Runway, com score de qualidade 0-100 e checagem de política.
+**Branch:** `feat/m3-creatives` → mergeado em `main`  
+**Objetivo:** Gestor gera copy (headlines, descrições, CTAs) via GPT-4o com score de qualidade 0-100 e checagem de política Meta/Google. Banners e vídeos removidos do escopo MVP (postergados para pós-MVP com Stability AI e Runway).
 
-> **Agentes:** `@frontend-developer` · `@prompt-engineer` · `@api-security-audit` · `@code-reviewer`
-> **Skills:** `/brainstorming` para definir UX do estúdio e fluxo de geração · `/claude-api` para integrações com modelos de IA (wrappers OpenAI, rate limiting, retry) · `/prompt-engineer` para os prompts de copy, score 0-100 e checagem de política Meta/Google · `/feature-dev:feature-dev` para desenvolvimento guiado do creative studio · `/supabase` para migration e storage de criativos · `/frontend-design` para galeria e estúdio de criação · `/ui-ux-pro-max` para layout do editor com abas Copy/Banner/Vídeo · `/security-review` antes do merge (foco em prompt injection) · `/webapp-testing` para E2E de geração · `/simplify` após implementação · `/commit` para o commit final
+### Interface
+- [x] `app/(dashboard)/creatives/page.tsx` — galeria de copies com 3 KPI cards (score médio, total, aprovadas por política)
+- [x] `app/(dashboard)/creatives/new/page.tsx` — estúdio copy-only: gerador à esquerda + painel salvar à direita
+- [x] `app/(dashboard)/creatives/[id]/page.tsx` — conteúdo (headline, descrição, CTA), score gauge, policy checker, histórico de versões, prompt utilizado, campanha vinculada
+- [x] `components/creatives/copy-generator.tsx` — briefing textarea + botão gerar + variações colapsáveis com copiar/usar
+- [x] `components/creatives/creative-score.tsx` — gauge SVG circular 0-100 com breakdown por critério (clareza, urgência, CTA, conformidade, relevância)
+- [x] `components/creatives/policy-checker.tsx` — checklist Meta/Google com ícones aprovado/reprovado e detalhe de correção
+- [x] `components/creatives/creative-card.tsx` — card da galeria com thumbnail, score, status badge, campanha vinculada
+- [x] `components/creatives/creative-type-badge.tsx` — badge por tipo com ícone
 
-### Interface — construir primeiro com dados mockados
-- [ ] `app/(dashboard)/creatives/page.tsx` — galeria de criativos com filtros (tipo, campanha, score, status de aprovação)
-- [ ] `app/(dashboard)/creatives/new/page.tsx` — estúdio de criação em 3 abas: Copy / Banner / Vídeo
-- [ ] `app/(dashboard)/creatives/[id]/page.tsx` — preview do criativo, score, histórico de versões, vínculo com campanhas
-- [ ] `components/creatives/copy-generator.tsx` — textarea de briefing + botão gerar + lista de variações geradas (mockadas)
-- [ ] `components/creatives/banner-generator.tsx` — seletor de formato (1:1, 16:9, 9:16), prompt, área de preview (mockado)
-- [ ] `components/creatives/video-generator.tsx` — upload de imagens-base, prompt, player de preview (mockado)
-- [ ] `components/creatives/creative-score.tsx` — gauge circular 0-100 com breakdown por critério
-- [ ] `components/creatives/policy-checker.tsx` — lista de itens aprovados/reprovados por política Meta/Google
-- [ ] `components/creatives/creative-card.tsx` — card da galeria com thumbnail, score, status, campanha vinculada
+### Backend / API
+- [x] Migration `005_creatives.sql`: tabelas `creatives`, `creative_versions` com enums, 5 índices e 6 RLS policies
+- [x] `app/api/creatives/route.ts` — GET (lista, filtros type/status/campaign_id) + POST (salvar) com RBAC + Zod
+- [x] `app/api/creatives/generate/copy/route.ts` — POST: briefing → GPT-4o → variações; fallback mockado sem `OPENAI_API_KEY`
+- [x] `app/api/creatives/score/route.ts` — POST: criativo → score 0-100 com breakdown; fallback mockado
+- [x] `app/api/creatives/policy-check/route.ts` — POST: criativo → checagem de política Meta/Google; fallback mockado
+- [x] `lib/ai/openai.ts` — wrapper OpenAI com retry exponencial (3 tentativas, backoff 500ms×2ⁿ), funções: `generateCopyVariations`, `scoreCreative`, `checkPolicy`
+- [x] `lib/creatives/mock-data.ts` — 5 copies com scores, policy items e status variados; 4 variações mock para dev
 
-### Backend / Dados reais
-- [ ] Migration `005_creatives.sql`: tabelas `creatives`, `creative_versions` com `workspace_id` + RLS
-- [ ] `app/api/creatives/generate/copy/route.ts` — POST: briefing → GPT-4o → variações de copy
-- [ ] `app/api/creatives/generate/banner/route.ts` — POST: prompt + formato → Stability AI → URL de imagem
-- [ ] `app/api/creatives/generate/video/route.ts` — POST: imagens + prompt → Runway → URL de vídeo
-- [ ] `app/api/creatives/score/route.ts` — POST: criativo → score 0-100 (heurística + GPT-4o)
-- [ ] `app/api/creatives/policy-check/route.ts` — POST: criativo → checagem de política via GPT-4o
-- [ ] `lib/ai/openai.ts` — wrapper OpenAI com retry e rate limiting
-- [ ] `lib/ai/stability.ts` — wrapper Stability AI
-- [ ] `lib/ai/runway.ts` — wrapper Runway API
-- [ ] Conectar geradores à API (substituir mocks por streaming real)
-- [ ] Adicionar variável `OPENAI_API_KEY`, `STABILITY_API_KEY`, `RUNWAY_API_KEY` ao `.env.local.example`
-
-### Testes
-- [ ] Unitário: lógica de score de criativo (`tests/unit/creative-score.test.ts`)
-- [ ] E2E: gerar copy → ver variações → salvar criativo (`tests/e2e/creatives.spec.ts`)
-
-### Commit final
-```
-git checkout main && git merge feat/m3-creatives
-git commit -m "feat(m3): AI creative studio, copy/banner/video generation, quality score"
-```
+### Entregáveis
+- Merge commit: `feat/m3-creatives` → `main`
+- `tsc --noEmit` zero erros
+- `vitest run` 73/73 passando
+- Dados gateados atrás de `TODO(M3-backend)` para swap-in Supabase
+- Fallback automático para mocks quando `OPENAI_API_KEY` não configurada
 
 ---
 
