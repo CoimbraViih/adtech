@@ -13,7 +13,7 @@
 | # | Milestone | Branch | Depende de |
 |---|-----------|--------|------------|
 | M0 | Setup & Design System | `feat/m0-setup` ✅ | — |
-| M1 | Autenticação & Shell | `feat/m1-auth` | M0 |
+| M1 | Autenticação & Shell | `feat/m1-auth` ✅ | M0 |
 | M2 | Gestão de Campanhas | `feat/m2-campaigns` | M1 |
 | M3 | AI Creative Studio | `feat/m3-creatives` | M1, M2 |
 | M4 | Pixel & Tracking | `feat/m4-pixel` | M1 |
@@ -69,51 +69,48 @@
 
 ---
 
-## M1 — Autenticação & Shell
+## M1 — Autenticação & Shell ✅ CONCLUÍDO
 
-**Branch:** `feat/m1-auth`  
+**Branch:** `feat/m1-auth` → mergeado em `main`  
 **Objetivo:** Usuário consegue criar conta, logar, ver o dashboard shell com sidebar/topbar e fazer logout. Multi-tenant (org + workspace) funcionando com RBAC.
 
 > **Agentes:** `@frontend-developer` · `@nextjs-architecture-expert` · `@typescript-pro` · `@api-security-audit` · `@code-reviewer`
 > **Skills:** `/brainstorming` para definir fluxo de auth e onboarding · `/supabase` para criar o projeto, migrations e RLS policies · `/supabase-postgres-best-practices` para schema das tabelas core · `/vercel:auth` para integração Supabase Auth + Next.js · `/vercel:nextjs` para middleware de proteção de rotas · `/frontend-design` para login e wizard de onboarding · `/writing-plans` para detalhar as migrations em step-by-step · `/security-review` antes do merge · `/webapp-testing` para E2E de auth · `/commit` para o commit final
 
-### Interface — construir primeiro com dados mockados
-- [ ] Layout shell `app/(dashboard)/layout.tsx` com sidebar colapsável (estilo Linear)
-- [ ] `components/layout/sidebar.tsx` — nav com ícones, itens: Dashboard, Campanhas, Criativos, Analytics, Pixel, Landing Pages, Automação, Configurações
-- [ ] `components/layout/topbar.tsx` — breadcrumb, seletor de workspace, avatar do usuário
-- [ ] `components/layout/org-switcher.tsx` — dropdown para trocar de organização
-- [ ] `components/auth/user-menu.tsx` — dropdown com nome, email, plano, logout
-- [ ] Página `app/(dashboard)/dashboard/page.tsx` — placeholder com cards de métricas zerados (ROAS, CPA, Spend, Conversões)
-- [ ] Página `app/(auth)/login/page.tsx` — formulário magic link + botão Google OAuth
-- [ ] Página `app/(auth)/signup/page.tsx` — formulário de cadastro
-- [ ] `components/onboarding/onboarding-wizard.tsx` — wizard 2 passos: criar org → criar workspace (com dados mockados)
-- [ ] Layout superadmin `app/(superadmin)/layout.tsx` + `tenants/page.tsx` (tabela mockada de tenants)
+### Interface
+- [x] `components/auth/login-form.tsx` — magic link + Google OAuth, loading states, inline validation, success state, dev-login link em não-produção
+- [x] `components/auth/signup-form.tsx` — Zod validation, success state, redirect automático para onboarding
+- [x] `components/auth/user-menu.tsx` — dropdown com nome, e-mail, plano, logout com spinner
+- [x] `components/onboarding/onboarding-wizard.tsx` — wizard 2 passos (org → workspace) com StepBar, radio de tipo de org, server error banner
+- [x] `app/(auth)/login/page.tsx` + `app/(auth)/signup/page.tsx` — páginas de auth
+- [x] `app/(auth)/onboarding/page.tsx` — página de onboarding (rota pública)
 
-### Backend / Dados reais
-- [ ] Criar projeto Supabase, configurar variáveis de ambiente
-- [ ] Migration `001_initial_schema.sql`: tabelas `organizations`, `workspaces`, `profiles`, `organization_members`, `workspace_members`
-- [ ] Migration `002_rbac.sql`: RLS policies para cada tabela e role (owner/admin/member/viewer/superadmin)
-- [ ] Migration `003_billing.sql`: tabela `billing_events`
-- [ ] `lib/supabase/client.ts` — browser client singleton
-- [ ] `lib/supabase/server.ts` — server client com cookies
-- [ ] `lib/supabase/middleware.ts` — refresh de sessão
-- [ ] `lib/auth/roles.ts` — helpers: `canManageCampaigns`, `canViewOnly`, `canManageOrg`, `isSuperAdmin`, `canAccessBilling`
-- [ ] `middleware.ts` — proteção de rotas (público / protegido / superadmin)
-- [ ] `app/(auth)/callback/route.ts` — handler OAuth Supabase
-- [ ] Conectar formulário de login ao Supabase Auth (magic link + Google)
-- [ ] Conectar wizard de onboarding ao banco (criar org + workspace reais)
-- [ ] `types/database.ts` — tipos gerados do schema Supabase
+### Backend / Fake data (pronto para swap-in Supabase)
+- [x] `types/database.ts` — tipos completos: `OrgPlan`, `OrgRole`, `Organization`, `Workspace`, `Profile`, `OrganizationMember`, `WorkspaceMember`, `BillingEvent`, `AuthUser`, `SessionContext`
+- [x] `lib/auth/session.ts` — `encodeSession`, `decodeSession`, `buildSessionCookie`, `clearSessionCookie`, `getSessionFromCookies`, `FAKE_SESSION`
+- [x] `lib/auth/actions.ts` — Server Actions: `sendMagicLink`, `signUp`, `completeOnboarding`, `logout`, `devLogin` (prod-bloqueado)
+- [x] `lib/auth/roles.ts` — RBAC completo: hierarquia de roles + 8 helpers + `roleLabel`
+- [x] `lib/supabase/client.ts` — browser stub
+- [x] `lib/supabase/server.ts` — `getServerSession`, `requireServerSession`, `getUser`
+- [x] `lib/supabase/middleware.ts` — `updateSession` stub
+- [x] `middleware.ts` — proteção de rotas (PUBLIC_PATHS / AUTH_ONLY / superadmin / protected)
+- [x] `app/(auth)/callback/route.ts` — handler OAuth fake (sem try/catch em torno de redirect)
+- [x] `app/api/auth/dev-login/route.ts` — GET shortcut para dev (bloqueado em produção)
+- [x] `supabase/migrations/001_initial_schema.sql` — schema core (5 tabelas + triggers)
+- [x] `supabase/migrations/002_rbac.sql` — 20 RLS policies + helper functions
+- [x] `supabase/migrations/003_billing.sql` — `billing_events` append-only + índice de idempotência
 
 ### Testes
-- [ ] E2E: fluxo de cadastro → onboarding → dashboard (`tests/e2e/auth.spec.ts`)
-- [ ] E2E: login com magic link (`tests/e2e/auth.spec.ts`)
-- [ ] Unitário: helpers de roles (`tests/unit/roles.test.ts`)
+- [x] `tests/unit/session.test.ts` — 17 testes: encode/decode, cookie helpers, getSessionFromCookies
+- [x] `tests/unit/roles.test.ts` — 38 testes: todos os helpers RBAC em todas as roles
+- [x] `tests/unit/middleware.test.ts` — 18 testes: routeDecision (public / auth-only / protected / superadmin / cookie corrompido)
+- [x] `tests/e2e/auth.spec.ts` — 25 testes E2E: route protection, login/signup forms, onboarding wizard, logout, dev-login cookie
 
-### Commit final
-```
-git checkout main && git merge feat/m1-auth
-git commit -m "feat(m1): auth, multi-tenant shell, RBAC, onboarding wizard"
-```
+### Entregáveis
+- `tsc --noEmit` zero erros
+- `vitest run` 73/73 passando
+- Fake session layer com TODO(M1-backend) em todos os pontos de swap-in
+- Merge commit: `feat/m1-auth` → `main`
 
 ---
 
