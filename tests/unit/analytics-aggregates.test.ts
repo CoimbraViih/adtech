@@ -55,8 +55,10 @@ describe("getFunnelSteps", () => {
     const steps = await getFunnelSteps("ws1", "2026-05-01", "2026-05-31");
     expect(steps[0].event_type).toBe("page_view");
     expect(steps[0].drop_off_rate).toBe(0);
+    // drop-off for purchase is relative to the immediately preceding step (lead: 20)
+    // (20 - 5) / 20 = 0.75
     const purchaseStep = steps.find((s) => s.event_type === "purchase");
-    expect(purchaseStep?.drop_off_rate).toBeCloseTo(0.95, 2);
+    expect(purchaseStep?.drop_off_rate).toBeCloseTo(0.75, 2);
   });
 });
 

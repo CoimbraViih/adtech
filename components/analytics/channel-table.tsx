@@ -40,7 +40,7 @@ export function ChannelTable({ channels }: Props) {
                 {CHANNEL_LABELS[c.channel] ?? c.channel}
               </td>
               <td className="px-4 py-3 text-right text-muted">
-                {Math.round(c.conversions).toLocaleString("pt-BR")}
+                {c.conversions.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
               </td>
               <td className="px-4 py-3 text-right text-data">
                 {BRL.format(c.revenue)}

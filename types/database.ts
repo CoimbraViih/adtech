@@ -345,7 +345,6 @@ export type KpiSummary = {
   total_events: number;
   total_conversions: number;
   total_revenue: number;
-  roas: number;
   cpa: number;
   avg_order_value: number;
 };

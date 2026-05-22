@@ -84,7 +84,8 @@ test.describe("Date range picker", () => {
 
   test("date preset updates URL with date parameters", async ({ page }) => {
     await page.getByRole("button", { name: /7 dias/i }).click();
-    await expect(page).toHaveURL(/from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}/);
+    await expect(page).toHaveURL(/from=\d{4}-\d{2}-\d{2}/);
+    await expect(page).toHaveURL(/to=\d{4}-\d{2}-\d{2}/);
   });
 
   test("preserves model parameter when changing date range", async ({ page }) => {
@@ -92,7 +93,8 @@ test.describe("Date range picker", () => {
     await expect(page).toHaveURL(/model=linear/);
     await page.getByRole("button", { name: /7 dias/i }).click();
     await expect(page).toHaveURL(/model=linear/);
-    await expect(page).toHaveURL(/from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}/);
+    await expect(page).toHaveURL(/from=\d{4}-\d{2}-\d{2}/);
+    await expect(page).toHaveURL(/to=\d{4}-\d{2}-\d{2}/);
   });
 });
 

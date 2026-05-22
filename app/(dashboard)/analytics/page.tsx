@@ -13,7 +13,6 @@ const MOCK_KPI: KpiSummary = {
   total_events: 12_483,
   total_conversions: 247,
   total_revenue: 48_750,
-  roas: 48_750,
   cpa: 197.37,
   avg_order_value: 540.56,
 };
@@ -45,7 +44,7 @@ export default async function AnalyticsPage({
   } catch {
     redirect("/login");
   }
-  void session;
+  const _workspaceId = session.workspace.id;
 
   const sp = await searchParams;
   const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
