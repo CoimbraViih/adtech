@@ -6,7 +6,7 @@ import { KpiCards } from "@/components/analytics/kpi-cards";
 import { FunnelChart } from "@/components/analytics/funnel-chart";
 import { ChannelTable } from "@/components/analytics/channel-table";
 import { AttributionModelSelector } from "@/components/analytics/attribution-model-selector";
-import { DateRangePicker } from "@/components/analytics/date-range-picker";
+import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
 import type { AttributionModel, KpiSummary, FunnelStep, ChannelAttribution } from "@/types/database";
 
 const MOCK_KPI: KpiSummary = {
@@ -31,7 +31,7 @@ const MOCK_CHANNELS: ChannelAttribution[] = [
   { channel: "direct", conversions: 22, revenue: 3_000, attribution_share: 0.062 },
 ];
 
-type SearchParams = { from?: string; to?: string; model?: string };
+type SearchParams = { from?: string; to?: string; model?: string; compare?: string };
 
 export default async function AnalyticsPage({
   searchParams,
@@ -53,6 +53,9 @@ export default async function AnalyticsPage({
     (["last_click", "linear", "time_decay"] as AttributionModel[]).includes(sp.model as AttributionModel)
       ? (sp.model as AttributionModel)
       : "last_click";
+  const compare: CompareMode = (["prev_period", "prev_year", "none"] as CompareMode[]).includes(sp.compare as CompareMode)
+    ? (sp.compare as CompareMode)
+    : "prev_period";
 
   // TODO(M5-backend): replace with real Supabase queries once M1-backend lands
   // const [kpi, funnel, channels] = await Promise.all([
@@ -75,7 +78,7 @@ export default async function AnalyticsPage({
           </p>
         </div>
         <Suspense>
-          <DateRangePicker currentFrom={dateFrom} currentTo={dateTo} />
+          <GlobalDateFilter currentFrom={dateFrom} currentTo={dateTo} currentCompare={compare} />
         </Suspense>
       </div>
 

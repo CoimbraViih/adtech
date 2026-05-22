@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
 import { CampaignTable } from "@/components/campaigns/campaign-table";
 import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
+import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
 
 function fmt(n: number, dec = 0) {
   return n.toLocaleString("pt-BR", {
@@ -10,7 +12,18 @@ function fmt(n: number, dec = 0) {
   });
 }
 
-export default function CampaignsPage() {
+export default async function CampaignsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
+}) {
+  const sp = await searchParams;
+  const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const dateTo = sp.to ?? new Date().toISOString().slice(0, 10);
+  const compare: CompareMode = (["prev_period", "prev_year", "none"] as CompareMode[]).includes(sp.compare as CompareMode)
+    ? (sp.compare as CompareMode)
+    : "prev_period";
+
   const active = MOCK_CAMPAIGNS.filter((c) => c.status === "active");
   const totalSpend = MOCK_CAMPAIGNS.reduce((s, c) => s + c.spend, 0);
   const totalRevenue = MOCK_CAMPAIGNS.reduce((s, c) => s + c.revenue, 0);
@@ -21,7 +34,7 @@ export default function CampaignsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center gap-3 justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[color:var(--adflow-fg)]">Campanhas</h1>
           <p className="text-sm text-[color:var(--adflow-fg-muted)] mt-0.5">
@@ -35,6 +48,9 @@ export default function CampaignsPage() {
           <Plus className="w-4 h-4" />
           Nova campanha
         </Link>
+        <Suspense>
+          <GlobalDateFilter currentFrom={dateFrom} currentTo={dateTo} currentCompare={compare} />
+        </Suspense>
       </div>
 
       {/* KPI Cards */}

@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { requireServerSession } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { PixelListClient } from "@/components/pixel/pixel-list-client";
 import { CreatePixelDialog } from "@/components/pixel/create-pixel-dialog";
+import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
 import type { Pixel } from "@/types/database";
 
 const MOCK_PIXELS: Pixel[] = [
@@ -25,7 +27,11 @@ const MOCK_PIXELS: Pixel[] = [
   },
 ];
 
-export default async function PixelPage() {
+export default async function PixelPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
+}) {
   let session;
   try {
     session = await requireServerSession();
@@ -34,12 +40,19 @@ export default async function PixelPage() {
   }
   void session;
 
+  const sp = await searchParams;
+  const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const dateTo = sp.to ?? new Date().toISOString().slice(0, 10);
+  const compare: CompareMode = (["prev_period", "prev_year", "none"] as CompareMode[]).includes(sp.compare as CompareMode)
+    ? (sp.compare as CompareMode)
+    : "prev_period";
+
   // TODO(M4-backend): replace with Supabase query
   const pixels = MOCK_PIXELS;
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center gap-3 justify-between">
         <div>
           <h1 className="text-xl font-semibold text-white">Pixels & Tracking</h1>
           <p className="text-sm text-muted mt-1">
@@ -47,6 +60,9 @@ export default async function PixelPage() {
           </p>
         </div>
         <CreatePixelDialog />
+        <Suspense>
+          <GlobalDateFilter currentFrom={dateFrom} currentTo={dateTo} currentCompare={compare} />
+        </Suspense>
       </div>
       <PixelListClient pixels={pixels} />
     </div>

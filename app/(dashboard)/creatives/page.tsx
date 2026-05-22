@@ -1,16 +1,29 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Plus, Wand2, FileText, CheckCircle2 } from "lucide-react";
 import { CreativeCard } from "@/components/creatives/creative-card";
 import { MOCK_CREATIVES } from "@/lib/creatives/mock-data";
 import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
 import type { Creative } from "@/types/database";
+import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
 
 function avgScore(scores: (number | null)[]) {
   const valid = scores.filter((s): s is number => s !== null);
   return valid.length > 0 ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
 }
 
-export default function CreativesPage() {
+export default async function CreativesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
+}) {
+  const sp = await searchParams;
+  const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const dateTo = sp.to ?? new Date().toISOString().slice(0, 10);
+  const compare: CompareMode = (["prev_period", "prev_year", "none"] as CompareMode[]).includes(sp.compare as CompareMode)
+    ? (sp.compare as CompareMode)
+    : "prev_period";
+
   const copies = MOCK_CREATIVES.filter((c) => c.type === "copy");
   const total = copies.length;
   const approved = copies.filter((c) => c.status === "approved").length;
@@ -22,7 +35,7 @@ export default function CreativesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center gap-3 justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[color:var(--adflow-fg)]">
             AI Creative Studio
@@ -38,6 +51,9 @@ export default function CreativesPage() {
           <Plus className="w-4 h-4" />
           Novo copy
         </Link>
+        <Suspense>
+          <GlobalDateFilter currentFrom={dateFrom} currentTo={dateTo} currentCompare={compare} />
+        </Suspense>
       </div>
 
       {/* KPI Cards */}
