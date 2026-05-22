@@ -1,6 +1,8 @@
 "use client";
 
-import { LogOut, Settings, User, CreditCard } from "lucide-react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { LogOut, Settings, User, CreditCard, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +12,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { logout } from "@/lib/auth/actions";
 
+// TODO(M1-backend): replace MOCK_USER with props derived from getServerSession()
+// passed down from the Server Component layout.
 const MOCK_USER = {
   name: "Victor Coimbra",
   email: "victor@agencia.com",
@@ -19,6 +24,16 @@ const MOCK_USER = {
 };
 
 export function UserMenu() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  function handleLogout() {
+    startTransition(async () => {
+      await logout();
+      router.refresh();
+    });
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -27,7 +42,7 @@ export function UserMenu() {
       >
         <Avatar className="w-7 h-7">
           <AvatarFallback className="bg-[color:var(--adflow-accent)]/20 text-[color:var(--adflow-accent)] text-xs font-semibold">
-            {MOCK_USER.initials}
+            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : MOCK_USER.initials}
           </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
@@ -62,9 +77,17 @@ export function UserMenu() {
 
         <DropdownMenuSeparator className="bg-[color:var(--adflow-border)]" />
 
-        <DropdownMenuItem className="gap-2 text-[color:var(--adflow-danger)] cursor-pointer">
-          <LogOut className="w-3.5 h-3.5" />
-          Sair
+        <DropdownMenuItem
+          className="gap-2 text-[color:var(--adflow-danger)] cursor-pointer"
+          disabled={isPending}
+          onClick={handleLogout}
+        >
+          {isPending ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <LogOut className="w-3.5 h-3.5" />
+          )}
+          {isPending ? "Saindo…" : "Sair"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
