@@ -85,3 +85,50 @@ export async function getUser() {
 
 // Suppress unused-import warning — exported for convenience
 export { getSessionFromCookies, FAKE_SESSION };
+
+/**
+ * Returns a minimal fake Supabase-like client for use in server-side helpers.
+ * TODO(M1-backend): replace with a real Supabase client once the backend is wired up.
+ *
+ * The returned object mirrors the subset of the Supabase client API used by
+ * `lib/automation/rules.ts` and other server helpers:
+ *   client.from(table).select(...).eq(...) …  (returns { data, error })
+ *   client.auth.getUser()
+ */
+export async function createServerSupabaseClient() {
+  // Build a chainable query builder that resolves to { data: null, error: null }
+  // by default.  Real data only flows once M1-backend replaces this stub.
+  function makeChain(): ReturnType<typeof makeChain> & Promise<{ data: unknown; error: unknown }> {
+    const result = Promise.resolve({ data: null as unknown, error: null as unknown });
+    const chain = Object.assign(result, {
+      select: () => chain,
+      eq: () => chain,
+      in: () => chain,
+      insert: () => chain,
+      update: () => chain,
+      order: () => chain,
+      limit: () => chain,
+      single: () => Promise.resolve({ data: null, error: null }),
+    });
+    return chain;
+  }
+
+  return {
+    from: (_table: string) => makeChain(),
+    auth: {
+      getUser: async () => {
+        const session = await getServerSession();
+        if (!session) return { data: { user: null }, error: null };
+        return {
+          data: {
+            user: {
+              id: session.user.id,
+              email: session.user.email,
+            },
+          },
+          error: null,
+        };
+      },
+    },
+  };
+}
