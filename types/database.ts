@@ -423,11 +423,11 @@ export type CampaignMetricSnapshot = {
 
 // ─── M8: Programático DSP/SSP ────────────────────────────────────────────────
 
-export type DealType = 'open' | 'private' | 'preferred' | 'guaranteed';
-export type BidOutcome = 'win' | 'loss' | 'no_bid' | 'error';
-export type AudienceType = 'behavioral' | 'lookalike' | 'custom';
-export type RtbCampaignStatus = 'active' | 'paused' | 'draft' | 'archived';
-export type PacingType = 'even' | 'asap';
+export type DealType = "open" | "private" | "preferred" | "guaranteed";
+export type BidOutcome = "win" | "loss" | "no_bid" | "error";
+export type AudienceType = "behavioral" | "lookalike" | "custom";
+export type RtbCampaignStatus = "active" | "paused" | "draft" | "archived";
+export type PacingType = "even" | "asap";
 
 export type RtbCampaign = {
   id: string;
@@ -493,7 +493,7 @@ export type BidRequestLog = {
 
 export type AudienceRule = {
   event_type: string;
-  operator: 'eq' | 'gte' | 'lte' | 'contains';
+  operator: "eq" | "gte" | "lte" | "contains";
   value: string | number;
   lookback_days: number;
 };

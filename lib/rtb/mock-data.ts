@@ -231,19 +231,8 @@ export const MOCK_AUDIENCES: Audience[] = [
 
 // ─── Bid Request Log ──────────────────────────────────────────────────────────
 
-const BID_LOG_ROWS: Array<{
-  id: string;
-  rtb_campaign_id: string;
-  ssp_id: string;
-  auction_id: string;
-  user_id_hash: string | null;
-  domain: string;
-  floor_cpm: number;
-  bid_cpm: number | null;
-  outcome: "win" | "loss" | "no_bid" | "error";
-  response_ms: number;
-  created_at: string;
-}> = [
+type BidLogRow = Omit<BidRequestLog, "workspace_id">;
+const BID_LOG_ROWS: BidLogRow[] = [
   { id: "bid_001", rtb_campaign_id: "rtb_001", ssp_id: "openx", auction_id: "auc_a1b2c3", user_id_hash: "h1a2b3c4d5", domain: "globo.com", floor_cpm: 3.0, bid_cpm: 14.2, outcome: "win", response_ms: 42, created_at: "2026-05-23T14:00:01Z" },
   { id: "bid_002", rtb_campaign_id: "rtb_001", ssp_id: "appnexus", auction_id: "auc_d4e5f6", user_id_hash: "h6d7e8f9a0", domain: "uol.com.br", floor_cpm: 2.5, bid_cpm: 11.5, outcome: "loss", response_ms: 55, created_at: "2026-05-23T14:00:08Z" },
   { id: "bid_003", rtb_campaign_id: "rtb_001", ssp_id: "rubicon", auction_id: "auc_g7h8i9", user_id_hash: null, domain: "folha.uol.com.br", floor_cpm: 4.0, bid_cpm: null, outcome: "no_bid", response_ms: 18, created_at: "2026-05-23T14:00:15Z" },

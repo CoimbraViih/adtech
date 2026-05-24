@@ -1,3 +1,7 @@
+-- M8: Programático DSP/SSP
+-- Tables: rtb_campaigns, bid_requests_log, audiences, audience_segments
+-- Scoped by workspace_id; RLS enabled on all tables.
+
 -- ENUMs
 CREATE TYPE deal_type AS ENUM ('open', 'private', 'preferred', 'guaranteed');
 CREATE TYPE bid_outcome AS ENUM ('win', 'loss', 'no_bid', 'error');
@@ -24,8 +28,8 @@ CREATE TABLE rtb_campaigns (
   targeting JSONB NOT NULL DEFAULT '{}',
   start_date DATE NOT NULL,
   end_date DATE,
-  impressions INTEGER NOT NULL DEFAULT 0,
-  wins INTEGER NOT NULL DEFAULT 0,
+  impressions BIGINT NOT NULL DEFAULT 0,
+  wins BIGINT NOT NULL DEFAULT 0,
   spend NUMERIC(10,2) NOT NULL DEFAULT 0,
   win_rate NUMERIC(5,4),
   avg_cpm NUMERIC(10,4),
@@ -76,11 +80,11 @@ CREATE TABLE audience_segments (
 -- Triggers
 CREATE TRIGGER set_updated_at_rtb_campaigns
   BEFORE UPDATE ON rtb_campaigns
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER set_updated_at_audiences
   BEFORE UPDATE ON audiences
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- Indexes
 CREATE INDEX idx_rtb_campaigns_workspace ON rtb_campaigns(workspace_id);
@@ -98,8 +102,22 @@ ALTER TABLE bid_requests_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audiences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audience_segments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "workspace members can manage rtb campaigns"
-  ON rtb_campaigns FOR ALL
+CREATE POLICY "rtb_campaigns_select" ON rtb_campaigns FOR SELECT
+  USING (workspace_id IN (
+    SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "rtb_campaigns_insert" ON rtb_campaigns FOR INSERT
+  WITH CHECK (workspace_id IN (
+    SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "rtb_campaigns_update" ON rtb_campaigns FOR UPDATE
+  USING (workspace_id IN (
+    SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "rtb_campaigns_delete" ON rtb_campaigns FOR DELETE
   USING (workspace_id IN (
     SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
   ));
@@ -114,8 +132,22 @@ CREATE POLICY "service role can insert bid logs"
   ON bid_requests_log FOR INSERT
   WITH CHECK (true);
 
-CREATE POLICY "workspace members can manage audiences"
-  ON audiences FOR ALL
+CREATE POLICY "audiences_select" ON audiences FOR SELECT
+  USING (workspace_id IN (
+    SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "audiences_insert" ON audiences FOR INSERT
+  WITH CHECK (workspace_id IN (
+    SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "audiences_update" ON audiences FOR UPDATE
+  USING (workspace_id IN (
+    SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "audiences_delete" ON audiences FOR DELETE
   USING (workspace_id IN (
     SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
   ));
@@ -127,3 +159,7 @@ CREATE POLICY "workspace members can read segments"
       SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
     )
   ));
+
+CREATE POLICY "service role can insert audience segments"
+  ON audience_segments FOR INSERT
+  WITH CHECK (true);
