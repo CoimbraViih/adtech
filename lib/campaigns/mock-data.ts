@@ -2,7 +2,7 @@ import type {
   Campaign,
   AdSet,
   Ad,
-  CampaignMetricSnapshot,
+  DailyMetricSnapshot,
 } from "@/types/database";
 
 export const MOCK_CAMPAIGNS: Campaign[] = [
@@ -246,9 +246,9 @@ export const MOCK_ADS: Ad[] = [
 ];
 
 // 30-day metric history for campaign cmp_001
-export function getMockMetricSnapshots(campaignId: string): CampaignMetricSnapshot[] {
+export function getMockMetricSnapshots(campaignId: string): DailyMetricSnapshot[] {
   const base = campaignId === "cmp_001" ? 500 : campaignId === "cmp_002" ? 300 : 150;
-  const snapshots: CampaignMetricSnapshot[] = [];
+  const snapshots: DailyMetricSnapshot[] = [];
 
   for (let i = 29; i >= 0; i--) {
     const d = new Date();

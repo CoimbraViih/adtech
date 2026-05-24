@@ -135,8 +135,8 @@ export type Ad = {
   updated_at: string;
 };
 
-// Daily metric snapshot for charts
-export type CampaignMetricSnapshot = {
+// Daily metric snapshot for charts (M2)
+export type DailyMetricSnapshot = {
   date: string;
   spend: number;
   impressions: number;
@@ -361,4 +361,62 @@ export type FunnelStep = {
   label: string;
   count: number;
   drop_off_rate: number;
+};
+
+// ─── M8: Automation & Alerts ──────────────────────────────────────────────────
+
+export type AlertCondition =
+  | "roas_below"
+  | "cpa_above"
+  | "spend_above"
+  | "ctr_below"
+  | "conversions_below";
+
+export type AlertStatus = "active" | "paused";
+
+export type AlertRule = {
+  id: string;
+  workspace_id: string;
+  campaign_id: string | null;
+  name: string;
+  condition: AlertCondition;
+  threshold: number;
+  status: AlertStatus;
+  cooldown_minutes: number;
+  last_triggered_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AlertRuleCreateInput = {
+  workspace_id: string;
+  campaign_id?: string | null;
+  name: string;
+  condition: AlertCondition;
+  threshold: number;
+  cooldown_minutes?: number;
+};
+
+export type AlertNotification = {
+  id: string;
+  workspace_id: string;
+  rule_id: string;
+  campaign_id: string | null;
+  title: string;
+  body: string;
+  metric_value: number;
+  read: boolean;
+  emailed: boolean;
+  created_at: string;
+};
+
+export type CampaignMetricSnapshot = {
+  campaign_id: string;
+  workspace_id: string;
+  campaign_name: string;
+  roas: number | null;
+  cpa: number | null;
+  spend: number;
+  ctr: number | null;
+  conversions: number;
 };
