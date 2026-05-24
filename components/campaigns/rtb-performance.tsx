@@ -15,8 +15,8 @@ import {
 import { getMockBidLandscape, getMockWinRateTimeSeries } from "@/lib/rtb/mock-data";
 
 const COLORS = {
-  data: "#3B82F6",
-  success: "#10B981",
+  data: "var(--adflow-data)",
+  success: "var(--adflow-success)",
 };
 
 type CustomTooltipProps = {

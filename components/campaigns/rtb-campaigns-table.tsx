@@ -45,7 +45,7 @@ const DEAL_TYPE_CONFIG: Record<
   private: {
     label: "Privado",
     classes:
-      "bg-purple-500/15 text-purple-400 border-purple-500/30",
+      "border border-[color:var(--adflow-border)] text-[color:var(--adflow-fg-muted)]",
   },
   preferred: {
     label: "Preferencial",
@@ -228,12 +228,12 @@ function RtbCampaignRow({ campaign }: { campaign: RtbCampaign }) {
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-              />
+              >
+                <MoreHorizontal className="w-4 h-4" />
+                <span className="sr-only">Ações</span>
+              </Button>
             }
-          >
-            <MoreHorizontal className="w-4 h-4" />
-            <span className="sr-only">Ações</span>
-          </DropdownMenuTrigger>
+          />
           <DropdownMenuContent
             align="end"
             className="bg-[color:var(--adflow-surface)] border-[color:var(--adflow-border)]"

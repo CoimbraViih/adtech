@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Plus, Activity, TrendingUp, DollarSign, BarChart2 } from "lucide-react";
+import type { ComponentType } from "react";
+import { Plus, Activity, TrendingUp, TrendingDown, DollarSign, BarChart2 } from "lucide-react";
 import { RtbCampaignsTable } from "@/components/campaigns/rtb-campaigns-table";
 import { MOCK_RTB_CAMPAIGNS, getMockRtbKpis } from "@/lib/rtb/mock-data";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
@@ -102,7 +103,7 @@ export default async function ProgrammaticPage({
 type KpiCardProps = {
   label: string;
   value: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   change: number;
   highlight?: boolean;
   invertChange?: boolean;
@@ -117,7 +118,7 @@ function KpiCard({
   invertChange,
 }: KpiCardProps) {
   const isPositive = invertChange ? change <= 0 : change >= 0;
-  const ChangeIcon = change >= 0 ? TrendingUp : TrendingUp;
+  const ChangeIcon = change >= 0 ? TrendingUp : TrendingDown;
 
   return (
     <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4">

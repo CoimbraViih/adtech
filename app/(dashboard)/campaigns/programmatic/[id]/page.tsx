@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ComponentType } from "react";
 import { ChevronLeft, Activity, Target, TrendingUp, DollarSign, BarChart2 } from "lucide-react";
 import { MOCK_RTB_CAMPAIGNS, MOCK_BID_LOG } from "@/lib/rtb/mock-data";
 import { StatusBadge } from "@/components/campaigns/status-badge";
@@ -239,7 +240,7 @@ function SmallKpi({
 }: {
   label: string;
   value: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   highlight?: boolean;
 }) {
   return (
