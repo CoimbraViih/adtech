@@ -14,7 +14,7 @@ import {
   Legend,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import type { CampaignMetricSnapshot } from "@/types/database";
+import type { DailyMetricSnapshot } from "@/types/database";
 
 type Tab = "roas_spend" | "clicks" | "conversions";
 
@@ -71,7 +71,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 type CampaignChartsProps = {
-  snapshots: CampaignMetricSnapshot[];
+  snapshots: DailyMetricSnapshot[];
 };
 
 export function CampaignCharts({ snapshots }: CampaignChartsProps) {

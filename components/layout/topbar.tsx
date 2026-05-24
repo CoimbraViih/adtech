@@ -1,6 +1,7 @@
 import { OrgSwitcher } from "@/components/layout/org-switcher";
 import { UserMenu } from "@/components/auth/user-menu";
 import { MobileSidebarTrigger } from "@/components/layout/sidebar";
+import { NotificationBell } from "@/components/automation/notification-bell";
 
 type TopbarProps = {
   breadcrumb?: string;
@@ -28,7 +29,10 @@ export function Topbar({ breadcrumb }: TopbarProps) {
         )}
       </div>
 
-      <UserMenu />
+      <div className="flex items-center gap-2">
+        <NotificationBell workspaceId="00000000-0000-0000-0000-000000000001" />
+        <UserMenu />
+      </div>
     </header>
   );
 }

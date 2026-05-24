@@ -85,3 +85,65 @@ export async function getUser() {
 
 // Suppress unused-import warning — exported for convenience
 export { getSessionFromCookies, FAKE_SESSION };
+
+/**
+ * Returns a minimal fake Supabase-like client for use in server-side helpers.
+ * TODO(M1-backend): replace with a real Supabase client once the backend is wired up.
+ *
+ * The returned object mirrors the subset of the Supabase client API used by
+ * `lib/automation/rules.ts` and other server helpers:
+ *   client.from(table).select(...).eq(...) …  (returns { data, error })
+ *   client.auth.getUser()
+ */
+export async function createServerSupabaseClient() {
+  // Build a chainable query builder that resolves to { data: null, error: null }
+  // by default.  Real data only flows once M1-backend replaces this stub.
+  type QueryResult = { data: unknown; error: unknown };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type Chain = Promise<QueryResult> & {
+    select: (..._args: unknown[]) => Chain;
+    eq: (..._args: unknown[]) => Chain;
+    in: (..._args: unknown[]) => Chain;
+    insert: (..._args: unknown[]) => Chain;
+    update: (..._args: unknown[]) => Chain;
+    delete: () => Chain;
+    order: (..._args: unknown[]) => Chain;
+    limit: (..._args: unknown[]) => Chain;
+    single: () => Promise<QueryResult>;
+  };
+
+  function makeChain(): Chain {
+    const result = Promise.resolve({ data: null as unknown, error: null as unknown });
+    const chain = Object.assign(result, {
+      select: (..._args: unknown[]) => chain,
+      eq: (..._args: unknown[]) => chain,
+      in: (..._args: unknown[]) => chain,
+      insert: (..._args: unknown[]) => chain,
+      update: (..._args: unknown[]) => chain,
+      delete: () => chain,
+      order: (..._args: unknown[]) => chain,
+      limit: (..._args: unknown[]) => chain,
+      single: () => Promise.resolve({ data: null as unknown, error: null as unknown }),
+    }) as Chain;
+    return chain;
+  }
+
+  return {
+    from: (_table: string) => makeChain(),
+    auth: {
+      getUser: async () => {
+        const session = await getServerSession();
+        if (!session) return { data: { user: null }, error: null };
+        return {
+          data: {
+            user: {
+              id: session.user.id,
+              email: session.user.email,
+            },
+          },
+          error: null,
+        };
+      },
+    },
+  };
+}
