@@ -106,6 +106,7 @@ export async function createServerSupabaseClient() {
     in: (..._args: unknown[]) => Chain;
     insert: (..._args: unknown[]) => Chain;
     update: (..._args: unknown[]) => Chain;
+    delete: () => Chain;
     order: (..._args: unknown[]) => Chain;
     limit: (..._args: unknown[]) => Chain;
     single: () => Promise<QueryResult>;
@@ -119,6 +120,7 @@ export async function createServerSupabaseClient() {
       in: (..._args: unknown[]) => chain,
       insert: (..._args: unknown[]) => chain,
       update: (..._args: unknown[]) => chain,
+      delete: () => chain,
       order: (..._args: unknown[]) => chain,
       limit: (..._args: unknown[]) => chain,
       single: () => Promise.resolve({ data: null as unknown, error: null as unknown }),
