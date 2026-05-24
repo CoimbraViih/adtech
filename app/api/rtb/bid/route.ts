@@ -62,9 +62,9 @@ export async function POST(request: Request): Promise<Response> {
 
   const parsed = BidRequestSchema.safeParse(body);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
+    console.error("[rtb/bid] validation error:", parsed.error.issues);
     return new Response(
-      JSON.stringify({ error: `${first.path.join(".")}: ${first.message}` }),
+      JSON.stringify({ error: "Invalid bid request." }),
       {
         status: 400,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },

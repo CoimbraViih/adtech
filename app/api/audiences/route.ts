@@ -21,19 +21,21 @@ const createSchema = z.object({
 
 // GET /api/audiences — list audiences for the current workspace
 export async function GET(req: NextRequest) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const workspaceId = searchParams.get("workspace_id") ?? "ws_demo";
+  const workspaceId = searchParams.get("workspace_id") ?? session.workspace.id;
 
   // TODO(M8-backend): replace with Supabase query
   // const supabase = createServerSupabaseClient();
   // const { data, error } = await supabase.from("audiences").select("*").eq("workspace_id", workspaceId);
-  const data = MOCK_AUDIENCES.filter((a) => a.workspace_id === workspaceId);
+  const data = MOCK_AUDIENCES.filter((a) => a.workspace_id === workspaceId || a.workspace_id === "ws_demo");
 
   return NextResponse.json({ data });
 }

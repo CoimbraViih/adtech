@@ -24,19 +24,19 @@ const createSchema = z.object({
 
 // GET /api/rtb/campaigns — list RTB campaigns for the current workspace
 export async function GET(req: NextRequest) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const workspaceId = searchParams.get("workspace_id") ?? "ws_demo";
+  const workspaceId = searchParams.get("workspace_id") ?? session.workspace.id;
 
-  // TODO(M8-backend): replace with Supabase query
-  // const supabase = createServerSupabaseClient();
-  // const { data, error } = await supabase.from("rtb_campaigns").select("*").eq("workspace_id", workspaceId);
-  const data = MOCK_RTB_CAMPAIGNS.filter((c) => c.workspace_id === workspaceId);
+  // TODO(M8-backend): query rtb_campaigns WHERE workspace_id = workspaceId
+  const data = MOCK_RTB_CAMPAIGNS.filter(c => c.workspace_id === workspaceId || c.workspace_id === "ws_demo");
 
   return NextResponse.json({ data });
 }
