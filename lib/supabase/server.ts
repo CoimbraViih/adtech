@@ -98,18 +98,31 @@ export { getSessionFromCookies, FAKE_SESSION };
 export async function createServerSupabaseClient() {
   // Build a chainable query builder that resolves to { data: null, error: null }
   // by default.  Real data only flows once M1-backend replaces this stub.
-  function makeChain(): ReturnType<typeof makeChain> & Promise<{ data: unknown; error: unknown }> {
+  type QueryResult = { data: unknown; error: unknown };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type Chain = Promise<QueryResult> & {
+    select: (..._args: unknown[]) => Chain;
+    eq: (..._args: unknown[]) => Chain;
+    in: (..._args: unknown[]) => Chain;
+    insert: (..._args: unknown[]) => Chain;
+    update: (..._args: unknown[]) => Chain;
+    order: (..._args: unknown[]) => Chain;
+    limit: (..._args: unknown[]) => Chain;
+    single: () => Promise<QueryResult>;
+  };
+
+  function makeChain(): Chain {
     const result = Promise.resolve({ data: null as unknown, error: null as unknown });
     const chain = Object.assign(result, {
-      select: () => chain,
-      eq: () => chain,
-      in: () => chain,
-      insert: () => chain,
-      update: () => chain,
-      order: () => chain,
-      limit: () => chain,
-      single: () => Promise.resolve({ data: null, error: null }),
-    });
+      select: (..._args: unknown[]) => chain,
+      eq: (..._args: unknown[]) => chain,
+      in: (..._args: unknown[]) => chain,
+      insert: (..._args: unknown[]) => chain,
+      update: (..._args: unknown[]) => chain,
+      order: (..._args: unknown[]) => chain,
+      limit: (..._args: unknown[]) => chain,
+      single: () => Promise.resolve({ data: null as unknown, error: null as unknown }),
+    }) as Chain;
     return chain;
   }
 
