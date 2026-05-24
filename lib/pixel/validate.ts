@@ -8,7 +8,7 @@ const pixelEventSchema = z.object({
   session_id: z.string().max(128).optional().nullable(),
   value: z.number().nonnegative().optional().nullable(),
   currency: z.string().length(3).optional().nullable(),
-  properties: z.record(z.unknown()).optional().nullable(),
+  properties: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 export type ParsedPixelEvent = z.infer<typeof pixelEventSchema>;

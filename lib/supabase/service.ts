@@ -6,13 +6,17 @@
  * TODO(M1-backend): replace mock with real createClient from @supabase/supabase-js
  */
 
+type Chain = {
+  select: (cols?: string) => Chain;
+  insert: (row: unknown) => Chain;
+  eq: (col: string, val: unknown) => Chain;
+  gte: (col: string, val: unknown) => Chain;
+  lte: (col: string, val: unknown) => Chain;
+  single: () => Promise<{ data: unknown; error: unknown }>;
+};
+
 type SupabaseServiceClient = {
-  from: (table: string) => {
-    select: (cols?: string) => unknown;
-    insert: (row: unknown) => unknown;
-    eq: (col: string, val: unknown) => unknown;
-    single: () => Promise<{ data: unknown; error: unknown }>;
-  };
+  from: (table: string) => Chain;
 };
 
 let _client: SupabaseServiceClient | null = null;
@@ -20,11 +24,13 @@ let _client: SupabaseServiceClient | null = null;
 export function createServiceClient(): SupabaseServiceClient {
   if (_client) return _client;
 
-  const makeChain = (): ReturnType<SupabaseServiceClient["from"]> => {
-    const chain: ReturnType<SupabaseServiceClient["from"]> = {
+  const makeChain = (): Chain => {
+    const chain: Chain = {
       select: () => chain,
       insert: () => chain,
       eq: () => chain,
+      gte: () => chain,
+      lte: () => chain,
       single: async () => ({ data: null, error: { message: "service client not configured" } }),
     };
     return chain;
