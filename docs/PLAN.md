@@ -348,7 +348,7 @@ git commit -m "feat(m6): no-code landing page builder, thank you page, lead capt
 
 ## M8 — Programático DSP/SSP ✅ CONCLUÍDO
 
-**Branch:** `feat/m8-programmatic` → PR aberto para merge em `main`  
+**Branch:** `feat/m8-programmatic` → mergeado em `main` via PR #6  
 **Objetivo:** Compra programática de mídia via OpenRTB 2.6 (Opção B: protocolo real + SSP mock interno). DMP com segmentação comportamental baseada em `pixel_events`. Dashboard de performance RTB. Interface totalmente funcional com dados mock; backend stubado com `TODO(M8-backend)` para swap-in Supabase.
 
 ### Interface
