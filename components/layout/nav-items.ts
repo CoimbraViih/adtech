@@ -9,6 +9,7 @@ import {
   Zap,
   Settings,
   Layers,
+  Users,
 } from "lucide-react";
 
 export type NavItem = {
@@ -21,6 +22,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard",     href: "/dashboard",               icon: LayoutDashboard },
   { label: "Campanhas",     href: "/campaigns",               icon: Megaphone },
   { label: "Programático",  href: "/campaigns/programmatic",  icon: Layers },
+  { label: "Audiências",    href: "/audiences",               icon: Users },
   { label: "Criativos",     href: "/creatives",               icon: Sparkles },
   { label: "Analytics",     href: "/analytics",               icon: BarChart3 },
   { label: "Pixel",         href: "/pixel",                   icon: Radio },
