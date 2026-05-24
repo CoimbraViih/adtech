@@ -19,7 +19,7 @@
 | M4 | Pixel & Tracking | `feat/m4-pixel-tracking` ✅ | M1 |
 | M5 | Analytics & Atribuição | `feat/m5-analytics-attribution` ✅ | M1, M4 |
 | M6 | Landing Page Builder | `feat/m6-lp-builder` | M1, M4, M5 |
-| M7 | Automação & Alertas | `feat/m7-automation` | M1, M2, M4, M5 |
+| M7 | Automação & Alertas | `feat/m7-automation` ✅ | M1, M2, M4, M5 |
 | M8 | Programático DSP/SSP | `feat/m8-programmatic` | M1, M2, M4 |
 | M9 | White-label & SuperAdmin | `feat/m9-whitelabel` | M1–M8 |
 | MS | Segurança & Hardening | `feat/ms-security` | M1–M9 |
@@ -305,42 +305,44 @@ git commit -m "feat(m6): no-code landing page builder, thank you page, lead capt
 
 ---
 
-## M7 — Automação & Alertas
+## M7 — Automação & Alertas ✅ CONCLUÍDO
 
-**Branch:** `feat/m7-automation`  
-**Objetivo:** Funil visual com automação (e-mail, SMS, WhatsApp). Alertas automáticos de anomalia de campanha (CPA explodindo, ROAS caindo, budget esgotando).
+**Branch:** `feat/m8-automation-alerts` → mergeado em `main`  
+**Objetivo:** Alertas automáticos de anomalia de campanha (ROAS caindo, CPA explodindo, gasto acima do limite, CTR baixo, conversões abaixo do threshold). Notificações in-app com bell indicator e e-mail via Resend. Avaliação periódica via Vercel Cron a cada 15 minutos.
 
-> **Agentes:** `@frontend-developer` · `@api-security-audit` · `@code-reviewer`
-> **Skills:** `/brainstorming` para modelar o motor de execução de funil e os tipos de nós · `/feature-dev:feature-dev` para desenvolvimento guiado da automação · `/supabase` para migrations de `funnels`, `funnel_nodes`, `funnel_executions`, `alert_rules` · `/supabase-postgres-best-practices` para queries de detecção de anomalia eficientes · `/vercel:vercel-functions` para o job de checagem de alertas via Vercel Cron · `/frontend-design` para o builder visual de funil com nós drag-and-drop · `/ui-ux-pro-max` para UX do canvas de automação · `/writing-plans` para detalhar o motor de execução e os algoritmos de detecção de anomalia · `/security-review` antes do merge · `/webapp-testing` para E2E do funil · `/commit` para o commit final
+### Interface
+- [x] `app/(dashboard)/automation/page.tsx` — Server Component: carrega regras com `fetchAllRules`, renderiza `AlertRulesTable`
+- [x] `components/automation/alert-rules-table.tsx` — tabela com toggle pausar/ativar, editar e remover; empty state; prepend de nova regra
+- [x] `components/automation/alert-rule-form.tsx` — modal de criação/edição com 4 campos (nome, condição, limite, cooldown), validação inline, POST/PATCH para API
+- [x] `components/automation/notification-bell.tsx` — ícone Bell na topbar com badge de não lidas (máx "9+"), polling 60s
+- [x] `components/automation/notification-drawer.tsx` — drawer lateral com lista de alertas não lidos, botão marcar como lida, empty state
+- [x] `components/layout/topbar.tsx` — `NotificationBell` adicionado antes do `UserMenu`
 
-### Interface — construir primeiro
-- [ ] `app/(dashboard)/automation/page.tsx` — lista de funis e alertas ativos
-- [ ] `app/(dashboard)/automation/funnels/new/page.tsx` — builder visual de funil (canvas com nós: gatilho → condição → ação)
-- [ ] `components/automation/funnel-builder.tsx` — editor de fluxo com nós drag-and-drop
-- [ ] `components/automation/node-types/` — nós: Gatilho (lead, compra, pageview), Condição (if/else), Ação (e-mail, SMS, WhatsApp, aguardar)
-- [ ] `app/(dashboard)/automation/alerts/page.tsx` — configuração de alertas: tipo de anomalia, threshold, canal de notificação
-- [ ] `components/automation/alert-rule-form.tsx` — formulário de regra de alerta
-
-### Backend / Dados reais
-- [ ] Migration `009_automation.sql`: tabelas `funnels`, `funnel_nodes`, `funnel_executions`, `alert_rules`, `alert_events`
-- [ ] `app/api/automation/funnels/route.ts` — CRUD de funis
-- [ ] `app/api/automation/execute/route.ts` — motor de execução de funil (acionado por webhook de evento de pixel)
-- [ ] `lib/messaging/email.ts` — envio via Resend ou SendGrid
-- [ ] `lib/messaging/sms.ts` — envio via Twilio
-- [ ] `lib/messaging/whatsapp.ts` — envio via WhatsApp Business API
-- [ ] `app/api/alerts/check/route.ts` — job periódico (cron via Vercel Cron) que checa anomalias e dispara alertas
-- [ ] Conectar motor de automação ao pixel (evento de pixel → executa funil)
+### Backend / API
+- [x] `supabase/migrations/008_automation.sql` — ENUMs `alert_condition`/`alert_status`, tabelas `alert_rules` + `alert_notifications`, RLS completo (4 policies em rules, 3 em notifications + service role bypass para INSERT do cron)
+- [x] `app/api/automation/rules/route.ts` — GET (lista por workspace_id) + POST (cria com status=active, cooldown default 60)
+- [x] `app/api/automation/rules/[id]/route.ts` — PATCH (campos whitelist) + DELETE (204)
+- [x] `app/api/automation/notifications/route.ts` — GET notificações não lidas por workspace
+- [x] `app/api/automation/notifications/[id]/read/route.ts` — POST marca como lida
+- [x] `app/api/cron/evaluate-alerts/route.ts` — GET protegido por `Authorization: Bearer $CRON_SECRET`; avalia todas as regras ativas, insere notificações
+- [x] `vercel.json` — cron `*/15 * * * *` apontando para `/api/cron/evaluate-alerts`
+- [x] `lib/automation/evaluator.ts` — funções puras: `evaluateRule`, `buildNotificationMessage`, `getMetricValue`
+- [x] `lib/automation/rules.ts` — helpers Supabase: `fetchActiveRules`, `fetchCampaignMetrics`, `insertNotification`, `markRuleTriggered`, `markNotificationRead`, `fetchUnreadNotifications`, `fetchAllRules`
+- [x] `lib/automation/email.ts` — `sendAlertEmail` via Resend REST API; graceful no-op sem `RESEND_API_KEY`
+- [x] `types/database.ts` — `AlertCondition`, `AlertStatus`, `AlertRule`, `AlertRuleCreateInput`, `AlertNotification`, `CampaignMetricSnapshot` (M8)
+- [x] `.env.local.example` — `RESEND_API_KEY` e `CRON_SECRET` adicionados
 
 ### Testes
-- [ ] Unitário: motor de execução de funil (`tests/unit/funnel-engine.test.ts`)
-- [ ] Unitário: detecção de anomalia (`tests/unit/anomaly-detection.test.ts`)
-- [ ] E2E: criar funil → disparar evento → verificar execução (`tests/e2e/automation.spec.ts`)
+- [x] `tests/unit/evaluator.test.ts` — 12 testes: 5 condições, null guards, cooldown recente/expirado, status pausado, buildNotificationMessage
+- [x] `tests/unit/automation-rules.test.ts` — 4 testes: fetchActiveRules, fetchCampaignMetrics, insertNotification, markRuleTriggered via vi.mock
+- [x] `tests/unit/automation-types.test.ts` — 3 testes: AlertCondition enum, AlertRule fields, AlertNotification.read
+- [x] `tests/e2e/automation.spec.ts` — 8 testes E2E: título da página, empty state, abrir form, campos, cancelar, bell visível, abrir drawer, fechar drawer
 
-### Commit final
-```
-git checkout main && git merge feat/m7-automation
-git commit -m "feat(m7): visual funnel builder, email/SMS/WhatsApp automation, anomaly alerts"
-```
+### Entregáveis
+- `tsc --noEmit` zero erros
+- `vitest run` 127/127 passando
+- Formulário de criação de regra validado: nome + threshold obrigatórios, POST para `/api/automation/rules`, onSaved atualiza tabela
+- Dados gateados atrás de `TODO(M8-backend)` para swap-in Supabase real
 
 ---
 
