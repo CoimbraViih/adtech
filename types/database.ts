@@ -420,3 +420,145 @@ export type CampaignMetricSnapshot = {
   ctr: number | null;
   conversions: number;
 };
+
+// ─── M8: Programático DSP/SSP ────────────────────────────────────────────────
+
+export type DealType = 'open' | 'private' | 'preferred' | 'guaranteed';
+export type BidOutcome = 'win' | 'loss' | 'no_bid' | 'error';
+export type AudienceType = 'behavioral' | 'lookalike' | 'custom';
+export type RtbCampaignStatus = 'active' | 'paused' | 'draft' | 'archived';
+export type PacingType = 'even' | 'asap';
+
+export type RtbCampaign = {
+  id: string;
+  workspace_id: string;
+  campaign_id: string | null;
+  name: string;
+  status: RtbCampaignStatus;
+  deal_type: DealType;
+  deal_id: string | null;
+  floor_cpm: number;
+  max_cpm: number;
+  daily_budget: number;
+  total_budget: number | null;
+  pacing: PacingType;
+  frequency_cap: number;
+  frequency_cap_hours: number;
+  creative_id: string | null;
+  audience_id: string | null;
+  targeting: Record<string, unknown>;
+  start_date: string;
+  end_date: string | null;
+  impressions: number;
+  wins: number;
+  spend: number;
+  win_rate: number | null;
+  avg_cpm: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RtbCampaignCreateInput = {
+  name: string;
+  deal_type: DealType;
+  deal_id?: string | null;
+  floor_cpm: number;
+  max_cpm: number;
+  daily_budget: number;
+  total_budget?: number | null;
+  pacing: PacingType;
+  frequency_cap: number;
+  frequency_cap_hours: number;
+  creative_id?: string | null;
+  audience_id?: string | null;
+  targeting?: Record<string, unknown>;
+  start_date: string;
+  end_date?: string | null;
+};
+
+export type BidRequestLog = {
+  id: string;
+  workspace_id: string;
+  rtb_campaign_id: string | null;
+  ssp_id: string;
+  auction_id: string;
+  user_id_hash: string | null;
+  domain: string | null;
+  floor_cpm: number | null;
+  bid_cpm: number | null;
+  outcome: BidOutcome;
+  response_ms: number | null;
+  created_at: string;
+};
+
+export type AudienceRule = {
+  event_type: string;
+  operator: 'eq' | 'gte' | 'lte' | 'contains';
+  value: string | number;
+  lookback_days: number;
+};
+
+export type Audience = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  type: AudienceType;
+  description: string | null;
+  rules: AudienceRule[];
+  lookalike_source_id: string | null;
+  size_estimate: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AudienceCreateInput = {
+  name: string;
+  type: AudienceType;
+  description?: string | null;
+  rules: AudienceRule[];
+  lookalike_source_id?: string | null;
+};
+
+export type OpenRtbImp = {
+  id: string;
+  banner?: { w: number; h: number; format?: Array<{ w: number; h: number }> };
+  bidfloor?: number;
+  bidfloorcur?: string;
+};
+
+export type OpenRtbBidRequest = {
+  id: string;
+  imp: OpenRtbImp[];
+  site?: { domain: string; page: string };
+  app?: { bundle: string; name: string };
+  user?: { id: string };
+  device?: { ua: string; ip: string; language: string };
+  at: 1 | 2;
+  tmax?: number;
+  wseat?: string[];
+};
+
+export type OpenRtbBid = {
+  id: string;
+  impid: string;
+  price: number;
+  adid?: string;
+  adm?: string;
+  adomain?: string[];
+  crid?: string;
+  w?: number;
+  h?: number;
+};
+
+export type OpenRtbSeatBid = {
+  bid: OpenRtbBid[];
+  seat?: string;
+};
+
+export type OpenRtbBidResponse = {
+  id: string;
+  seatbid?: OpenRtbSeatBid[];
+  bidid?: string;
+  cur?: string;
+  nbr?: number;
+};
