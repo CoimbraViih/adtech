@@ -24,7 +24,7 @@ CREATE TABLE rtb_campaigns (
   frequency_cap INTEGER DEFAULT 3,
   frequency_cap_hours INTEGER DEFAULT 24,
   creative_id UUID REFERENCES creatives(id) ON DELETE SET NULL,
-  audience_id UUID,
+  audience_id UUID, -- TODO(M8-backend): add FK REFERENCES audiences(id) ON DELETE SET NULL after audiences table is confirmed stable
   targeting JSONB NOT NULL DEFAULT '{}',
   start_date DATE NOT NULL,
   end_date DATE,

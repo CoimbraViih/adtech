@@ -32,7 +32,7 @@ test.describe("Programmatic DSP/SSP pages", () => {
 
   test("botão Nova Campanha RTB navega para /new", async ({ page }) => {
     await devLogin(page, "/campaigns/programmatic");
-    await page.getByRole("button", { name: /Nova Campanha/i }).click();
+    await page.getByRole("link", { name: /Nova Campanha/i }).click();
     await expect(page).toHaveURL(/\/campaigns\/programmatic\/new/);
   });
 
