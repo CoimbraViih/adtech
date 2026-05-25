@@ -16,7 +16,7 @@ import type { CampaignPlatform, CampaignObjective } from "@/types/database";
 const campaignSchema = z.object({
   // Step 1 — Config
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
-  platform: z.enum(["meta", "google", "programmatic"] as const),
+  platform: z.enum(["meta", "google", "tiktok", "linkedin", "programmatic"] as const),
   objective: z.enum(["awareness", "traffic", "engagement", "leads", "sales", "app_promotion"] as const),
 
   // Step 2 — Targeting
@@ -39,6 +39,8 @@ type CampaignFormValues = z.infer<typeof campaignSchema>;
 const PLATFORMS: { value: CampaignPlatform; label: string; description: string }[] = [
   { value: "meta", label: "Meta Ads", description: "Facebook, Instagram, Audience Network e Messenger" },
   { value: "google", label: "Google Ads", description: "Search, Display, YouTube e Performance Max" },
+  { value: "tiktok", label: "TikTok Ads", description: "In-Feed, TopView, Spark Ads e Brand Takeover" },
+  { value: "linkedin", label: "LinkedIn Ads", description: "Sponsored Content, Message Ads e Lead Gen Forms" },
   { value: "programmatic", label: "Programático", description: "OpenRTB 2.6 — DSP próprio com DMP" },
 ];
 

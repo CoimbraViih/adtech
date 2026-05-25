@@ -59,7 +59,7 @@ export type BillingEvent = {
 
 // ─── M2: Campaigns ───────────────────────────────────────────────────────────
 
-export type CampaignPlatform = "meta" | "google" | "programmatic";
+export type CampaignPlatform = "meta" | "google" | "tiktok" | "linkedin" | "programmatic";
 export type CampaignStatus = "active" | "paused" | "draft" | "archived";
 export type CampaignObjective =
   | "awareness"

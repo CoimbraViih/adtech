@@ -9,7 +9,7 @@ import type { CampaignCreateInput } from "@/types/database";
 
 const createSchema = z.object({
   name: z.string().min(3).max(255),
-  platform: z.enum(["meta", "google", "programmatic"]),
+  platform: z.enum(["meta", "google", "tiktok", "linkedin", "programmatic"]),
   objective: z.enum(["awareness", "traffic", "engagement", "leads", "sales", "app_promotion"]),
   daily_budget: z.number().min(1),
   lifetime_budget: z.number().nullable().optional(),

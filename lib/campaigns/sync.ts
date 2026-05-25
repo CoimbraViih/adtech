@@ -1,5 +1,5 @@
 /**
- * Campaign sync: pulls campaigns + metrics from Meta and Google,
+ * Campaign sync: pulls campaigns + metrics from Meta, Google, TikTok and LinkedIn,
  * upserts into the local `campaigns` table.
  *
  * Called on-demand via GET /api/campaigns?sync=true or by a cron job.
@@ -8,6 +8,8 @@
 
 import { listMetaCampaigns, getMetaCampaignInsights } from "@/lib/meta/client";
 import { listGoogleCampaigns, getGoogleCampaignMetrics } from "@/lib/google/client";
+import { listTikTokCampaigns, getTikTokCampaignInsights } from "@/lib/tiktok/client";
+import { listLinkedInCampaigns, getLinkedInCampaignInsights } from "@/lib/linkedin/client";
 import type { CampaignStatus } from "@/types/database";
 
 // ── status mapping ─────────────────────────────────────────────────────────
@@ -30,13 +32,27 @@ function googleStatusToLocal(status: string): CampaignStatus {
   }
 }
 
+function tiktokStatusToLocal(status: string): CampaignStatus {
+  switch (status) {
+    case "ENABLE":   return "active";
+    case "DISABLE":  return "paused";
+    case "DELETE":   return "archived";
+    default:         return "paused";
+  }
+}
+
+function linkedinStatusToLocal(status: string): CampaignStatus {
+  switch (status) {
+    case "ACTIVE":   return "active";
+    case "PAUSED":   return "paused";
+    case "ARCHIVED": return "archived";
+    case "DRAFT":    return "draft";
+    default:         return "paused";
+  }
+}
+
 // ── sync ───────────────────────────────────────────────────────────────────
 
-/**
- * Sync campaigns from all configured platforms for a workspace.
- * In M2, credentials are global env vars.
- * Post-M2: pass per-workspace tokens from DB.
- */
 export async function syncCampaignsFromPlatform(workspaceId: string): Promise<void> {
   const errors: Error[] = [];
 
@@ -52,12 +68,8 @@ export async function syncCampaignsFromPlatform(workspaceId: string): Promise<vo
         const spend = ins ? parseFloat(ins.spend) : 0;
         const impressions = ins ? parseInt(ins.impressions, 10) : 0;
         const clicks = ins ? parseInt(ins.clicks, 10) : 0;
-
-        const purchases = ins?.actions?.find(
-          (a) => a.action_type === "purchase"
-        );
+        const purchases = ins?.actions?.find((a) => a.action_type === "purchase");
         const conversions = purchases ? parseInt(purchases.value, 10) : 0;
-
         const roasEntry = ins?.purchase_roas?.[0];
         const roas = roasEntry ? parseFloat(roasEntry.value) : null;
         const cpa = conversions > 0 ? spend / conversions : null;
@@ -69,19 +81,12 @@ export async function syncCampaignsFromPlatform(workspaceId: string): Promise<vo
           name: mc.name,
           status: metaStatusToLocal(mc.status),
           daily_budget: mc.daily_budget ? parseInt(mc.daily_budget, 10) / 100 : 0,
-          spend,
-          impressions,
-          clicks,
-          conversions,
-          roas,
-          cpa,
+          spend, impressions, clicks, conversions, roas, cpa,
           updated_at: new Date().toISOString(),
         };
 
         // TODO(M2-backend): upsert into Supabase
-        // await supabase.from("campaigns").upsert(upsertData, {
-        //   onConflict: "workspace_id,external_id",
-        // });
+        // await supabase.from("campaigns").upsert(upsertData, { onConflict: "workspace_id,external_id" });
         console.log("[sync/meta] upsert:", upsertData.name, upsertData.status);
       }
     } catch (err) {
@@ -91,11 +96,7 @@ export async function syncCampaignsFromPlatform(workspaceId: string): Promise<vo
   }
 
   // ── Google ───────────────────────────────────────────────────────────────
-  if (
-    process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&
-    process.env.GOOGLE_ADS_CUSTOMER_ID &&
-    process.env.GOOGLE_ADS_REFRESH_TOKEN
-  ) {
+  if (process.env.GOOGLE_ADS_DEVELOPER_TOKEN && process.env.GOOGLE_ADS_CUSTOMER_ID && process.env.GOOGLE_ADS_REFRESH_TOKEN) {
     try {
       const googleCampaigns = await listGoogleCampaigns();
 
@@ -117,20 +118,12 @@ export async function syncCampaignsFromPlatform(workspaceId: string): Promise<vo
           platform: "google" as const,
           name: gc.name,
           status: googleStatusToLocal(gc.status),
-          spend,
-          impressions,
-          clicks,
-          conversions,
-          revenue,
-          roas,
-          cpa,
+          spend, impressions, clicks, conversions, revenue, roas, cpa,
           updated_at: new Date().toISOString(),
         };
 
         // TODO(M2-backend): upsert into Supabase
-        // await supabase.from("campaigns").upsert(upsertData, {
-        //   onConflict: "workspace_id,external_id",
-        // });
+        // await supabase.from("campaigns").upsert(upsertData, { onConflict: "workspace_id,external_id" });
         console.log("[sync/google] upsert:", upsertData.name, upsertData.status);
       }
     } catch (err) {
@@ -139,8 +132,77 @@ export async function syncCampaignsFromPlatform(workspaceId: string): Promise<vo
     }
   }
 
-  if (errors.length > 0 && errors.length === 2) {
-    // Both platforms failed — propagate error
+  // ── TikTok ───────────────────────────────────────────────────────────────
+  if (process.env.TIKTOK_ACCESS_TOKEN && process.env.TIKTOK_ADVERTISER_ID) {
+    try {
+      const tiktokCampaigns = await listTikTokCampaigns();
+
+      for (const tc of tiktokCampaigns) {
+        const insights = await getTikTokCampaignInsights(tc.id);
+        const cpa = insights.conversions > 0 ? insights.spend / insights.conversions : null;
+
+        const upsertData = {
+          workspace_id: workspaceId,
+          external_id: tc.id,
+          platform: "tiktok" as const,
+          name: tc.name,
+          status: tiktokStatusToLocal(tc.status),
+          daily_budget: tc.budget,
+          spend: insights.spend,
+          impressions: insights.impressions,
+          clicks: insights.clicks,
+          conversions: insights.conversions,
+          roas: null,
+          cpa,
+          updated_at: new Date().toISOString(),
+        };
+
+        // TODO(M2-backend): upsert into Supabase
+        // await supabase.from("campaigns").upsert(upsertData, { onConflict: "workspace_id,external_id" });
+        console.log("[sync/tiktok] upsert:", upsertData.name, upsertData.status);
+      }
+    } catch (err) {
+      errors.push(err instanceof Error ? err : new Error(String(err)));
+      console.error("[sync/tiktok] error:", err);
+    }
+  }
+
+  // ── LinkedIn ─────────────────────────────────────────────────────────────
+  if (process.env.LINKEDIN_ACCESS_TOKEN && process.env.LINKEDIN_AD_ACCOUNT_ID) {
+    try {
+      const linkedinCampaigns = await listLinkedInCampaigns();
+
+      for (const lc of linkedinCampaigns) {
+        const insights = await getLinkedInCampaignInsights(lc.id);
+        const cpa = insights.conversions > 0 ? insights.spend / insights.conversions : null;
+
+        const upsertData = {
+          workspace_id: workspaceId,
+          external_id: lc.id,
+          platform: "linkedin" as const,
+          name: lc.name,
+          status: linkedinStatusToLocal(lc.status),
+          daily_budget: lc.budget,
+          spend: insights.spend,
+          impressions: insights.impressions,
+          clicks: insights.clicks,
+          conversions: insights.conversions,
+          roas: null,
+          cpa,
+          updated_at: new Date().toISOString(),
+        };
+
+        // TODO(M2-backend): upsert into Supabase
+        // await supabase.from("campaigns").upsert(upsertData, { onConflict: "workspace_id,external_id" });
+        console.log("[sync/linkedin] upsert:", upsertData.name, upsertData.status);
+      }
+    } catch (err) {
+      errors.push(err instanceof Error ? err : new Error(String(err)));
+      console.error("[sync/linkedin] error:", err);
+    }
+  }
+
+  if (errors.length > 0 && errors.length === 4) {
     throw new AggregateError(errors, "Campaign sync failed on all platforms");
   }
 }
