@@ -1,0 +1,72 @@
+import { NextRequest, NextResponse } from "next/server";
+import { parseLeadInput } from "@/lib/leads/schema";
+import { createServiceClient } from "@/lib/supabase/service";
+
+// In-memory rate limit: IP → { count, resetAt }
+// 10 requests per IP per hour — sufficient for MVP (single-instance)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 10;
+const WINDOW_MS = 60 * 60 * 1000;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    return false;
+  }
+  if (entry.count >= RATE_LIMIT) return true;
+  entry.count += 1;
+  return false;
+}
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown";
+
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: "Muitas tentativas. Tente novamente em 1 hora." },
+      { status: 429 }
+    );
+  }
+
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return NextResponse.json({ error: "JSON inválido." }, { status: 400 });
+  }
+
+  const parsed = parseLeadInput(rawBody);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return NextResponse.json({ error: first.message }, { status: 400 });
+  }
+
+  const supabase = createServiceClient();
+
+  // Upsert: idempotent — duplicate email is silently ignored
+  const { error: dbError } = await supabase
+    .from("leads")
+    .upsert(
+      {
+        name: parsed.data.name,
+        email: parsed.data.email,
+        agency_size: parsed.data.agency_size,
+        source: "waitlist",
+      },
+      { onConflict: "email", ignoreDuplicates: true }
+    );
+
+  if (dbError) {
+    console.error("[leads/POST] db error:", dbError);
+    return NextResponse.json({ error: "Erro ao salvar. Tente novamente." }, { status: 500 });
+  }
+
+  // TODO(M6-email): send welcome email via Resend when RESEND_API_KEY is configured
+
+  return NextResponse.json({ ok: true }, { status: 201 });
+}
