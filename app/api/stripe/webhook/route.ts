@@ -75,9 +75,14 @@ export async function POST(request: Request) {
           ? new Date(firstItem.current_period_end * 1000).toISOString()
           : new Date().toISOString();
 
+        const stripeCustomerId =
+          typeof session.customer === "string"
+            ? session.customer
+            : (session.customer?.id ?? "");
+
         const payload = handleCheckoutCompleted({
           organizationId: session.metadata?.organization_id ?? "",
-          stripeCustomerId: session.customer as string,
+          stripeCustomerId,
           stripeSubscriptionId: subId,
           stripePriceId: priceId,
           currentPeriodStart: periodStart,
@@ -94,11 +99,12 @@ export async function POST(request: Request) {
         const firstItem = sub.items.data[0];
         const priceId = firstItem?.price?.id ?? "";
         const rawStatus = sub.status as string;
-        const status: SubscriptionStatus = VALID_STATUSES.includes(
-          rawStatus as SubscriptionStatus
-        )
+        const status: SubscriptionStatus = VALID_STATUSES.includes(rawStatus as SubscriptionStatus)
           ? (rawStatus as SubscriptionStatus)
-          : "active";
+          : (() => {
+              console.warn("[stripe/webhook] status desconhecido, tratando como past_due:", rawStatus);
+              return "past_due" as SubscriptionStatus;
+            })();
 
         // Period fields live on SubscriptionItem in this SDK version
         const periodStart = firstItem
@@ -108,9 +114,12 @@ export async function POST(request: Request) {
           ? new Date(firstItem.current_period_end * 1000).toISOString()
           : new Date().toISOString();
 
+        const subCustomerId =
+          typeof sub.customer === "string" ? sub.customer : (sub.customer?.id ?? "");
+
         const payload = handleSubscriptionUpdated({
           organizationId: sub.metadata?.organization_id ?? "",
-          stripeCustomerId: sub.customer as string,
+          stripeCustomerId: subCustomerId,
           stripeSubscriptionId: sub.id,
           plan: getPlanByPriceId(priceId),
           status,
@@ -140,9 +149,12 @@ export async function POST(request: Request) {
         const invoice = event.data.object as Stripe.Invoice;
         // In this Stripe SDK version, subscription metadata lives under invoice.parent.subscription_details.metadata
         const subMeta = invoice.parent?.subscription_details?.metadata;
+        const invoiceCustomerId =
+          typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? "");
+
         const payload = handlePaymentFailed({
           organizationId: subMeta?.organization_id ?? "",
-          stripeCustomerId: invoice.customer as string,
+          stripeCustomerId: invoiceCustomerId,
           amountDue: invoice.amount_due,
         });
 

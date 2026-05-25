@@ -29,8 +29,10 @@ export async function POST() {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-  // Fallback: no Stripe key (development)
   if (!process.env.STRIPE_SECRET_KEY) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "Stripe não configurado" }, { status: 503 });
+    }
     return NextResponse.json({
       url: `${appUrl}/settings/billing?mock_portal=open`,
       mock: true,
