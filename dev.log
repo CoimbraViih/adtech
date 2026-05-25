@@ -1,0 +1,18 @@
+
+> adtech-scaffold@0.1.0 dev
+> next dev
+
+⚠ Port 3000 is in use by process 30140, using available port 3001 instead.
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://100.67.57.27:3001
+✓ Ready in 430ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          30140
+- Dir:          C:\Users\victo\OneDrive\Área de Trabalho\adtech
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 30140 /F to stop it.
+[?25h

@@ -6,7 +6,7 @@ export const LeadInputSchema = z.object({
   name: z.string().min(1, "Nome obrigatório").max(100),
   email: z.string().email("E-mail inválido"),
   agency_size: z.enum(AGENCY_SIZES, {
-    errorMap: () => ({ message: "Tamanho de agência inválido" }),
+    error: () => ({ message: "Tamanho de agência inválido" }),
   }),
 });
 
