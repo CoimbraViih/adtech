@@ -1,6 +1,6 @@
 import type { OrgPlan } from "@/types/database";
 
-type PlanConfig = {
+export type PlanConfig = {
   name: string;
   priceMonthly: number;
   stripePriceId: string;
@@ -99,6 +99,7 @@ export function canAccessWhiteLabel(plan: OrgPlan): boolean {
 }
 
 export function getPlanByPriceId(priceId: string): OrgPlan {
+  if (!priceId) return "free";
   if (priceId === PLANS.pro.stripePriceId) return "pro";
   if (priceId === PLANS.agency.stripePriceId) return "agency";
   return "free";

@@ -87,13 +87,18 @@ describe("getPlanByPriceId", () => {
   it("returns free for unknown price id", () => {
     expect(getPlanByPriceId("price_unknown")).toBe("free");
   });
+  it("returns free for empty string priceId", () => {
+    expect(getPlanByPriceId("")).toBe("free");
+  });
 });
 
 describe("formatPlanPrice", () => {
   it("returns 'Grátis' for free", () => expect(formatPlanPrice("free")).toBe("Grátis"));
   it("returns BRL formatted price for pro", () => {
-    const result = formatPlanPrice("pro");
-    expect(result).toContain("500");
+    expect(formatPlanPrice("pro")).toMatch(/R\$\s*500/);
+  });
+  it("returns BRL formatted price for agency", () => {
+    expect(formatPlanPrice("agency")).toMatch(/R\$\s*3[.,]?000/);
   });
 });
 
