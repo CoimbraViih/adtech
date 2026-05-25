@@ -1,10 +1,10 @@
 -- ============================================================
 -- Migration 011: Subscriptions
--- Depends on: 001_initial_schema.sql, 003_billing.sql
+-- Depends on: 001_initial_schema.sql, 002_rbac.sql, 003_billing.sql
 -- ============================================================
 
 create type subscription_status as enum (
-  'active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete'
+  'active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete', 'incomplete_expired'
 );
 
 create table subscriptions (
@@ -12,8 +12,7 @@ create table subscriptions (
   organization_id         uuid not null unique references organizations(id) on delete cascade,
   stripe_customer_id      text not null,
   stripe_subscription_id  text not null unique,
-  plan                    text not null default 'free'
-                            check (plan in ('free', 'pro', 'agency')),
+  plan                    org_plan not null default 'free',
   status                  subscription_status not null default 'active',
   current_period_start    timestamptz not null,
   current_period_end      timestamptz not null,
@@ -22,7 +21,6 @@ create table subscriptions (
   updated_at              timestamptz not null default now()
 );
 
-create index subscriptions_org_idx         on subscriptions(organization_id);
 create index subscriptions_stripe_sub_idx  on subscriptions(stripe_subscription_id);
 create index subscriptions_customer_idx    on subscriptions(stripe_customer_id);
 
@@ -37,6 +35,9 @@ create policy "subscriptions_select" on subscriptions for select
     is_superadmin()
     or current_user_org_role(organization_id) in ('owner', 'admin')
   );
+
+-- INSERT / UPDATE is done by the Stripe webhook route handler using the service role key.
+-- Service role bypasses RLS entirely. No app-side write policy needed.
 
 create or replace function sync_org_plan()
 returns trigger language plpgsql security definer as $$

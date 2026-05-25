@@ -571,7 +571,8 @@ export type SubscriptionStatus =
   | "past_due"
   | "canceled"
   | "unpaid"
-  | "incomplete";
+  | "incomplete"
+  | "incomplete_expired";
 
 export type Subscription = {
   id: string;
