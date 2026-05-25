@@ -5,6 +5,9 @@ import { Plus, Activity, TrendingUp, TrendingDown, DollarSign, BarChart2 } from 
 import { RtbCampaignsTable } from "@/components/campaigns/rtb-campaigns-table";
 import { MOCK_RTB_CAMPAIGNS, getMockRtbKpis } from "@/lib/rtb/mock-data";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
+import { canAccessProgrammatic } from "@/lib/stripe/plans";
+import { UpgradeBanner } from "@/components/billing/upgrade-banner";
+import { FAKE_SESSION } from "@/lib/auth/session";
 
 function fmt(n: number, dec = 0) {
   return n.toLocaleString("pt-BR", {
@@ -18,6 +21,16 @@ export default async function ProgrammaticPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
 }) {
+  const plan = FAKE_SESSION.organization.plan;
+  if (!canAccessProgrammatic(plan)) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-lg font-semibold text-[color:var(--adflow-fg)]">Programático</h1>
+        <UpgradeBanner feature="Programático RTB" requiredPlan="agency" />
+      </div>
+    );
+  }
+
   const sp = await searchParams;
   const dateFrom =
     sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
