@@ -8,6 +8,13 @@ import {
 } from "@/lib/stripe/webhooks";
 import { getPlanByPriceId } from "@/lib/stripe/plans";
 import type { SubscriptionStatus } from "@/types/database";
+import {
+  upsertSubscription,
+  deleteSubscription,
+  markSubscriptionPastDue,
+  logBillingEvent,
+  isEventAlreadyProcessed,
+} from "@/lib/stripe/subscription-service";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +56,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Assinatura inválida" }, { status: 400 });
   }
 
-  // TODO(M9-backend): check billing_events for stripe_event_id idempotency before processing
+  if (await isEventAlreadyProcessed(event.id)) {
+    return NextResponse.json({ received: true, skipped: true });
+  }
 
   try {
     switch (event.type) {
@@ -89,8 +98,13 @@ export async function POST(request: Request) {
           currentPeriodEnd: periodEnd,
         });
 
-        // TODO(M9-backend): upsert into subscriptions, log into billing_events
-        console.log("[stripe/webhook] checkout completed:", payload);
+        await upsertSubscription(payload);
+        await logBillingEvent(
+          payload.organizationId,
+          event.id,
+          event.type,
+          event.data.object as unknown as Record<string, unknown>
+        );
         break;
       }
 
@@ -128,8 +142,13 @@ export async function POST(request: Request) {
           cancelAtPeriodEnd: sub.cancel_at_period_end,
         });
 
-        // TODO(M9-backend): update subscriptions, log into billing_events
-        console.log("[stripe/webhook] subscription updated:", payload);
+        await upsertSubscription(payload);
+        await logBillingEvent(
+          payload.organizationId,
+          event.id,
+          event.type,
+          event.data.object as unknown as Record<string, unknown>
+        );
         break;
       }
 
@@ -140,8 +159,13 @@ export async function POST(request: Request) {
           stripeSubscriptionId: sub.id,
         });
 
-        // TODO(M9-backend): downgrade org to free in subscriptions + billing_events
-        console.log("[stripe/webhook] subscription deleted:", payload);
+        await deleteSubscription(payload);
+        await logBillingEvent(
+          payload.organizationId,
+          event.id,
+          event.type,
+          event.data.object as unknown as Record<string, unknown>
+        );
         break;
       }
 
@@ -158,8 +182,20 @@ export async function POST(request: Request) {
           amountDue: invoice.amount_due,
         });
 
-        // TODO(M9-backend): mark subscription as past_due, create notification, log billing_event
-        console.log("[stripe/webhook] payment failed:", payload);
+        const invoiceSubRaw = invoice.parent?.subscription_details?.subscription;
+        const invoiceSubId =
+          typeof invoiceSubRaw === "string"
+            ? invoiceSubRaw
+            : (invoiceSubRaw?.id ?? "");
+        if (invoiceSubId) {
+          await markSubscriptionPastDue(invoiceSubId);
+        }
+        await logBillingEvent(
+          payload.organizationId,
+          event.id,
+          event.type,
+          event.data.object as unknown as Record<string, unknown>
+        );
         break;
       }
 
