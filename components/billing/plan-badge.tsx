@@ -4,8 +4,8 @@ import type { OrgPlan } from "@/types/database";
 
 const PLAN_STYLES: Record<OrgPlan, string> = {
   free: "bg-[color:var(--adflow-border)] text-[color:var(--adflow-fg-muted)]",
-  pro: "bg-[color:var(--adflow-data)]/20 text-[color:var(--adflow-data)]",
-  agency: "bg-[color:var(--adflow-accent)]/20 text-[color:var(--adflow-accent)]",
+  pro: "bg-data/20 text-data",
+  agency: "bg-accent/20 text-accent",
 };
 
 type PlanBadgeProps = {
