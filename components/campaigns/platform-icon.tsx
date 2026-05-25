@@ -55,6 +55,63 @@ function GoogleIcon({ className, style }: SvgProps) {
   );
 }
 
+// TikTok Ads logo SVG
+function TikTokIcon({ className, style }: SvgProps) {
+  return (
+    <svg
+      viewBox="0 0 60 60"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn("shrink-0", className)}
+      style={style}
+      aria-label="TikTok"
+    >
+      <rect width="60" height="60" rx="10" fill="#010101" />
+      {/* Cyan shadow */}
+      <path
+        d="M26.5 11h6.8v26.4a6.8 6.8 0 1 0 6.8-6.8V24a13.4 13.4 0 1 1-13.6 13.4V11z"
+        fill="#25F4EE"
+        opacity="0.9"
+      />
+      {/* Red shadow */}
+      <path
+        d="M24.5 13h6.8v26.4A6.8 6.8 0 1 0 38.1 32.6v-6.6A13.4 13.4 0 1 1 24.5 39.4V13z"
+        fill="#FE2C55"
+        opacity="0.9"
+      />
+      {/* Main white */}
+      <path
+        d="M25.5 12h6.8v26.4a6.8 6.8 0 1 0 6.8-6.8v-6.6A13.4 13.4 0 1 1 25.5 39.4V12z"
+        fill="white"
+      />
+    </svg>
+  );
+}
+
+// LinkedIn Ads logo SVG
+function LinkedInIcon({ className, style }: SvgProps) {
+  return (
+    <svg
+      viewBox="0 0 60 60"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn("shrink-0", className)}
+      style={style}
+      aria-label="LinkedIn"
+    >
+      <rect width="60" height="60" rx="10" fill="#0A66C2" />
+      <path
+        d="M19 24h6v18h-6V24zm3-2.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"
+        fill="white"
+      />
+      <path
+        d="M29 24h5.7v2.5h.1c.8-1.5 2.7-3 5.5-3 5.9 0 7 3.9 7 8.9V42h-6v-8.6c0-2 0-4.7-2.9-4.7s-3.3 2.2-3.3 4.5V42H29V24z"
+        fill="white"
+      />
+    </svg>
+  );
+}
+
 // Programmatic / DSP icon
 function ProgrammaticIcon({ className, style }: SvgProps) {
   return (
@@ -82,6 +139,8 @@ function ProgrammaticIcon({ className, style }: SvgProps) {
 const PLATFORM_LABEL: Record<CampaignPlatform, string> = {
   meta: "Meta",
   google: "Google",
+  tiktok: "TikTok",
+  linkedin: "LinkedIn",
   programmatic: "Programático",
 };
 
@@ -99,7 +158,6 @@ export function PlatformIcon({
   className,
 }: PlatformIconProps) {
   const iconClass = cn(className);
-
   const sizeStyle = { width: size, height: size, flexShrink: 0 } as const;
 
   const icon =
@@ -107,6 +165,10 @@ export function PlatformIcon({
       <MetaIcon className={iconClass} style={sizeStyle} />
     ) : platform === "google" ? (
       <GoogleIcon className={iconClass} style={sizeStyle} />
+    ) : platform === "tiktok" ? (
+      <TikTokIcon className={iconClass} style={sizeStyle} />
+    ) : platform === "linkedin" ? (
+      <LinkedInIcon className={iconClass} style={sizeStyle} />
     ) : (
       <ProgrammaticIcon className={iconClass} style={sizeStyle} />
     );

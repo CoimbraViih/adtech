@@ -144,6 +144,8 @@ export function CampaignTable({ campaigns, onStatusChange }: CampaignTableProps)
     { value: "all", label: "Todas as plataformas" },
     { value: "meta", label: "Meta" },
     { value: "google", label: "Google" },
+    { value: "tiktok", label: "TikTok" },
+    { value: "linkedin", label: "LinkedIn" },
     { value: "programmatic", label: "Programático" },
   ];
 

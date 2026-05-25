@@ -18,10 +18,10 @@
 | M3 | AI Creative Studio | `feat/m3-creatives` ✅ | M1, M2 |
 | M4 | Pixel & Tracking | `feat/m4-pixel-tracking` ✅ | M1 |
 | M5 | Analytics & Atribuição | `feat/m5-analytics-attribution` ✅ | M1, M4 |
-| M6 | Landing Page Builder | `feat/m6-lp-builder` | M1, M4, M5 |
+| M6 | Landing Page AdFlow | `feat/m6-landing` | M1 |
 | M7 | Automação & Alertas | `feat/m7-automation` ✅ | M1, M2, M4, M5 |
 | M8 | Programático DSP/SSP | `feat/m8-programmatic` ✅ | M1, M2, M4 |
-| M9 | White-label & SuperAdmin | `feat/m9-whitelabel` | M1–M8 |
+| M9 | Monetização & Stripe | `feat/m9-stripe` | M1–M5 |
 | MS | Segurança & Hardening | `feat/ms-security` | M1–M9 |
 | M10 | Deploy & Produção | `feat/m10-deploy` | M1–M9, MS |
 
@@ -266,41 +266,40 @@
 
 ---
 
-## M6 — Landing Page Builder
+## M6 — Landing Page AdFlow
 
-**Branch:** `feat/m6-lp-builder`  
-**Objetivo:** Editor no-code drag-and-drop para criar landing pages publicáveis em subdomínio `*.adflow.app` ou domínio customizado. Thank You Page com upsell.
+**Branch:** `feat/m6-landing`  
+**Objetivo:** Landing page pública de marketing da AdFlow — apresenta o produto, converte visitantes em leads/trial e transmite credibilidade para agências e anunciantes brasileiros.
 
-> **Agentes:** `@frontend-developer` · `@nextjs-architecture-expert` · `@api-security-audit` · `@security-auditor` · `@code-reviewer`
-> **Skills:** `/brainstorming` para arquitetura do editor (canvas, blocos, propriedades) e estratégia de renderização da LP pública · `/feature-dev:feature-dev` para desenvolvimento guiado do builder · `/supabase` para migrations de `landing_pages`, `lp_versions`, `lp_submissions` + Storage para imagens dos blocos · `/vercel:next-cache-components` para cache das LPs públicas (ISR) · `/vercel:nextjs` para a rota pública `app/lp/[slug]` com SSG/ISR · `/frontend-design` para o editor canvas e biblioteca de blocos · `/ui-ux-pro-max` para UX do editor (referência Figma) · `/senior-frontend` para drag-and-drop performático e preview em tempo real · `/writing-plans` para detalhar cada bloco (Hero, Form, CTA, etc.) · `/security-review` antes do merge (foco em XSS do builder e submissão de lead) · `/webapp-testing` para E2E do fluxo de publicação · `/simplify` após implementação · `/commit` para o commit final
+> **Agentes:** `@frontend-developer` · `@nextjs-architecture-expert` · `@code-reviewer`
+> **Skills:** `/brainstorming` para estrutura de seções e copywriting · `/frontend-design` para layout hero e cards de features · `/ui-ux-pro-max` para hierarquia visual e CTA · `/tailwind-patterns` para animações e responsividade · `/vercel:nextjs` para SSG e ISR · `/vercel:next-cache-components` para cache estático da landing · `/web-performance-optimization` para Core Web Vitals (LCP < 2.5s) · `/seo-audit` para meta tags e schema · `/webapp-testing` para E2E dos fluxos de CTA · `/commit` para o commit final
 
 ### Interface — construir primeiro
-- [ ] `app/(dashboard)/landing-pages/page.tsx` — lista de landing pages: nome, URL, conversões, taxa de conversão, status (rascunho/publicada)
-- [ ] `app/(dashboard)/landing-pages/new/page.tsx` — seleção de template
-- [ ] `app/(dashboard)/landing-pages/[id]/editor/page.tsx` — editor visual com canvas central, painel de blocos à esquerda, painel de propriedades à direita
-- [ ] `components/lp-builder/canvas.tsx` — área de edição com drag-and-drop de blocos
-- [ ] `components/lp-builder/block-panel.tsx` — biblioteca de blocos: Hero, Formulário, Depoimento, CTA, Vídeo, Contador, FAQ
-- [ ] `components/lp-builder/property-panel.tsx` — edição de propriedades do bloco selecionado (texto, cor, imagem, link)
-- [ ] `components/lp-builder/blocks/` — implementação de cada bloco como componente React
-- [ ] `app/(dashboard)/landing-pages/[id]/thankyou/page.tsx` — editor da Thank You Page com configuração de upsell
-- [ ] Preview em tempo real da landing page no editor
+- [ ] `app/(marketing)/page.tsx` — landing page pública com layout separado do dashboard
+- [ ] `app/(marketing)/layout.tsx` — header com logo + nav (Features, Preços, Blog, Login) + footer
+- [ ] `components/marketing/hero.tsx` — headline principal, sub-headline, CTA primário "Começar grátis" + CTA secundário "Ver demo", screenshot/mockup animado do dashboard
+- [ ] `components/marketing/features.tsx` — grid de features: Campanhas unificadas, AI Creative Studio, Pixel server-side, Analytics multi-touch, Programático RTB, Automação de alertas
+- [ ] `components/marketing/social-proof.tsx` — logos de agências parceiras (placeholder), depoimentos, número de campanhas gerenciadas
+- [ ] `components/marketing/pricing.tsx` — tabela de planos Free / Pro (R$500/mês) / Agency (R$3.000/mês) com feature list e CTAs conectados ao Stripe (integrado no M9)
+- [ ] `components/marketing/faq.tsx` — acordeão com perguntas frequentes de agências brasileiras
+- [ ] `components/marketing/cta-banner.tsx` — banner final de conversão com fundo accent
+- [ ] `components/marketing/waitlist-form.tsx` — formulário de e-mail para captura de lead (nome + e-mail + tamanho da agência), persiste em `leads` e dispara e-mail de boas-vindas via Resend
 
-### Backend / Dados reais
-- [ ] Migration `008_landing_pages.sql`: tabelas `landing_pages`, `lp_versions`, `lp_submissions` com RLS
-- [ ] `app/api/landing-pages/route.ts` — CRUD de landing pages
-- [ ] `app/api/landing-pages/[id]/publish/route.ts` — publica landing page (gera HTML estático ou configura rota pública)
-- [ ] `app/lp/[slug]/page.tsx` — rota pública de renderização da landing page publicada
-- [ ] `app/api/lp/[slug]/submit/route.ts` — recebe formulário de lead, persiste em `lp_submissions`, dispara pixel event
-- [ ] Configuração de domínio customizado (CNAME) via Vercel API
+### Backend
+- [ ] Migration `010_leads.sql`: tabela `leads` (email, name, agency_size, source, created_at) com índice único em email
+- [ ] `app/api/leads/route.ts` — POST: valida com Zod, persiste lead, envia e-mail de boas-vindas via Resend, rate limiting por IP (10 req/hora)
+- [ ] Meta tags OpenGraph e Twitter Card no `(marketing)/layout.tsx`
+- [ ] `app/sitemap.ts` — sitemap dinâmico para SEO
+- [ ] `app/robots.ts` — robots.txt
 
 ### Testes
-- [ ] E2E: criar LP → adicionar bloco Hero + Formulário → publicar → submeter lead (`tests/e2e/lp-builder.spec.ts`)
-- [ ] Unitário: renderização de blocos (`tests/unit/lp-blocks.test.ts`)
+- [ ] E2E: visitar landing → preencher waitlist → confirmar toast de sucesso (`tests/e2e/landing.spec.ts`)
+- [ ] Unitário: validação do schema de lead (`tests/unit/lead-schema.test.ts`)
 
 ### Commit final
 ```
-git checkout main && git merge feat/m6-lp-builder
-git commit -m "feat(m6): no-code landing page builder, thank you page, lead capture"
+git checkout main && git merge feat/m6-landing
+git commit -m "feat(m6): adflow marketing landing page, waitlist capture, seo"
 ```
 
 ---
@@ -390,38 +389,42 @@ git commit -m "feat(m6): no-code landing page builder, thank you page, lead capt
 
 ---
 
-## M9 — White-label & SuperAdmin
+## M9 — Monetização & Stripe
 
-**Branch:** `feat/m9-whitelabel`  
-**Objetivo:** Agências podem vender AdFlow com sua própria marca. SuperAdmin gerencia todos os tenants, planos, uso de API e saúde da plataforma.
+**Branch:** `feat/m9-stripe`  
+**Objetivo:** Monetização completa com Stripe — planos Free / Pro / Agency, checkout, portal de billing, webhooks de lifecycle e feature gates por plano no dashboard.
 
 > **Agentes:** `@frontend-developer` · `@api-security-audit` · `@security-auditor` · `@code-reviewer`
-> **Skills:** `/brainstorming` para arquitetura de white-label (tokens dinâmicos por tenant) e painel superadmin · `/feature-dev:feature-dev` para desenvolvimento guiado do módulo · `/supabase` para migration de `white_label_configs` e RLS por `organization_id` · `/supabase-postgres-best-practices` para queries de uso de API por tenant (métricas de saúde) · `/vercel:env` para variáveis de ambiente por tenant (domínios customizados) · `/frontend-design` para o painel superadmin (tabela de tenants, detalhe, planos) · `/ui-ux-pro-max` para formulário de configuração white-label · `/writing-plans` para detalhar o sistema de temas dinâmicos por tenant · `/security-review` antes do merge (foco em isolamento cross-tenant e rotas superadmin) · `/webapp-testing` para E2E do superadmin · `/simplify` após implementação · `/commit` para o commit final
+> **Skills:** `/brainstorming` para estratégia de planos e feature gates · `/stripe:stripe-best-practices` para checkout, webhooks e portal · `/supabase` para migration de `subscriptions` e sincronização de status de plano · `/supabase-postgres-best-practices` para queries de billing por org · `/frontend-design` para página de billing no dashboard e upgrade modal · `/security-review` antes do merge (foco em assinatura de webhook e RBAC de plano) · `/webapp-testing` para E2E de checkout e upgrade · `/commit` para o commit final
 
 ### Interface — construir primeiro
-- [ ] `app/(superadmin)/tenants/page.tsx` — tabela de todos os tenants: org, plano, MRR, uso de API, status
-- [ ] `app/(superadmin)/tenants/[id]/page.tsx` — detalhe do tenant: usuários, workspaces, histórico de billing, logs de uso
-- [ ] `app/(superadmin)/plans/page.tsx` — gestão de planos: limites de campanhas, criativos, pixels, API calls por plano
-- [ ] `app/(superadmin)/health/page.tsx` — saúde da plataforma: latência de APIs externas, filas, erros
-- [ ] `app/(dashboard)/settings/white-label/page.tsx` — configuração white-label: logo, cores, domínio customizado, e-mails transacionais
-- [ ] `components/white-label/brand-form.tsx` — formulário de configuração de marca (logo upload, paleta de cores primária/secundária)
+- [ ] `app/(dashboard)/settings/billing/page.tsx` — resumo do plano atual (nome, preço, próximo ciclo, uso do período), botão "Gerenciar assinatura" (Stripe Portal) e botão "Fazer upgrade"
+- [ ] `components/billing/plan-card.tsx` — card de plano com features, preço em BRL e CTA
+- [ ] `components/billing/upgrade-modal.tsx` — modal de comparação Free → Pro → Agency com botão de checkout Stripe
+- [ ] `components/billing/usage-meter.tsx` — barras de uso de campanhas, criativos e pixels versus limite do plano
+- [ ] `components/billing/plan-badge.tsx` — badge no sidebar/topbar mostrando plano atual
+- [ ] Feature gates no dashboard: banner de "upgrade" quando usuário tenta acessar funcionalidade fora do plano (ex: programático só no Agency)
 
-### Backend / Dados reais
-- [ ] Migration `011_white_label.sql`: tabela `white_label_configs` com `organization_id`
-- [ ] `app/api/superadmin/tenants/route.ts` — listagem e gestão de tenants (protegido por role superadmin)
-- [ ] `app/api/superadmin/plans/route.ts` — CRUD de planos e limites
-- [ ] `lib/white-label/theme.ts` — geração dinâmica de tokens CSS por tenant
-- [ ] Aplicar white-label config no layout do dashboard (logo, cores) baseado na org do usuário
-- [ ] Configuração de domínio customizado para white-label (Vercel API)
+### Backend / API
+- [ ] Migration `011_subscriptions.sql`: tabela `subscriptions` (org_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_end), trigger sincroniza `organizations.plan`
+- [ ] `lib/stripe/client.ts` — Stripe SDK singleton (server-only)
+- [ ] `lib/stripe/plans.ts` — definição de planos, limites e feature flags: `PLANS = { free, pro, agency }`, helpers `canAccessProgrammatic(plan)`, `campaignLimit(plan)` etc.
+- [ ] `lib/stripe/webhooks.ts` — handlers: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+- [ ] `app/api/stripe/checkout/route.ts` — POST: cria Checkout Session (subscription mode) com `success_url` e `cancel_url`, retorna `url`
+- [ ] `app/api/stripe/portal/route.ts` — POST: cria Billing Portal Session para gestão de assinatura, retorna `url`
+- [ ] `app/api/stripe/webhook/route.ts` — POST: valida assinatura HMAC `STRIPE_WEBHOOK_SECRET`, roteia para handlers, retorna 200 imediatamente
+- [ ] `.env.local.example` — `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRO_PRICE_ID`, `STRIPE_AGENCY_PRICE_ID`
+- [ ] Stripe products e prices configurados em modo test: Free (grátis), Pro (R$500/mês), Agency (R$3.000/mês)
 
 ### Testes
-- [ ] E2E: superadmin lista tenants → visualiza detalhe (`tests/e2e/superadmin.spec.ts`)
-- [ ] Unitário: geração de tema white-label (`tests/unit/white-label-theme.test.ts`)
+- [ ] E2E: acessar billing → clicar upgrade → verificar redirect para Stripe Checkout (`tests/e2e/billing.spec.ts`)
+- [ ] Unitário: `canAccessProgrammatic` e `campaignLimit` por plano (`tests/unit/stripe-plans.test.ts`)
+- [ ] Unitário: handlers de webhook (subscription.updated, payment_failed) com payload mockado (`tests/unit/stripe-webhooks.test.ts`)
 
 ### Commit final
 ```
-git checkout main && git merge feat/m9-whitelabel
-git commit -m "feat(m9): white-label for agencies, superadmin tenant management"
+git checkout main && git merge feat/m9-stripe
+git commit -m "feat(m9): stripe monetization, plans free/pro/agency, billing portal, webhooks"
 ```
 
 ---
@@ -470,12 +473,11 @@ git commit -m "feat(m9): white-label for agencies, superadmin tenant management"
 - [ ] Exportação de CSV sem PII no padrão — oferecer como opt-in explícito com aviso LGPD
 - [ ] Verificar que role `viewer` não consegue POST em endpoints de analytics
 
-### Landing Page Builder (M6)
-- [ ] **XSS via builder**: nunca renderizar HTML do usuário com `dangerouslySetInnerHTML` sem sanitização — usar `DOMPurify` server-side antes de persistir
-- [ ] **Submissão de lead (endpoint público)**: `zod` + rate limiting por IP
-- [ ] **Upload de imagens**: validar tipo MIME real (não só extensão), limitar a 5MB, armazenar no Supabase Storage
-- [ ] **Slug de LP**: validar com regex `^[a-z0-9-]+$` — sem path traversal
-- [ ] CAPTCHA (hCaptcha ou Cloudflare Turnstile) no formulário de lead
+### Landing Page AdFlow (M6)
+- [ ] **Formulário de waitlist (endpoint público)**: Zod + rate limiting agressivo por IP (10 req/hora) — rejeitar payloads > 5KB
+- [ ] Nunca logar e-mails ou dados pessoais de lead em `console.log` — LGPD
+- [ ] CAPTCHA (hCaptcha ou Cloudflare Turnstile) no formulário de waitlist antes do go-live
+- [ ] Meta tags sem vazamento de rotas internas do dashboard
 
 ### Automação & Alertas (M7)
 - [ ] Chaves de mensageria (`RESEND_API_KEY`, `TWILIO_AUTH_TOKEN`, `WHATSAPP_TOKEN`) exclusivamente server-side
@@ -491,12 +493,12 @@ git commit -m "feat(m9): white-label for agencies, superadmin tenant management"
 - [ ] Anonimizar IP do usuário final nos logs de bid request
 - [ ] Limitar tamanho de bid requests aceitos a 50KB
 
-### White-label & SuperAdmin (M9)
-- [ ] Verificar `isSuperAdmin()` em **cada** route handler individualmente — defesa em profundidade
-- [ ] Isolamento cross-tenant: testar que admin de um tenant não acessa dados de outro
-- [ ] Upload de logo: validar tipo MIME (`image/png`, `image/jpeg`, `image/svg+xml`), limitar 2MB, sanitizar SVG
-- [ ] Cores white-label validadas como hex — rejeitar valores CSS arbitrários
-- [ ] Auditoria de ação do superadmin: logar ações destrutivas com timestamp e user_id
+### Monetização & Stripe (M9)
+- [ ] **Validar assinatura HMAC** em `app/api/stripe/webhook/route.ts` com `stripe.webhooks.constructEvent` — rejeitar requisições sem header `Stripe-Signature`
+- [ ] `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` exclusivamente server-side — jamais prefixados `NEXT_PUBLIC_`
+- [ ] Feature gates validados server-side em cada route handler — nunca confiar apenas no frontend para bloquear plano inferior
+- [ ] Endpoint de checkout retorna apenas a URL da Stripe Session — nunca expõe o `customer_id` ao client
+- [ ] Idempotência nos handlers de webhook: verificar evento já processado antes de atualizar `subscriptions`
 
 ### Auditoria final pré-produção
 - [ ] Rotação de secrets: gerar novas chaves de produção — nunca reusar as de desenvolvimento
@@ -509,7 +511,7 @@ git commit -m "feat(m9): white-label for agencies, superadmin tenant management"
 - [ ] `vercel env ls` — nenhuma variável sensível marcada como `NEXT_PUBLIC_`
 - [ ] Página de Política de Privacidade e Termos de Uso presentes antes do go-live (LGPD)
 - [ ] `Referrer-Policy`, `Permissions-Policy` e `Cross-Origin-Opener-Policy` nos headers de produção
-- [ ] Revisão final com `@security-auditor` nos endpoints críticos: auth callback, pixel ingestion, bid RTB, Stripe webhook
+- [ ] Revisão final com `@security-auditor` nos endpoints críticos: auth callback, pixel ingestion, bid RTB, Stripe webhook, waitlist de lead
 
 ### Commit final
 ```
@@ -522,7 +524,7 @@ git commit -m "feat(ms): security hardening, LGPD compliance, full audit across 
 ## M10 — Deploy & Produção
 
 **Branch:** `feat/m10-deploy`  
-**Depende de:** M1–M9, MS  
+**Depende de:** M1–M9, MS (exceto M6 e M9 que podem ser deployados antes)  
 **Objetivo:** Plataforma em produção na Vercel + AWS São Paulo, com CI/CD, monitoramento, Stripe real e domínio `adflow.app` configurado.
 
 > **Agentes:** `@security-auditor` · `@api-security-audit` · `@nextjs-architecture-expert` · `@code-reviewer`
@@ -563,14 +565,14 @@ M0 (setup)
   └─ M1 (auth + shell)
        ├─ M2 (campanhas)
        │    └─ M3 (criativos AI)   ← paralelo com M4
-       └─ M4 (pixel)
-            ├─ M5 (analytics)
-            │    └─ M6 (LP builder)
-            ├─ M7 (automação)      ← depende M2 + M4 + M5
-            └─ M8 (programático)   ← depende M2 + M4
-                 └─ M9 (white-label)
-                      └─ MS (segurança)
-                           └─ M10 (deploy)
+       ├─ M4 (pixel)
+       │    ├─ M5 (analytics)
+       │    ├─ M7 (automação)      ← depende M2 + M4 + M5
+       │    └─ M8 (programático)   ← depende M2 + M4
+       ├─ M6 (landing page AdFlow) ← paralelo, depende só M1
+       └─ M9 (monetização Stripe)  ← depende M1–M5
+            └─ MS (segurança)
+                 └─ M10 (deploy)
 ```
 
 **Regra:** Interface mockada sempre antes do backend. Cada milestone deve estar demonstrável com dados reais antes de iniciar o próximo.

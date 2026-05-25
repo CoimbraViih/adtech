@@ -18,12 +18,14 @@ import { SESSION_COOKIE, decodeSession } from "@/lib/auth/session";
 
 // Routes that are always public (no auth required)
 const PUBLIC_PATHS = [
+  "/",                   // M6 — marketing landing page
   "/login",
   "/signup",
   "/onboarding",
   "/callback",
   "/api/health",
   "/api/pixel",          // M4 — public ingestion endpoint
+  "/api/leads",          // M6 — public waitlist endpoint
   "/api/auth/dev-login", // dev-only shortcut — blocked in prod by route handler
 ];
 

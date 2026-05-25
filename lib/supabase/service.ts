@@ -9,10 +9,12 @@
 type Chain = {
   select: (cols?: string) => Chain;
   insert: (row: unknown) => Chain;
+  upsert: (row: unknown, opts?: Record<string, unknown>) => Chain;
   eq: (col: string, val: unknown) => Chain;
   gte: (col: string, val: unknown) => Chain;
   lte: (col: string, val: unknown) => Chain;
   single: () => Promise<{ data: unknown; error: unknown }>;
+  then: (resolve: (v: { data: unknown; error: unknown }) => void) => Promise<void>;
 };
 
 type SupabaseServiceClient = {
@@ -28,10 +30,12 @@ export function createServiceClient(): SupabaseServiceClient {
     const chain: Chain = {
       select: () => chain,
       insert: () => chain,
+      upsert: () => chain,
       eq: () => chain,
       gte: () => chain,
       lte: () => chain,
       single: async () => ({ data: null, error: { message: "service client not configured" } }),
+      then: async (resolve) => resolve({ data: null, error: null }),
     };
     return chain;
   };

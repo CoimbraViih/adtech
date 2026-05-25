@@ -6,7 +6,7 @@
 
 -- ── Enums ────────────────────────────────────────────────────────────────────
 
-CREATE TYPE campaign_platform AS ENUM ('meta', 'google', 'programmatic');
+CREATE TYPE campaign_platform AS ENUM ('meta', 'google', 'tiktok', 'linkedin', 'programmatic');
 CREATE TYPE campaign_status   AS ENUM ('active', 'paused', 'draft', 'archived');
 CREATE TYPE campaign_objective AS ENUM (
   'awareness', 'traffic', 'engagement', 'leads', 'sales', 'app_promotion'
