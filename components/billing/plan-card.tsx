@@ -1,3 +1,5 @@
+"use client";
+
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLANS, formatPlanPrice, formatLimit } from "@/lib/stripe/plans";

@@ -32,8 +32,12 @@ export function BillingPageClient() {
     setPortalLoading(true);
     try {
       const res = await fetch("/api/stripe/portal", { method: "POST" });
-      const data = (await res.json()) as { url?: string };
-      if (data.url) window.location.href = data.url;
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        console.error("[billing] erro ao abrir portal:", data.error);
+        return;
+      }
+      window.location.href = data.url;
     } finally {
       setPortalLoading(false);
     }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +18,6 @@ type UpgradeModalProps = {
 };
 
 export function UpgradeModal({ open, onClose, currentPlan }: UpgradeModalProps) {
-  const router = useRouter();
   const [loading, setLoading] = useState<OrgPlan | null>(null);
 
   async function handleSelect(plan: OrgPlan) {
@@ -41,7 +39,7 @@ export function UpgradeModal({ open, onClose, currentPlan }: UpgradeModalProps) 
       }
 
       onClose();
-      router.push(data.url);
+      window.location.href = data.url;
     } finally {
       setLoading(null);
     }
