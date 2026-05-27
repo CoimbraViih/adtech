@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { fetchAllRules } from "@/lib/automation/rules";
-import type { AlertRuleCreateInput } from "@/types/database";
+
+const createRuleSchema = z.object({
+  workspace_id: z.string().min(1, "workspace_id obrigatório"),
+  campaign_id: z.string().nullable().optional(),
+  name: z.string().min(1).max(200),
+  condition: z.enum(["roas_below", "cpa_above", "spend_above", "ctr_below", "conversions_below"]),
+  threshold: z.number().finite(),
+  cooldown_minutes: z.number().int().min(1).optional(),
+});
 
 export async function GET(request: Request) {
   const supabase = await createServerSupabaseClient();
@@ -30,10 +39,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const input = body as AlertRuleCreateInput;
-  if (!input.workspace_id || !input.name || !input.condition || input.threshold === undefined) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  const parsed = createRuleSchema.safeParse(body);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return NextResponse.json(
+      { error: `${first.path.join(".") || "body"}: ${first.message}` },
+      { status: 422 }
+    );
   }
+
+  const input = parsed.data;
 
   const { data, error } = await supabase.from("alert_rules").insert({
     workspace_id: input.workspace_id,
