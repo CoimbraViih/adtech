@@ -157,7 +157,8 @@ const PROVIDERS_LIST: ProviderDef[] = [
           messages: [{ role: "user", content: "Hi" }],
         }),
       });
-      if (r.ok || r.status === 529) return { ok: true, message: "API Key válida — Anthropic conectado." };
+      if (r.ok) return { ok: true, message: "API Key válida — Anthropic conectado." };
+      if (r.status === 529) return { ok: false, message: "Anthropic está sobrecarregado. Tente novamente em instantes." };
       return { ok: false, message: `API Key inválida. (HTTP ${r.status})` };
     },
   },
@@ -193,7 +194,7 @@ const PROVIDERS_LIST: ProviderDef[] = [
       const r = await fetchSafe("https://api.runwayml.com/v1/tasks", {
         headers: { Authorization: `Bearer ${creds.api_key}`, "X-Runway-Version": "2024-11-06" },
       });
-      if (r.ok || r.status === 200) return { ok: true, message: "API Key válida — Runway conectado." };
+      if (r.ok) return { ok: true, message: "API Key válida — Runway conectado." };
       return { ok: false, message: `API Key inválida. (HTTP ${r.status})` };
     },
   },
