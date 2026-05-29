@@ -17,62 +17,62 @@ export default function LandingPage() {
       <CtaBanner />
 
       {/* Waitlist */}
-      <section
-        id="waitlist"
-        className="relative py-24 md:py-32 px-4 sm:px-6 overflow-hidden"
-      >
-        <div
-          className="absolute top-0 inset-x-0 h-px"
-          style={{ background: "linear-gradient(90deg,transparent,rgba(232,57,14,0.3),transparent)" }}
-        />
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            width: 400,
-            height: 400,
-            bottom: 0,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "radial-gradient(circle,rgba(232,57,14,0.06) 0%,transparent 70%)",
-            filter: "blur(60px)",
-          }}
-        />
+      <section id="waitlist" className="border-b" style={{ borderColor: "#1E1E2E" }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+          <div className="grid md:grid-cols-2 gap-12 items-start">
+            {/* Left: copy */}
+            <div>
+              <p
+                className="text-[10px] uppercase tracking-widest mb-3"
+                style={{ color: "#E8390E", fontFamily: "var(--font-manrope),sans-serif" }}
+              >
+                06 — Early Access
+              </p>
+              <h2
+                className="text-2xl md:text-3xl font-bold mb-3"
+                style={{ fontFamily: "var(--font-space-grotesk),sans-serif", color: "#F1F5F9" }}
+              >
+                Entre na lista de espera
+              </h2>
+              <p
+                className="text-sm mb-6 leading-relaxed"
+                style={{ color: "#475569", fontFamily: "var(--font-manrope),sans-serif" }}
+              >
+                As primeiras 100 agências ganham 3 meses de Pro grátis e acesso ao onboarding guiado.
+              </p>
 
-        <div className="relative z-10 max-w-md mx-auto">
-          <div className="text-center mb-10">
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "#E8390E" }}>
-              Early Access
-            </p>
-            <h2
-              className="text-3xl md:text-4xl font-bold mb-3"
-              style={{
-                background: "linear-gradient(135deg,#F1F5F9 30%,#64748B 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
-              Entre na lista
-            </h2>
-            <p className="text-sm" style={{ color: "#475569" }}>
-              Primeiros 100: acesso antecipado + 3 meses de Pro grátis.
-            </p>
-          </div>
+              {/* What you get */}
+              <div className="space-y-2">
+                {[
+                  { metric: "3 meses", label: "Pro grátis no lançamento" },
+                  { metric: "1:1", label: "onboarding com especialista" },
+                  { metric: "Early", label: "acesso a novos módulos" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-3">
+                    <span
+                      className="text-xs font-bold w-16 shrink-0"
+                      style={{
+                        fontFamily: "var(--font-jetbrains),monospace",
+                        color: "#E8390E",
+                      }}
+                    >
+                      {item.metric}
+                    </span>
+                    <span className="text-xs" style={{ color: "#475569" }}>
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-          <div
-            className="relative rounded-2xl p-7 overflow-hidden"
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              border: "1px solid rgba(232,57,14,0.15)",
-              backdropFilter: "blur(20px)",
-              boxShadow: "0 0 50px rgba(232,57,14,0.06), inset 0 1px 0 rgba(255,255,255,0.03)",
-            }}
-          >
+            {/* Right: form */}
             <div
-              className="absolute top-0 inset-x-0 h-px"
-              style={{ background: "linear-gradient(90deg,transparent,rgba(232,57,14,0.4),transparent)" }}
-            />
-            <WaitlistForm />
+              className="p-5 rounded-lg"
+              style={{ background: "#13131F", border: "1px solid #1E1E2E" }}
+            >
+              <WaitlistForm />
+            </div>
           </div>
         </div>
       </section>

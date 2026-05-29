@@ -1,309 +1,219 @@
-import { ParticleCanvas } from "@/components/marketing/particle-canvas";
+// Hero — brand-compliant: compact, data-forward, no decorative empty space.
+// Ref: AdHunter Brand Book §07 "Sem hero gigante vazio"
+
+const METRICS = [
+  { value: "4.8×", label: "ROAS médio", color: "#10B981" },
+  { value: "R$42", label: "CPA médio", color: "#F1F5F9" },
+  { value: "−28%", label: "CPC vs. antes", color: "#10B981" },
+  { value: "R$2M+", label: "verba gerenciada", color: "#94A3B8" },
+];
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center px-4 sm:px-6 py-24">
-      {/* Particle canvas */}
-      <ParticleCanvas />
-
-      {/* Grid overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(232,57,14,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(232,57,14,0.04) 1px,transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-      />
-
-      {/* Ambient orbs */}
-      <div
-        className="absolute rounded-full pointer-events-none"
-        style={{
-          width: 600,
-          height: 600,
-          top: "-20%",
-          left: "60%",
-          background: "radial-gradient(circle,rgba(232,57,14,0.12) 0%,transparent 70%)",
-          animation: "mkt-pulse-glow 6s ease-in-out infinite",
-          filter: "blur(40px)",
-        }}
-      />
-      <div
-        className="absolute rounded-full pointer-events-none"
-        style={{
-          width: 500,
-          height: 500,
-          top: "40%",
-          left: "-15%",
-          background: "radial-gradient(circle,rgba(59,130,246,0.1) 0%,transparent 70%)",
-          animation: "mkt-pulse-glow 8s ease-in-out infinite 2s",
-          filter: "blur(50px)",
-        }}
-      />
-      <div
-        className="absolute rounded-full pointer-events-none"
-        style={{
-          width: 300,
-          height: 300,
-          bottom: "10%",
-          right: "5%",
-          background: "radial-gradient(circle,rgba(139,92,246,0.1) 0%,transparent 70%)",
-          animation: "mkt-pulse-glow 7s ease-in-out infinite 1s",
-          filter: "blur(40px)",
-        }}
-      />
-
-      {/* Content */}
-      <div className="relative z-10 max-w-5xl mx-auto text-center">
-        {/* Status badge */}
-        <div
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8 text-xs font-medium uppercase tracking-widest"
-          style={{
-            background: "rgba(232,57,14,0.08)",
-            border: "1px solid rgba(232,57,14,0.25)",
-            color: "#E8390E",
-            boxShadow: "0 0 20px rgba(232,57,14,0.1)",
-          }}
+    <section className="border-b" style={{ borderColor: "#1E1E2E" }}>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-20">
+        {/* Eyebrow */}
+        <p
+          className="text-xs font-semibold uppercase tracking-widest mb-4"
+          style={{ color: "#E8390E", fontFamily: "var(--font-manrope),sans-serif" }}
         >
-          <span
-            className="w-1.5 h-1.5 rounded-full"
-            style={{
-              background: "#10B981",
-              boxShadow: "0 0 8px #10B981",
-              animation: "mkt-blink 2s ease-in-out infinite",
-            }}
-          />
-          Plataforma all-in-one para agências brasileiras
-        </div>
+          ADTECH · LOOP FECHADO DE OTIMIZAÇÃO
+        </p>
 
         {/* Headline */}
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
-          <span
-            style={{
-              background: "linear-gradient(135deg,#F1F5F9 0%,#94A3B8 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}
-          >
-            Publicidade com IA.
-          </span>
-          <br />
-          <span
-            style={{
-              background: "linear-gradient(135deg,#E8390E 0%,#ff6b35 50%,#ff8c42 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              filter: "drop-shadow(0 0 30px rgba(232,57,14,0.4))",
-            }}
-          >
-            Resultados reais.
-          </span>
+        <h1
+          className="text-4xl md:text-6xl font-bold leading-[1.05] tracking-tight mb-5"
+          style={{
+            fontFamily: "var(--font-space-grotesk),sans-serif",
+            color: "#F1F5F9",
+            maxWidth: 720,
+          }}
+        >
+          Mire melhor.{" "}
+          <span style={{ color: "#E8390E" }}>Gaste menos.</span>
         </h1>
 
         {/* Subheadline */}
         <p
-          className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
-          style={{ color: "#64748B" }}
+          className="text-base md:text-lg mb-8 leading-relaxed"
+          style={{ color: "#64748B", maxWidth: 560, fontFamily: "var(--font-manrope),sans-serif" }}
         >
-          Unifique campanhas Meta e Google, gere criativos com IA, rastreie conversões
-          server-side e otimize com attribution multi-touch — tudo num único painel.
+          15–30% da verba some em anúncios ruins. A AdHunter encontra cada centavo perdido
+          e redireciona ao que converte — automaticamente.
         </p>
 
         {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+        <div className="flex flex-wrap items-center gap-3 mb-12">
           <a
             href="#waitlist"
-            className="relative w-full sm:w-auto px-8 py-3.5 rounded-md text-sm font-semibold uppercase tracking-wider text-white overflow-hidden group"
-            style={{
-              background: "linear-gradient(135deg,#E8390E 0%,#c42d07 100%)",
-              boxShadow: "0 0 30px rgba(232,57,14,0.4), 0 4px 16px rgba(0,0,0,0.3)",
-            }}
+            className="px-5 py-2.5 rounded text-sm font-semibold text-white"
+            style={{ background: "#E8390E" }}
           >
-            <span className="relative z-10">Começar grátis →</span>
+            Entrar na lista de espera
           </a>
           <a
             href="#features"
-            className="w-full sm:w-auto px-8 py-3.5 rounded-md text-sm font-semibold uppercase tracking-wider"
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "#94A3B8",
-              backdropFilter: "blur(8px)",
-            }}
+            className="px-5 py-2.5 rounded text-sm font-semibold"
+            style={{ color: "#94A3B8", border: "1px solid #1E1E2E" }}
           >
-            Ver features
+            Ver como funciona →
           </a>
         </div>
 
-        {/* Stats */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-20 mb-20">
-          {[
-            { value: "R$ 2M+", label: "gasto gerenciado" },
-            { value: "500+", label: "campanhas ativas" },
-            { value: "4.8×", label: "ROAS médio" },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center">
+        {/* Metrics strip */}
+        <div
+          className="grid grid-cols-2 md:grid-cols-4 gap-px"
+          style={{ background: "#1E1E2E", border: "1px solid #1E1E2E", borderRadius: 8 }}
+        >
+          {METRICS.map((m) => (
+            <div
+              key={m.label}
+              className="px-5 py-4"
+              style={{ background: "#0D0D1A" }}
+            >
               <div
-                className="text-3xl font-bold mb-1"
+                className="text-2xl font-bold mb-0.5"
                 style={{
-                  background: "linear-gradient(135deg,#F1F5F9 0%,#E8390E 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
+                  fontFamily: "var(--font-jetbrains),monospace",
+                  color: m.color,
+                  letterSpacing: "-0.02em",
                 }}
               >
-                {stat.value}
+                {m.value}
               </div>
-              <div className="text-xs uppercase tracking-widest" style={{ color: "#475569" }}>
-                {stat.label}
+              <div
+                className="text-[10px] uppercase tracking-widest"
+                style={{ color: "#334155", fontFamily: "var(--font-manrope),sans-serif" }}
+              >
+                {m.label}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Holographic dashboard mockup */}
-        <div
-          className="relative mx-auto max-w-4xl rounded-2xl overflow-hidden"
-          style={{
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(232,57,14,0.2)",
-            boxShadow:
-              "0 0 60px rgba(232,57,14,0.08), 0 0 120px rgba(59,130,246,0.05), inset 0 1px 0 rgba(255,255,255,0.05)",
-            animation: "mkt-float-slow 8s ease-in-out infinite",
-          }}
-        >
-          {/* Browser chrome */}
+        {/* Product preview — anomaly alert card from brand book */}
+        <div className="mt-8 rounded-lg overflow-hidden" style={{ border: "1px solid #1E1E2E" }}>
+          {/* Fake window chrome */}
           <div
-            className="flex items-center gap-2 px-4 py-3 border-b"
-            style={{
-              borderColor: "rgba(232,57,14,0.1)",
-              background: "rgba(255,255,255,0.02)",
-            }}
+            className="flex items-center justify-between px-4 py-2.5 border-b"
+            style={{ background: "#13131F", borderColor: "#1E1E2E" }}
           >
-            {["rgba(232,57,14,0.6)", "rgba(245,158,11,0.4)", "rgba(16,185,129,0.4)"].map((c, i) => (
-              <span
-                key={i}
-                className="w-3 h-3 rounded-full"
-                style={{ background: c, boxShadow: `0 0 6px ${c}` }}
-              />
-            ))}
-            <div
-              className="flex-1 mx-4 h-5 rounded-sm flex items-center justify-center"
-              style={{ background: "rgba(255,255,255,0.04)", maxWidth: 260 }}
-            >
-              <span className="text-[10px] tracking-widest" style={{ color: "#334155" }}>
-                app.adflow.io/dashboard
-              </span>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#EF444440" }} />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#F59E0B40" }} />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#10B98140" }} />
             </div>
+            <span
+              className="text-[10px] uppercase tracking-widest"
+              style={{ color: "#334155", fontFamily: "var(--font-jetbrains),monospace" }}
+            >
+              adhunter.io/campanhas
+            </span>
+            <div />
           </div>
 
           {/* Dashboard content */}
-          <div className="p-5" style={{ background: "rgba(13,13,26,0.9)" }}>
-            {/* KPI row */}
-            <div className="grid grid-cols-4 gap-3 mb-4">
-              {[
-                { label: "ROAS", value: "4.8×", color: "#10B981" },
-                { label: "CPA", value: "R$42", color: "#3B82F6" },
-                { label: "Spend", value: "R$18k", color: "#E8390E" },
-                { label: "Conv.", value: "1.2k", color: "#8B5CF6" },
-              ].map((kpi) => (
-                <div
-                  key={kpi.label}
-                  className="rounded-lg p-3"
+          <div style={{ background: "#0D0D1A" }}>
+            {/* Alert card */}
+            <div
+              className="mx-4 my-4 p-4 rounded-lg"
+              style={{ border: "1px solid #E8390E30", background: "#13131F" }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span
+                  className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded"
                   style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: `1px solid ${kpi.color}22`,
+                    color: "#E8390E",
+                    border: "1px solid #E8390E40",
+                    background: "#E8390E0A",
+                    fontFamily: "var(--font-manrope),sans-serif",
                   }}
                 >
-                  <div className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "#475569" }}>
-                    {kpi.label}
-                  </div>
-                  <div
-                    className="text-base font-bold"
-                    style={{ color: kpi.color, textShadow: `0 0 12px ${kpi.color}80` }}
+                  AdHunter · Campanhas
+                </span>
+                <span className="text-[10px]" style={{ color: "#334155" }}>agora mesmo</span>
+              </div>
+              <p
+                className="text-sm font-semibold mb-1"
+                style={{ color: "#F1F5F9", fontFamily: "var(--font-space-grotesk),sans-serif" }}
+              >
+                Anomalia detectada
+              </p>
+              <p className="text-xs mb-3" style={{ color: "#64748B" }}>
+                CPA subiu 64% nas últimas 6h na campanha "Black Friday — Retargeting".
+              </p>
+              <div className="flex items-center gap-4">
+                <button
+                  className="px-4 py-1.5 rounded text-xs font-semibold text-white"
+                  style={{ background: "#E8390E" }}
+                >
+                  Otimizar agora
+                </button>
+                <button className="text-xs" style={{ color: "#64748B" }}>
+                  Ver detalhes
+                </button>
+              </div>
+              <div
+                className="flex items-center gap-5 mt-3 pt-3"
+                style={{ borderTop: "1px solid #1E1E2E" }}
+              >
+                {[
+                  { label: "CPA", value: "R$41,20", color: "#EF4444", arrow: "▲" },
+                  { label: "ROAS", value: "2.8×", color: "#F59E0B", arrow: "▼" },
+                  { label: "Spend", value: "R$8.940", color: "#94A3B8", arrow: "" },
+                ].map((s) => (
+                  <span
+                    key={s.label}
+                    className="text-[11px]"
+                    style={{ fontFamily: "var(--font-jetbrains),monospace", color: s.color }}
                   >
-                    {kpi.value}
-                  </div>
-                </div>
-              ))}
+                    {s.arrow && `${s.arrow} `}{s.label} {s.value}
+                  </span>
+                ))}
+              </div>
             </div>
 
-            {/* Chart area */}
-            <div className="grid grid-cols-3 gap-3">
-              <div
-                className="col-span-2 rounded-lg p-4 h-40 flex flex-col justify-between"
-                style={{
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(232,57,14,0.08)",
-                }}
-              >
-                <div className="text-[10px] uppercase tracking-widest" style={{ color: "#334155" }}>
-                  Spend últimos 30 dias
-                </div>
-                <div className="flex items-end gap-1 h-24">
-                  {[35, 55, 45, 70, 60, 85, 65, 90, 75, 95, 80, 100].map((h, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 rounded-sm"
-                      style={{
-                        height: `${h}%`,
-                        background: `linear-gradient(to top, rgba(232,57,14,0.7), rgba(232,57,14,0.2))`,
-                        boxShadow: h > 80 ? "0 0 8px rgba(232,57,14,0.4)" : "none",
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div
-                className="rounded-lg p-4 h-40 flex flex-col"
-                style={{
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(59,130,246,0.08)",
-                }}
-              >
-                <div className="text-[10px] uppercase tracking-widest mb-3" style={{ color: "#334155" }}>
-                  Canais
-                </div>
-                <div className="space-y-3 flex-1 flex flex-col justify-center">
+            {/* Campaign table preview */}
+            <div className="px-4 pb-4">
+              <table className="w-full text-[11px]" style={{ fontFamily: "var(--font-jetbrains),monospace" }}>
+                <thead>
+                  <tr style={{ color: "#334155" }}>
+                    {["Campanha", "Status", "ROAS", "CPA", "Spend"].map((h) => (
+                      <th key={h} className="text-left pb-2 font-medium uppercase tracking-wider text-[9px]">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
                   {[
-                    { label: "Meta", pct: 65, color: "#3B82F6" },
-                    { label: "Google", pct: 45, color: "#E8390E" },
-                    { label: "RTB", pct: 25, color: "#8B5CF6" },
-                  ].map((c) => (
-                    <div key={c.label}>
-                      <div className="flex justify-between text-[10px] mb-1" style={{ color: "#475569" }}>
-                        <span>{c.label}</span>
-                        <span style={{ color: c.color }}>{c.pct}%</span>
-                      </div>
-                      <div className="h-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-                        <div
-                          className="h-full rounded-full"
+                    { name: "BF — Prospecting", status: "ativo", roas: "5.2×", cpa: "R$31", spend: "R$4.2k", roasColor: "#10B981", cpaColor: "#10B981" },
+                    { name: "BF — Retargeting", status: "anomalia", roas: "2.8×", cpa: "R$41", spend: "R$8.9k", roasColor: "#F59E0B", cpaColor: "#EF4444" },
+                    { name: "Sempre Ativo — TOFU", status: "ativo", roas: "4.1×", cpa: "R$38", spend: "R$1.8k", roasColor: "#10B981", cpaColor: "#94A3B8" },
+                  ].map((row) => (
+                    <tr key={row.name} style={{ borderTop: "1px solid #1E1E2E" }}>
+                      <td className="py-2" style={{ color: "#94A3B8" }}>{row.name}</td>
+                      <td className="py-2">
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider"
                           style={{
-                            width: `${c.pct}%`,
-                            background: c.color,
-                            boxShadow: `0 0 6px ${c.color}80`,
+                            color: row.status === "anomalia" ? "#E8390E" : "#10B981",
+                            background: row.status === "anomalia" ? "#E8390E0A" : "#10B9810A",
+                            border: `1px solid ${row.status === "anomalia" ? "#E8390E30" : "#10B98130"}`,
                           }}
-                        />
-                      </div>
-                    </div>
+                        >
+                          {row.status}
+                        </span>
+                      </td>
+                      <td className="py-2 font-medium" style={{ color: row.roasColor }}>{row.roas}</td>
+                      <td className="py-2" style={{ color: row.cpaColor }}>{row.cpa}</td>
+                      <td className="py-2" style={{ color: "#64748B" }}>{row.spend}</td>
+                    </tr>
                   ))}
-                </div>
-              </div>
+                </tbody>
+              </table>
             </div>
           </div>
-
-          {/* Scan line */}
-          <div
-            className="absolute inset-x-0 h-px pointer-events-none"
-            style={{
-              background: "linear-gradient(90deg,transparent,rgba(232,57,14,0.6),transparent)",
-              animation: "mkt-scan 4s linear infinite",
-              top: 0,
-            }}
-          />
         </div>
       </div>
     </section>

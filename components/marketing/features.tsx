@@ -1,149 +1,116 @@
 "use client";
 
-import { BarChart2, Sparkles, Radio, LineChart, Zap, Globe } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+// Features — dense grid, Linear.app aesthetic.
+// Ember only on interactive elements. No decorative color.
 
-type Feature = {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  color: string;
-};
-
-const FEATURES: Feature[] = [
+const FEATURES = [
   {
-    icon: BarChart2,
+    index: "01",
     title: "Campanhas Unificadas",
-    description: "Gerencie Meta e Google num único painel. Sincronização automática de métricas em tempo real.",
-    color: "#3B82F6",
+    description: "Meta e Google num único painel. Crie, pause e monitore campanhas com sincronização automática de métricas em tempo real.",
+    tag: "Meta · Google · Programático",
   },
   {
-    icon: Sparkles,
+    index: "02",
     title: "AI Creative Studio",
-    description: "Gere headlines e CTAs com GPT-4o. Score 0-100 com checagem de política embutida.",
-    color: "#E8390E",
+    description: "GPT-4o gera headlines, descrições e CTAs a partir do seu briefing. Score 0–100 com checagem de política Meta/Google embutida.",
+    tag: "Criativos · Copy · Score",
   },
   {
-    icon: Radio,
+    index: "03",
     title: "Pixel Server-Side",
-    description: "Tracking resistente a bloqueadores. Integração nativa com Meta CAPI e Google Enhanced.",
-    color: "#10B981",
+    description: "Tracking resistente a bloqueadores. Fan-out automático para Meta CAPI e Google Enhanced Conversions sem alterar seu site.",
+    tag: "CAPI · Enhanced Conv. · LGPD",
   },
   {
-    icon: LineChart,
+    index: "04",
     title: "Analytics Multi-Touch",
-    description: "Attribution last-click, linear e time-decay. Funil de conversão completo por canal.",
-    color: "#8B5CF6",
+    description: "Attribution last-click, linear e time-decay. Funil de conversão por canal com drill-down por campanha, criativo e público.",
+    tag: "Last-click · Linear · Time-decay",
   },
   {
-    icon: Globe,
+    index: "05",
     title: "Programático RTB",
-    description: "Mídia programática via OpenRTB 2.6. DMP proprietário com segmentação comportamental.",
-    color: "#F59E0B",
+    description: "Compra de mídia via OpenRTB 2.6. DMP proprietário com segmentação por eventos de pixel — sem depender de dados de terceiros.",
+    tag: "OpenRTB 2.6 · DMP · Audiências",
   },
   {
-    icon: Zap,
-    title: "Automação & Alertas",
-    description: "Alertas em tempo real para ROAS, CPA e gasto. Notificações in-app e por e-mail.",
-    color: "#06B6D4",
+    index: "06",
+    title: "Alertas Automáticos",
+    description: "ROAS caiu abaixo do threshold? CPA explodiu? Notificação em minutos, direto no app e por e-mail, com sugestão de ação.",
+    tag: "ROAS · CPA · Spend · CTR",
   },
 ];
 
 export function Features() {
   return (
-    <section
-      id="features"
-      className="relative py-24 md:py-32 px-4 sm:px-6 overflow-hidden"
-    >
-      {/* Grid bg */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)",
-          backgroundSize: "80px 80px",
-        }}
-      />
-      {/* Top separator */}
-      <div
-        className="absolute top-0 inset-x-0 h-px"
-        style={{ background: "linear-gradient(90deg,transparent,rgba(232,57,14,0.3),transparent)" }}
-      />
-
-      <div className="relative z-10 max-w-6xl mx-auto">
-        <div className="text-center mb-14">
-          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "#E8390E" }}>
-            Plataforma
-          </p>
-          <h2
-            className="text-3xl md:text-5xl font-bold mb-4"
-            style={{
-              background: "linear-gradient(135deg,#F1F5F9 30%,#64748B 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}
-          >
-            Tudo que sua agência precisa
-          </h2>
-          <p className="text-sm max-w-xl mx-auto leading-relaxed" style={{ color: "#475569" }}>
-            Um loop fechado: IA gera criativos → campanhas rodam → pixel captura conversões → analytics otimiza → repete.
+    <section id="features" className="border-b" style={{ borderColor: "#1E1E2E" }}>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+        {/* Section header */}
+        <div className="flex items-baseline justify-between mb-8 pb-4" style={{ borderBottom: "1px solid #1E1E2E" }}>
+          <div>
+            <p
+              className="text-[10px] uppercase tracking-widest mb-1"
+              style={{ color: "#E8390E", fontFamily: "var(--font-manrope),sans-serif" }}
+            >
+              02 — Plataforma
+            </p>
+            <h2
+              className="text-2xl md:text-3xl font-bold"
+              style={{ fontFamily: "var(--font-space-grotesk),sans-serif", color: "#F1F5F9" }}
+            >
+              Loop fechado de otimização
+            </h2>
+          </div>
+          <p className="hidden md:block text-sm max-w-xs text-right" style={{ color: "#475569" }}>
+            IA cria → pixel mede → analytics aprende → IA melhora
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {FEATURES.map((feat) => {
-            const Icon = feat.icon;
-            return (
-              <div
-                key={feat.title}
-                className="group relative p-6 rounded-xl overflow-hidden"
-                style={{
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  backdropFilter: "blur(12px)",
-                  transition: "border-color 0.3s, box-shadow 0.3s, transform 0.3s",
-                }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.borderColor = `${feat.color}40`;
-                  el.style.boxShadow = `0 0 30px ${feat.color}12, 0 8px 32px rgba(0,0,0,0.3)`;
-                  el.style.transform = "translateY(-4px)";
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.borderColor = "rgba(255,255,255,0.06)";
-                  el.style.boxShadow = "none";
-                  el.style.transform = "translateY(0)";
-                }}
-              >
-                {/* Top accent line */}
-                <div
-                  className="absolute top-0 inset-x-0 h-px"
-                  style={{ background: `linear-gradient(90deg,transparent,${feat.color}60,transparent)` }}
-                />
-
-                {/* Icon */}
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
+        {/* Feature grid */}
+        <div className="grid md:grid-cols-2 gap-px" style={{ background: "#1E1E2E" }}>
+          {FEATURES.map((f) => (
+            <div
+              key={f.index}
+              className="p-5 group"
+              style={{ background: "#0D0D1A" }}
+            >
+              <div className="flex items-start gap-4">
+                <span
+                  className="text-xs font-medium mt-0.5 shrink-0"
                   style={{
-                    background: `${feat.color}12`,
-                    border: `1px solid ${feat.color}25`,
-                    boxShadow: `0 0 16px ${feat.color}10`,
+                    fontFamily: "var(--font-jetbrains),monospace",
+                    color: "#1E1E2E",
                   }}
                 >
-                  <Icon className="w-5 h-5" style={{ color: feat.color }} />
+                  {f.index}
+                </span>
+                <div>
+                  <h3
+                    className="text-sm font-semibold mb-1.5"
+                    style={{
+                      fontFamily: "var(--font-space-grotesk),sans-serif",
+                      color: "#E2E8F0",
+                    }}
+                  >
+                    {f.title}
+                  </h3>
+                  <p className="text-xs leading-relaxed mb-3" style={{ color: "#475569" }}>
+                    {f.description}
+                  </p>
+                  <p
+                    className="text-[10px] uppercase tracking-wider"
+                    style={{
+                      fontFamily: "var(--font-jetbrains),monospace",
+                      color: "#334155",
+                    }}
+                  >
+                    {f.tag}
+                  </p>
                 </div>
-
-                <h3 className="text-sm font-semibold mb-2" style={{ color: "#E2E8F0" }}>
-                  {feat.title}
-                </h3>
-                <p className="text-xs leading-relaxed" style={{ color: "#475569" }}>
-                  {feat.description}
-                </p>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
     </section>

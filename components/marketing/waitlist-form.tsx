@@ -20,21 +20,16 @@ const clientSchema = z.object({
   }),
 });
 
-const inputStyle = {
+const baseInput: React.CSSProperties = {
   width: "100%",
-  padding: "10px 14px",
-  borderRadius: 8,
+  padding: "8px 12px",
+  borderRadius: 4,
   fontSize: 13,
-  background: "rgba(255,255,255,0.03)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background: "#0D0D1A",
+  border: "1px solid #1E1E2E",
   color: "#E2E8F0",
   outline: "none",
-  transition: "border-color 0.2s, box-shadow 0.2s",
-};
-
-const focusStyle = {
-  borderColor: "rgba(232,57,14,0.6)",
-  boxShadow: "0 0 0 3px rgba(232,57,14,0.1)",
+  fontFamily: "var(--font-manrope),sans-serif",
 };
 
 export function WaitlistForm() {
@@ -49,18 +44,16 @@ export function WaitlistForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
-
     const parsed = clientSchema.safeParse({ name, email, agency_size: agencySize });
     if (!parsed.success) {
-      const fieldErrors: FieldErrors = {};
+      const fe: FieldErrors = {};
       for (const issue of parsed.error.issues) {
-        const field = issue.path[0] as keyof FieldErrors;
-        if (field && field !== "global") fieldErrors[field] = issue.message;
+        const f = issue.path[0] as keyof FieldErrors;
+        if (f && f !== "global") fe[f] = issue.message;
       }
-      setErrors(fieldErrors);
+      setErrors(fe);
       return;
     }
-
     setLoading(true);
     try {
       const res = await fetch("/api/leads", {
@@ -72,10 +65,10 @@ export function WaitlistForm() {
         setSuccess(true);
       } else {
         const body = (await res.json()) as { error?: string };
-        setErrors({ global: body.error ?? "Erro ao enviar. Tente novamente." });
+        setErrors({ global: body.error ?? "Erro ao enviar." });
       }
     } catch {
-      setErrors({ global: "Erro de conexão. Verifique sua internet." });
+      setErrors({ global: "Erro de conexão." });
     } finally {
       setLoading(false);
     }
@@ -83,34 +76,30 @@ export function WaitlistForm() {
 
   if (success) {
     return (
-      <div className="text-center py-10">
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
-          style={{
-            background: "rgba(16,185,129,0.1)",
-            border: "1px solid rgba(16,185,129,0.3)",
-            boxShadow: "0 0 30px rgba(16,185,129,0.2)",
-          }}
+      <div className="py-8 text-center">
+        <p
+          className="text-sm font-semibold mb-1"
+          style={{ color: "#10B981", fontFamily: "var(--font-space-grotesk),sans-serif" }}
         >
-          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="#10B981" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h3 className="text-lg font-bold mb-2" style={{ color: "#F1F5F9" }}>
-          Você está na lista!
-        </h3>
-        <p className="text-sm" style={{ color: "#475569" }}>
-          Entraremos em contato quando sua vaga estiver pronta.
+          Vaga garantida.
+        </p>
+        <p className="text-xs" style={{ color: "#475569" }}>
+          Entraremos em contato quando seu acesso estiver pronto.
         </p>
       </div>
     );
   }
 
+  const focusStyle: React.CSSProperties = { borderColor: "#E8390E" };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-3" noValidate>
       {/* Name */}
       <div>
-        <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: "#475569" }}>
+        <label
+          className="block text-[10px] uppercase tracking-wider mb-1"
+          style={{ color: "#475569", fontFamily: "var(--font-manrope),sans-serif" }}
+        >
           Nome
         </label>
         <input
@@ -121,14 +110,19 @@ export function WaitlistForm() {
           onFocus={() => setFocused("name")}
           onBlur={() => setFocused(null)}
           placeholder="Seu nome"
-          style={{ ...inputStyle, ...(focused === "name" ? focusStyle : {}), caretColor: "#E8390E" }}
+          style={{ ...baseInput, ...(focused === "name" ? focusStyle : {}) }}
         />
-        {errors.name && <p className="mt-1 text-xs" style={{ color: "#EF4444" }}>{errors.name}</p>}
+        {errors.name && (
+          <p className="mt-1 text-[10px]" style={{ color: "#EF4444" }}>{errors.name}</p>
+        )}
       </div>
 
       {/* Email */}
       <div>
-        <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: "#475569" }}>
+        <label
+          className="block text-[10px] uppercase tracking-wider mb-1"
+          style={{ color: "#475569", fontFamily: "var(--font-manrope),sans-serif" }}
+        >
           E-mail profissional
         </label>
         <input
@@ -139,14 +133,19 @@ export function WaitlistForm() {
           onFocus={() => setFocused("email")}
           onBlur={() => setFocused(null)}
           placeholder="voce@suaagencia.com"
-          style={{ ...inputStyle, ...(focused === "email" ? focusStyle : {}), caretColor: "#E8390E" }}
+          style={{ ...baseInput, ...(focused === "email" ? focusStyle : {}) }}
         />
-        {errors.email && <p className="mt-1 text-xs" style={{ color: "#EF4444" }}>{errors.email}</p>}
+        {errors.email && (
+          <p className="mt-1 text-[10px]" style={{ color: "#EF4444" }}>{errors.email}</p>
+        )}
       </div>
 
       {/* Agency size */}
       <div>
-        <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: "#475569" }}>
+        <label
+          className="block text-[10px] uppercase tracking-wider mb-1"
+          style={{ color: "#475569", fontFamily: "var(--font-manrope),sans-serif" }}
+        >
           Tamanho da agência
         </label>
         <select
@@ -155,7 +154,7 @@ export function WaitlistForm() {
           onChange={(e) => setAgencySize(e.target.value)}
           onFocus={() => setFocused("size")}
           onBlur={() => setFocused(null)}
-          style={{ ...inputStyle, ...(focused === "size" ? focusStyle : {}) }}
+          style={{ ...baseInput, ...(focused === "size" ? focusStyle : {}) }}
         >
           <option value="" disabled style={{ background: "#0D0D1A" }}>Selecione...</option>
           {AGENCY_SIZES.map((s) => (
@@ -164,13 +163,15 @@ export function WaitlistForm() {
             </option>
           ))}
         </select>
-        {errors.agency_size && <p className="mt-1 text-xs" style={{ color: "#EF4444" }}>{errors.agency_size}</p>}
+        {errors.agency_size && (
+          <p className="mt-1 text-[10px]" style={{ color: "#EF4444" }}>{errors.agency_size}</p>
+        )}
       </div>
 
       {errors.global && (
         <p
-          className="text-xs px-3 py-2 rounded-lg"
-          style={{ color: "#EF4444", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}
+          className="text-xs px-3 py-2 rounded"
+          style={{ color: "#EF4444", background: "#EF44440A", border: "1px solid #EF444420" }}
         >
           {errors.global}
         </p>
@@ -179,20 +180,17 @@ export function WaitlistForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3 rounded-md text-sm font-semibold uppercase tracking-wider text-white"
+        className="w-full py-2.5 rounded text-sm font-semibold text-white"
         style={{
-          background: loading
-            ? "rgba(232,57,14,0.4)"
-            : "linear-gradient(135deg,#E8390E 0%,#c42d07 100%)",
-          boxShadow: loading ? "none" : "0 0 25px rgba(232,57,14,0.3)",
+          background: loading ? "#7C1A07" : "#E8390E",
           cursor: loading ? "not-allowed" : "pointer",
-          transition: "all 0.2s",
+          fontFamily: "var(--font-manrope),sans-serif",
         }}
       >
         {loading ? "Enviando..." : "Garantir minha vaga →"}
       </button>
 
-      <p className="text-xs text-center" style={{ color: "#334155" }}>
+      <p className="text-[10px] text-center" style={{ color: "#334155" }}>
         Sem spam. Cancele quando quiser.
       </p>
     </form>

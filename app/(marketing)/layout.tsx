@@ -3,29 +3,34 @@ import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
 
 export const metadata: Metadata = {
-  title: "AdFlow — Plataforma de Publicidade com IA para Agências",
+  title: "AdHunter — Mire melhor. Gaste menos.",
   description:
-    "Unifique campanhas Meta e Google, gere criativos com IA, rastreie conversões server-side e otimize com analytics multi-touch em uma única plataforma.",
+    "15–30% da verba some em anúncios ruins. A AdHunter encontra cada centavo perdido e redireciona ao que converte. Loop fechado de otimização com IA.",
   openGraph: {
-    title: "AdFlow — Plataforma de Publicidade com IA",
+    title: "AdHunter — Mire melhor. Gaste menos.",
     description:
-      "Unifique campanhas, geração de criativos com IA e analytics multi-touch numa plataforma só.",
-    url: "https://adflow.app",
-    siteName: "AdFlow",
+      "Plataforma AdTech de performance para gestores de tráfego e agências brasileiras.",
+    url: "https://adhunter.io",
+    siteName: "AdHunter",
     locale: "pt_BR",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AdFlow — Plataforma de Publicidade com IA",
-    description:
-      "Unifique campanhas, geração de criativos com IA e analytics multi-touch numa plataforma só.",
+    title: "AdHunter — Mire melhor. Gaste menos.",
+    description: "Loop fechado de otimização: IA cria, pixel mede, analytics aprende, IA melhora.",
   },
 };
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col min-h-screen bg-[color:var(--adflow-base)]">
+    <div
+      className="flex flex-col min-h-screen"
+      style={{
+        fontFamily: "var(--font-manrope), var(--font-inter), sans-serif",
+        background: "#0D0D1A",
+      }}
+    >
       <MarketingHeader />
       <main className="flex-1">{children}</main>
       <MarketingFooter />
