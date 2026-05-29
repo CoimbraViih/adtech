@@ -50,13 +50,9 @@ export default async function IntegrationsPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[color:var(--adflow-fg)]">Integrações</h1>
-        <p className="text-sm text-[color:var(--adflow-fg-muted)] mt-1">
-          Configure as chaves de API das plataformas que a AdFlow vai gerenciar.
-          As credenciais são criptografadas e armazenadas com segurança.
-        </p>
-      </div>
+      <p className="text-sm text-[color:var(--adflow-fg-muted)] mb-6">
+        Configure as chaves de API das plataformas. As credenciais são criptografadas e armazenadas com segurança.
+      </p>
       <IntegrationsGrid initialCategories={categories} />
     </div>
   );
