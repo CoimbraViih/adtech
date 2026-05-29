@@ -10,6 +10,7 @@ import {
   Settings,
   Layers,
   Users,
+  Plug,
 } from "lucide-react";
 
 export type NavItem = {
@@ -28,5 +29,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Pixel",         href: "/pixel",                   icon: Radio },
   { label: "Landing Pages", href: "/landing-pages",           icon: FileText },
   { label: "Automação",     href: "/automation",              icon: Zap },
+  { label: "Integrações",   href: "/settings/integrations",   icon: Plug },
   { label: "Configurações", href: "/settings",                icon: Settings },
 ];
