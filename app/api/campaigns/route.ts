@@ -4,8 +4,11 @@ import { canManageCampaigns } from "@/lib/auth/roles";
 import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
 import { syncCampaignsFromPlatform } from "@/lib/campaigns/sync";
 import { createCampaignOnPlatform } from "@/lib/campaigns/platform";
+import { createRateLimiter } from "@/lib/security/rate-limit";
 import { z } from "zod";
 import type { CampaignCreateInput } from "@/types/database";
+
+const campaignCreateLimiter = createRateLimiter("campaign-create", 20, 60 * 60 * 1000);
 
 const createSchema = z.object({
   name: z.string().min(3).max(255),
@@ -78,6 +81,13 @@ export async function POST(req: NextRequest) {
 
   if (!canManageCampaigns(session)) {
     return NextResponse.json({ error: "Permissão insuficiente." }, { status: 403 });
+  }
+
+  if (campaignCreateLimiter(session.workspace.id)) {
+    return NextResponse.json(
+      { error: "Limite de criação de campanhas atingido. Tente novamente em 1 hora." },
+      { status: 429 }
+    );
   }
 
   let body: unknown;
