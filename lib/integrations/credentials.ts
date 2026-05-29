@@ -19,7 +19,8 @@ export async function getCredentials(
   try {
     const row = data as { credentials: string };
     return JSON.parse(decrypt(row.credentials)) as Record<string, string>;
-  } catch {
+  } catch (err) {
+    console.error("[credentials] decrypt failed for", provider, (err as Error).message);
     return null;
   }
 }
@@ -42,12 +43,13 @@ export async function upsertCredentials(
 ): Promise<void> {
   const supabase = createServiceClient();
   const encrypted = encrypt(JSON.stringify(fields));
-  await supabase
+  const { error } = await supabase
     .from("org_api_credentials")
     .upsert(
       { organization_id: organizationId, provider, credentials: encrypted },
       { onConflict: "organization_id,provider" }
     );
+  if (error) throw new Error(`Failed to save credentials for ${provider}: ${(error as { message?: string }).message ?? String(error)}`);
 }
 
 export async function deleteCredentials(
@@ -55,11 +57,12 @@ export async function deleteCredentials(
   provider: string
 ): Promise<void> {
   const supabase = createServiceClient();
-  await supabase
+  const { error } = await supabase
     .from("org_api_credentials")
     .delete()
     .eq("organization_id", organizationId)
     .eq("provider", provider);
+  if (error) throw new Error(`Failed to delete credentials for ${provider}: ${(error as { message?: string }).message ?? String(error)}`);
 }
 
 export async function markTested(
@@ -67,11 +70,12 @@ export async function markTested(
   provider: string
 ): Promise<void> {
   const supabase = createServiceClient();
-  await supabase
+  const { error } = await supabase
     .from("org_api_credentials")
     .update({ last_tested_at: new Date().toISOString() })
     .eq("organization_id", organizationId)
     .eq("provider", provider);
+  if (error) console.error("[credentials] markTested failed for", provider, (error as { message?: string }).message);
 }
 
 export async function listCredentialStatuses(
