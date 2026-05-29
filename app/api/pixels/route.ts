@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
     name: parsed.data.name,
     meta_pixel_id: parsed.data.meta_pixel_id ?? null,
     google_tag_id: parsed.data.google_tag_id ?? null,
+    domain: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

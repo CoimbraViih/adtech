@@ -284,6 +284,7 @@ export type Pixel = {
   name: string;
   meta_pixel_id: string | null;
   google_tag_id: string | null;
+  domain: string | null;
   created_at: string;
   updated_at: string;
 };
