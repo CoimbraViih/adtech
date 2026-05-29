@@ -9,7 +9,12 @@ export default async function IntegrationsPage() {
   let session;
   try {
     session = await requireServerSession();
-  } catch {
+  } catch (err) {
+    const isUnauthenticated = err instanceof Error && err.message === "UNAUTHENTICATED";
+    if (!isUnauthenticated) {
+      console.error("[integrations/page] requireServerSession failed unexpectedly:", err);
+      throw err;
+    }
     redirect("/login");
   }
 

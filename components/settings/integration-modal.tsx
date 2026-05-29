@@ -161,7 +161,7 @@ export function IntegrationModal({
             </button>
             <button
               onClick={handleTest}
-              disabled={testing || !configured}
+              disabled={testing || !allFilled}
               className="text-xs bg-[color:var(--adflow-border)] text-[color:var(--adflow-data)] hover:bg-[color:var(--adflow-data)]/10 disabled:opacity-50 rounded-md px-3 py-2 transition-colors"
             >
               {testing ? "Testando…" : "Testar conexão"}
