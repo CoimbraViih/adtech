@@ -3,7 +3,6 @@ import { parsePixelEvent } from "@/lib/pixel/validate";
 import { fanoutToPlatforms } from "@/lib/pixel/fanout";
 import { createServiceClient } from "@/lib/supabase/service";
 import { maskIp } from "@/lib/security/ip";
-import { payloadExceedsLimit } from "@/lib/security/payload";
 import { createRateLimiter } from "@/lib/security/rate-limit";
 import type { Pixel, PixelEventInsert } from "@/types/database";
 
@@ -51,8 +50,14 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
   const { id: pixelId } = await ctx.params;
   const origin = req.headers.get("origin");
 
-  // 1. Payload size guard
-  if (payloadExceedsLimit(req.headers.get("content-length"), PIXEL_PAYLOAD_LIMIT)) {
+  // 1. Payload size guard (reads raw bytes — not bypassable by omitting Content-Length)
+  let bodyText: string;
+  try {
+    bodyText = await req.text();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+  }
+  if (bodyText.length > PIXEL_PAYLOAD_LIMIT) {
     return NextResponse.json({ error: "Payload too large." }, { status: 413 });
   }
 
@@ -71,10 +76,10 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
     return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 
-  // 4. Parse body
+  // 4. Parse body (already read as text above)
   let rawBody: unknown;
   try {
-    rawBody = await req.json();
+    rawBody = JSON.parse(bodyText);
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
@@ -114,7 +119,7 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
   }
 
   // CORS: reject if pixel has a registered domain and origin doesn't match
-  if (pixel.domain && origin && origin !== pixel.domain) {
+  if (pixel.domain && origin !== pixel.domain) {
     return NextResponse.json({ error: "Origin not allowed." }, { status: 403 });
   }
 

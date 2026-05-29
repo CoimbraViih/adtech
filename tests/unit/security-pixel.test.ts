@@ -30,5 +30,11 @@ describe("Pixel endpoint security layers", () => {
       for (let i = 0; i < 1000; i++) check("test-ip");
       expect(check("test-ip")).toBe(true);
     });
+
+    it("blocks after 10000 requests per pixel_id in 60s window", () => {
+      const check = createRateLimiter("pixel-id-test-t3", 10_000, 60_000);
+      for (let i = 0; i < 10_000; i++) check("test-pixel");
+      expect(check("test-pixel")).toBe(true);
+    });
   });
 });
