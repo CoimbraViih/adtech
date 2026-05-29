@@ -16,21 +16,62 @@ export default function LandingPage() {
       <Faq />
       <CtaBanner />
 
-      {/* Waitlist section */}
+      {/* Waitlist */}
       <section
         id="waitlist"
-        className="py-20 md:py-28 px-4 sm:px-6 border-t border-[color:var(--adflow-border)]"
+        className="relative py-24 md:py-32 px-4 sm:px-6 overflow-hidden"
       >
-        <div className="max-w-md mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-[color:var(--adflow-fg)] mb-3">
-              Entre na lista de espera
+        <div
+          className="absolute top-0 inset-x-0 h-px"
+          style={{ background: "linear-gradient(90deg,transparent,rgba(232,57,14,0.3),transparent)" }}
+        />
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            width: 400,
+            height: 400,
+            bottom: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "radial-gradient(circle,rgba(232,57,14,0.06) 0%,transparent 70%)",
+            filter: "blur(60px)",
+          }}
+        />
+
+        <div className="relative z-10 max-w-md mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "#E8390E" }}>
+              Early Access
+            </p>
+            <h2
+              className="text-3xl md:text-4xl font-bold mb-3"
+              style={{
+                background: "linear-gradient(135deg,#F1F5F9 30%,#64748B 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              Entre na lista
             </h2>
-            <p className="text-sm text-[color:var(--adflow-fg-muted)]">
-              Acesso antecipado + 3 meses de Pro grátis para os primeiros 100.
+            <p className="text-sm" style={{ color: "#475569" }}>
+              Primeiros 100: acesso antecipado + 3 meses de Pro grátis.
             </p>
           </div>
-          <div className="p-6 rounded-lg border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)]">
+
+          <div
+            className="relative rounded-2xl p-7 overflow-hidden"
+            style={{
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(232,57,14,0.15)",
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 0 50px rgba(232,57,14,0.06), inset 0 1px 0 rgba(255,255,255,0.03)",
+            }}
+          >
+            <div
+              className="absolute top-0 inset-x-0 h-px"
+              style={{ background: "linear-gradient(90deg,transparent,rgba(232,57,14,0.4),transparent)" }}
+            />
             <WaitlistForm />
           </div>
         </div>

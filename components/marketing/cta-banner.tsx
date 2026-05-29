@@ -1,25 +1,87 @@
 export function CtaBanner() {
   return (
-    <section className="py-20 md:py-28 px-4 sm:px-6 border-t border-[color:var(--adflow-border)]">
-      <div className="max-w-3xl mx-auto text-center">
+    <section className="relative py-24 md:py-32 px-4 sm:px-6 overflow-hidden">
+      <div
+        className="absolute top-0 inset-x-0 h-px"
+        style={{ background: "linear-gradient(90deg,transparent,rgba(232,57,14,0.3),transparent)" }}
+      />
+
+      {/* Orbs */}
+      <div
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          width: 500,
+          height: 500,
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%,-50%)",
+          background: "radial-gradient(circle,rgba(232,57,14,0.08) 0%,transparent 70%)",
+          filter: "blur(60px)",
+          animation: "mkt-pulse-glow 5s ease-in-out infinite",
+        }}
+      />
+      <div
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          width: 300,
+          height: 300,
+          top: "20%",
+          left: "20%",
+          background: "radial-gradient(circle,rgba(59,130,246,0.06) 0%,transparent 70%)",
+          filter: "blur(50px)",
+          animation: "mkt-pulse-glow 7s ease-in-out infinite 1.5s",
+        }}
+      />
+
+      <div className="relative z-10 max-w-3xl mx-auto text-center">
         <div
-          className="rounded-xl p-10 md:p-16"
+          className="relative rounded-2xl px-10 py-16 md:px-16 md:py-20 overflow-hidden"
           style={{
-            background:
-              "radial-gradient(ellipse 100% 100% at 50% 50%, rgba(232,57,14,0.12) 0%, transparent 70%), var(--adflow-surface)",
-            border: "1px solid rgba(232,57,14,0.25)",
+            background: "rgba(232,57,14,0.04)",
+            border: "1px solid rgba(232,57,14,0.2)",
+            backdropFilter: "blur(20px)",
+            boxShadow: "0 0 80px rgba(232,57,14,0.08), inset 0 1px 0 rgba(255,255,255,0.04)",
           }}
         >
-          <h2 className="text-2xl md:text-4xl font-bold text-[color:var(--adflow-fg)] mb-4">
+          {/* Scan line */}
+          <div
+            className="absolute inset-x-0 h-px pointer-events-none"
+            style={{
+              background: "linear-gradient(90deg,transparent,rgba(232,57,14,0.5),transparent)",
+              animation: "mkt-scan 5s linear infinite",
+              top: 0,
+            }}
+          />
+
+          <p className="text-xs uppercase tracking-widest mb-4" style={{ color: "#E8390E" }}>
+            Early Access
+          </p>
+
+          <h2
+            className="text-3xl md:text-5xl font-bold mb-5"
+            style={{
+              background: "linear-gradient(135deg,#F1F5F9 0%,#94A3B8 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
             Pronto para escalar com IA?
           </h2>
-          <p className="text-sm text-[color:var(--adflow-fg-muted)] mb-8 max-w-md mx-auto leading-relaxed">
-            Entre na lista de espera e ganhe 3 meses de Pro grátis para agências que fizerem
-            onboarding no lançamento.
+
+          <p className="text-sm mb-8 max-w-md mx-auto leading-relaxed" style={{ color: "#475569" }}>
+            Entre na lista e ganhe{" "}
+            <span style={{ color: "#E8390E", fontWeight: 600 }}>3 meses de Pro grátis</span>
+            {" "}para agências que fizerem onboarding no lançamento.
           </p>
+
           <a
             href="#waitlist"
-            className="inline-block px-8 py-3 rounded-md bg-[color:var(--adflow-accent)] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-md text-sm font-semibold uppercase tracking-wider text-white"
+            style={{
+              background: "linear-gradient(135deg,#E8390E 0%,#c42d07 100%)",
+              boxShadow: "0 0 30px rgba(232,57,14,0.4), 0 4px 16px rgba(0,0,0,0.3)",
+            }}
           >
             Garantir minha vaga →
           </a>

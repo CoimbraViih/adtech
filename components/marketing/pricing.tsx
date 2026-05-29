@@ -15,11 +15,11 @@ const PLANS: Plan[] = [
     name: "Free",
     price: "R$ 0",
     period: "/mês",
-    description: "Para testar a plataforma com uma conta.",
+    description: "Para testar a plataforma.",
     features: [
       "1 workspace",
       "Até 5 campanhas ativas",
-      "AI Creative Studio (10 gerações/mês)",
+      "AI Creative Studio (10/mês)",
       "1 pixel de tracking",
       "Analytics básico (30 dias)",
     ],
@@ -30,13 +30,13 @@ const PLANS: Plan[] = [
     name: "Pro",
     price: "R$ 500",
     period: "/mês",
-    description: "Para agências em crescimento gerenciando múltiplos clientes.",
+    description: "Para agências em crescimento.",
     features: [
       "Até 10 workspaces",
       "Campanhas ilimitadas",
       "AI Creative Studio ilimitado",
       "Pixels ilimitados",
-      "Analytics completo + atribuição multi-touch",
+      "Analytics completo + multi-touch",
       "Alertas automáticos",
       "Suporte via e-mail",
     ],
@@ -47,7 +47,7 @@ const PLANS: Plan[] = [
     name: "Agency",
     price: "R$ 3.000",
     period: "/mês",
-    description: "Para grandes agências e grupos de mídia programática.",
+    description: "Para grandes grupos de mídia.",
     features: [
       "Tudo do Pro",
       "Workspaces ilimitados",
@@ -66,47 +66,109 @@ export function Pricing() {
   return (
     <section
       id="pricing"
-      className="py-20 md:py-28 px-4 sm:px-6 border-t border-[color:var(--adflow-border)]"
+      className="relative py-24 md:py-32 px-4 sm:px-6 overflow-hidden"
     >
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl md:text-4xl font-bold text-[color:var(--adflow-fg)] mb-3">
-            Planos simples, sem surpresas
+      <div
+        className="absolute top-0 inset-x-0 h-px"
+        style={{ background: "linear-gradient(90deg,transparent,rgba(232,57,14,0.3),transparent)" }}
+      />
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          width: 600,
+          height: 600,
+          top: "20%",
+          left: "30%",
+          background: "radial-gradient(circle,rgba(232,57,14,0.05) 0%,transparent 70%)",
+          filter: "blur(80px)",
+        }}
+      />
+
+      <div className="relative z-10 max-w-5xl mx-auto">
+        <div className="text-center mb-14">
+          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "#E8390E" }}>
+            Planos
+          </p>
+          <h2
+            className="text-3xl md:text-5xl font-bold mb-4"
+            style={{
+              background: "linear-gradient(135deg,#F1F5F9 30%,#64748B 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            Simples. Sem surpresas.
           </h2>
-          <p className="text-sm text-[color:var(--adflow-fg-muted)]">
+          <p className="text-sm" style={{ color: "#475569" }}>
             Comece grátis. Escale conforme sua agência cresce.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-3 gap-5 items-start">
           {PLANS.map((plan) => (
             <div
               key={plan.name}
-              className={`relative p-6 rounded-lg border flex flex-col ${
+              className="relative p-6 rounded-xl flex flex-col overflow-hidden"
+              style={
                 plan.highlighted
-                  ? "border-[color:var(--adflow-accent)] bg-[color:var(--adflow-surface)]"
-                  : "border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)]"
-              }`}
+                  ? {
+                      background: "rgba(232,57,14,0.04)",
+                      border: "1px solid rgba(232,57,14,0.35)",
+                      boxShadow: "0 0 50px rgba(232,57,14,0.1), 0 0 100px rgba(232,57,14,0.05)",
+                      backdropFilter: "blur(16px)",
+                    }
+                  : {
+                      background: "rgba(255,255,255,0.02)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      backdropFilter: "blur(12px)",
+                    }
+              }
             >
+              {/* Top line */}
+              <div
+                className="absolute top-0 inset-x-0 h-px"
+                style={{
+                  background: plan.highlighted
+                    ? "linear-gradient(90deg,transparent,#E8390E,transparent)"
+                    : "linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent)",
+                }}
+              />
+
               {plan.highlighted && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="px-3 py-0.5 rounded-full bg-[color:var(--adflow-accent)] text-white text-xs font-semibold">
-                    Mais popular
-                  </span>
+                <div
+                  className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-white"
+                  style={{
+                    background: "linear-gradient(135deg,#E8390E,#c42d07)",
+                    boxShadow: "0 0 16px rgba(232,57,14,0.5)",
+                  }}
+                >
+                  Mais popular
                 </div>
               )}
 
-              <div className="mb-4">
-                <h3 className="text-xs font-semibold text-[color:var(--adflow-fg-muted)] mb-1 uppercase tracking-wide">
+              <div className="mb-5">
+                <p
+                  className="text-[10px] uppercase tracking-widest mb-2"
+                  style={{ color: plan.highlighted ? "#E8390E" : "#475569" }}
+                >
                   {plan.name}
-                </h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-[color:var(--adflow-fg)]">
+                </p>
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span
+                    className="text-4xl font-bold"
+                    style={{
+                      color: plan.highlighted ? "#F1F5F9" : "#94A3B8",
+                      textShadow: plan.highlighted ? "0 0 20px rgba(232,57,14,0.3)" : "none",
+                    }}
+                  >
                     {plan.price}
                   </span>
-                  <span className="text-sm text-[color:var(--adflow-fg-muted)]">{plan.period}</span>
+                  <span className="text-xs" style={{ color: "#475569" }}>
+                    {plan.period}
+                  </span>
                 </div>
-                <p className="text-xs text-[color:var(--adflow-fg-muted)] mt-2">
+                <p className="text-xs" style={{ color: "#475569" }}>
                   {plan.description}
                 </p>
               </div>
@@ -114,19 +176,36 @@ export function Pricing() {
               <ul className="space-y-2.5 flex-1 mb-6">
                 {plan.features.map((feat) => (
                   <li key={feat} className="flex items-start gap-2">
-                    <Check className="w-3.5 h-3.5 text-[color:var(--adflow-success)] shrink-0 mt-0.5" />
-                    <span className="text-xs text-[color:var(--adflow-fg)]">{feat}</span>
+                    <Check
+                      className="w-3.5 h-3.5 shrink-0 mt-0.5"
+                      style={{
+                        color: plan.highlighted ? "#E8390E" : "#10B981",
+                        filter: plan.highlighted ? "drop-shadow(0 0 4px rgba(232,57,14,0.6))" : "none",
+                      }}
+                    />
+                    <span className="text-xs" style={{ color: "#64748B" }}>
+                      {feat}
+                    </span>
                   </li>
                 ))}
               </ul>
 
               <a
                 href="#waitlist"
-                className={`block w-full text-center py-2 rounded-md text-sm font-semibold transition-opacity ${
+                className="block w-full text-center py-2.5 rounded-md text-xs font-semibold uppercase tracking-wider"
+                style={
                   plan.highlighted
-                    ? "bg-[color:var(--adflow-accent)] text-white hover:opacity-90"
-                    : "border border-[color:var(--adflow-border)] text-[color:var(--adflow-fg)] hover:border-[color:var(--adflow-fg-muted)]"
-                }`}
+                    ? {
+                        background: "linear-gradient(135deg,#E8390E,#c42d07)",
+                        color: "#fff",
+                        boxShadow: "0 0 20px rgba(232,57,14,0.35)",
+                      }
+                    : {
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        color: "#64748B",
+                      }
+                }
               >
                 {plan.cta}
               </a>
