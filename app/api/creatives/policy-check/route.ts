@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireServerSession } from "@/lib/supabase/server";
 import { checkPolicy } from "@/lib/ai/openai";
+import { createRateLimiter } from "@/lib/security/rate-limit";
 import { z } from "zod";
+
+const policyLimiter = createRateLimiter("ai-policy", 30, 60 * 60 * 1000);
 
 const schema = z.object({
   creative_id: z.string().optional(),
@@ -12,10 +15,18 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+  }
+
+  if (policyLimiter(session.workspace.id)) {
+    return NextResponse.json(
+      { error: "Limite de verificações atingido. Tente novamente em 1 hora." },
+      { status: 429 }
+    );
   }
 
   let body: unknown;
@@ -59,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error("[creatives/policy-check]", err);
+    console.error("[creatives/policy-check]", (err as Error).message);
     return NextResponse.json(
       { error: "Erro ao verificar políticas. Tente novamente." },
       { status: 502 }
