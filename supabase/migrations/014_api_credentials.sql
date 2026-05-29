@@ -45,6 +45,12 @@ CREATE POLICY "api_creds: owners and admins can update"
       SELECT organization_id FROM organization_members
       WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
     )
+  )
+  WITH CHECK (
+    organization_id IN (
+      SELECT organization_id FROM organization_members
+      WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
+    )
   );
 
 CREATE POLICY "api_creds: owners and admins can delete"
