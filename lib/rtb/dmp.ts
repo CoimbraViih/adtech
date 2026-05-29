@@ -9,12 +9,12 @@ import { createServiceClient } from "@/lib/supabase/service";
  * AND audience_id IN (SELECT id FROM audiences WHERE workspace_id = workspaceId)
  */
 export async function matchUserToSegments(
-  userIdHash: string,
+  userId: string,
   workspaceId: string
 ): Promise<string[]> {
-  if (!userIdHash) return [];
+  if (!userId) return [];
 
-  const userHash = createHash("sha256").update(userIdHash).digest("hex");
+  const userHash = createHash("sha256").update(userId).digest("hex");
   const supabase = createServiceClient();
   const { data: optOut } = await supabase
     .from("dmp_optouts")
