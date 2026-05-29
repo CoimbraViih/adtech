@@ -87,17 +87,12 @@ async function getMetaCredentials(organizationId: string) {
     getCredentialField(organizationId, "meta", "access_token", "META_ACCESS_TOKEN"),
     getCredentialField(organizationId, "meta", "ad_account_id", "META_AD_ACCOUNT_ID"),
   ]);
-  return { token: token ?? "", accountId: accountId ?? "" };
-}
-
-function getCredentials(accessToken?: string, adAccountId?: string) {
-  const token = accessToken ?? process.env.META_ACCESS_TOKEN;
-  const account = adAccountId ?? process.env.META_AD_ACCOUNT_ID;
-
-  if (!token) throw new Error("META_ACCESS_TOKEN is not configured");
-  if (!account) throw new Error("META_AD_ACCOUNT_ID is not configured");
-
-  return { token, account: account.startsWith("act_") ? account : `act_${account}` };
+  if (!token) throw new Error("Meta Ads Access Token não configurado. Configure em Settings → Integrações.");
+  if (!accountId) throw new Error("Meta Ads Account ID não configurado. Configure em Settings → Integrações.");
+  return {
+    token,
+    account: accountId.startsWith("act_") ? accountId : `act_${accountId}`,
+  };
 }
 
 async function metaFetch<T>(
@@ -132,11 +127,7 @@ export async function listMetaCampaigns(
     status?: MetaCampaignStatus[];
   }
 ): Promise<MetaCampaign[]> {
-  const dbCreds = await getMetaCredentials(organizationId);
-  const { token, account } = getCredentials(
-    (opts?.accessToken ?? dbCreds.token) || undefined,
-    (opts?.adAccountId ?? dbCreds.accountId) || undefined
-  );
+  const { token, account } = await getMetaCredentials(organizationId);
 
   const fields = "id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time";
   const statusFilter = opts?.status?.join(",") ?? "ACTIVE,PAUSED";
@@ -165,11 +156,7 @@ export async function createMetaCampaign(
   },
   opts?: { accessToken?: string; adAccountId?: string }
 ): Promise<string> {
-  const dbCreds = await getMetaCredentials(organizationId);
-  const { token, account } = getCredentials(
-    (opts?.accessToken ?? dbCreds.token) || undefined,
-    (opts?.adAccountId ?? dbCreds.accountId) || undefined
-  );
+  const { token, account } = await getMetaCredentials(organizationId);
 
   const body: MetaCreateCampaignInput = {
     name: input.name,
@@ -214,8 +201,7 @@ export async function updateMetaCampaign(
   update: { status?: CampaignStatus; dailyBudget?: number },
   opts?: { accessToken?: string }
 ): Promise<void> {
-  const dbCreds = await getMetaCredentials(organizationId);
-  const { token } = getCredentials((opts?.accessToken ?? dbCreds.token) || undefined);
+  const { token } = await getMetaCredentials(organizationId);
 
   const body: Record<string, string> = {};
   if (update.status) body.status = STATUS_MAP[update.status];
@@ -248,8 +234,7 @@ export async function getMetaCampaignInsights(
     accessToken?: string;
   } = {}
 ): Promise<MetaInsights[]> {
-  const dbCreds = await getMetaCredentials(organizationId);
-  const { token } = getCredentials((opts.accessToken ?? dbCreds.token) || undefined);
+  const { token } = await getMetaCredentials(organizationId);
 
   const fields = "campaign_id,spend,impressions,clicks,actions,purchase_roas,date_start,date_stop";
   const timeRange = opts.since && opts.until

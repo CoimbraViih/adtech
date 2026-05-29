@@ -56,14 +56,12 @@ export async function GET(req: NextRequest) {
   if (status) campaigns = campaigns.filter((c) => c.status === status);
 
   // Optional: sync from external platforms before returning
-  if (sync && !process.env.META_ACCESS_TOKEN && !process.env.GOOGLE_ADS_DEVELOPER_TOKEN) {
-    // Skip sync in dev when credentials are not configured
-  } else if (sync) {
+  if (sync) {
     try {
       await syncCampaignsFromPlatform(session.workspace.id, session.organization.id);
     } catch (err) {
-      console.error("[campaigns/sync] error:", err);
-      // Non-fatal: return stale data
+      console.error("[campaigns/sync] error:", (err as Error).message);
+      // Non-fatal: credentials not configured or API unreachable — return stale data
     }
   }
 
