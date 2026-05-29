@@ -17,8 +17,11 @@ export function createRateLimiter(
   limit: number,
   windowMs: number
 ): (id: string) => boolean {
-  if (!stores.has(name)) stores.set(name, new Map());
-  const store = stores.get(name)!;
+  let store = stores.get(name);
+  if (!store) {
+    store = new Map();
+    stores.set(name, store);
+  }
 
   return function check(id: string): boolean {
     const now = Date.now();
