@@ -588,3 +588,21 @@ export type Subscription = {
   created_at: string;
   updated_at: string;
 };
+
+// ─── Integrations ─────────────────────────────────────────────────────────────
+
+export type OrgApiCredential = {
+  id: string;
+  organization_id: string;
+  provider: string;
+  credentials: string; // AES-256-GCM encrypted blob — never plaintext
+  last_tested_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type IntegrationStatus = {
+  provider: string;
+  configured: boolean;
+  last_tested_at: string | null;
+};
