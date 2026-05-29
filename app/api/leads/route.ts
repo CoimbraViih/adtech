@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseLeadInput } from "@/lib/leads/schema";
 import { createServiceClient } from "@/lib/supabase/service";
+import { payloadExceedsLimit } from "@/lib/security/payload";
+
+const LEAD_PAYLOAD_LIMIT = 5 * 1024;
 
 // In-memory rate limit: IP → { count, resetAt }
 // 10 requests per IP per hour — sufficient for MVP (single-instance)
@@ -21,6 +24,10 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  if (payloadExceedsLimit(req.headers.get("content-length"), LEAD_PAYLOAD_LIMIT)) {
+    return NextResponse.json({ error: "Payload muito grande." }, { status: 413 });
+  }
+
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
     req.headers.get("x-real-ip") ??
@@ -62,7 +69,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
 
   if (dbError) {
-    console.error("[leads/POST] db error:", dbError);
+    const _err = dbError as { code?: string };
+    console.error("[leads/POST] db error code:", _err.code);
     return NextResponse.json({ error: "Erro ao salvar. Tente novamente." }, { status: 500 });
   }
 

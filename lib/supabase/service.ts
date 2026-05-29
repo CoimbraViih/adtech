@@ -19,6 +19,7 @@ type Chain = {
   order: (col: string, opts?: Record<string, unknown>) => Chain;
   limit: (n: number) => Chain;
   single: () => Promise<{ data: unknown; error: unknown }>;
+  maybeSingle: () => Promise<{ data: unknown; error: unknown }>;
   then: (
     resolve: (v: { data: unknown; error: unknown }) => void,
     reject?: (reason?: unknown) => void
@@ -48,6 +49,7 @@ export function createServiceClient(): SupabaseServiceClient {
       order: () => chain,
       limit: () => chain,
       single: async () => ({ data: null, error: { message: "service client not configured" } }),
+      maybeSingle: async () => ({ data: null, error: null }),
       then: async (resolve) => resolve({ data: null, error: null }),
     };
     return chain;

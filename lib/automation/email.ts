@@ -44,7 +44,8 @@ export async function sendAlertEmail({
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    console.error("[automation] Resend error:", res.status, text);
+    console.error("[email] send failed:", res.status);
+    return;
   }
+  console.info("[email] alert email queued");
 }

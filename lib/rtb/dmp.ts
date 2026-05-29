@@ -1,5 +1,7 @@
 import type { Audience } from "@/types/database";
 import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
+import { createHash } from "crypto";
+import { createServiceClient } from "@/lib/supabase/service";
 
 /**
  * Returns audience IDs that match the given user.
@@ -10,12 +12,20 @@ export async function matchUserToSegments(
   userIdHash: string,
   workspaceId: string
 ): Promise<string[]> {
+  if (!userIdHash) return [];
+
+  const userHash = createHash("sha256").update(userIdHash).digest("hex");
+  const supabase = createServiceClient();
+  const { data: optOut } = await supabase
+    .from("dmp_optouts")
+    .select("user_hash")
+    .eq("user_hash", userHash)
+    .maybeSingle();
+
+  if (optOut) return [];
+
   // workspaceId reserved for future Supabase swap-in
   void workspaceId;
-
-  if (!userIdHash) {
-    return [];
-  }
 
   return MOCK_AUDIENCES.slice(0, 2).map((a) => a.id);
 }

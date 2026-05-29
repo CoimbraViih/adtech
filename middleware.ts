@@ -26,6 +26,7 @@ const PUBLIC_PATHS = [
   "/api/health",
   "/api/pixel",          // M4 — public ingestion endpoint
   "/api/leads",          // M6 — public waitlist endpoint
+  "/api/audiences/optout", // LGPD — DMP opt-out endpoint (no auth required)
   "/api/auth/dev-login", // dev-only shortcut — blocked in prod by route handler
 ];
 
