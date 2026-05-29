@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
-import { payloadExceedsLimit } from "@/lib/security/payload";
 import { createRateLimiter } from "@/lib/security/rate-limit";
 import { createHash } from "crypto";
 
@@ -12,10 +11,6 @@ const optOutSchema = z.object({
 const optOutLimiter = createRateLimiter("dmp-optout", 10, 60 * 60 * 1000);
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  if (payloadExceedsLimit(req.headers.get("content-length"), 1024)) {
-    return NextResponse.json({ error: "Payload too large." }, { status: 413 });
-  }
-
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
     req.headers.get("x-real-ip") ??
@@ -25,9 +20,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 
+  let bodyText: string;
+  try {
+    bodyText = await req.text();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+  }
+  if (bodyText.length > 1024) {
+    return NextResponse.json({ error: "Payload too large." }, { status: 413 });
+  }
+
   let body: unknown;
   try {
-    body = await req.json();
+    body = JSON.parse(bodyText);
   } catch {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }

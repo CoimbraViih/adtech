@@ -12,8 +12,8 @@ export async function GET(request: Request) {
   const storedState = cookieStore.get("oauth_state")?.value;
   const incomingState = searchParams.get("state");
 
-  if (storedState && incomingState && storedState !== incomingState) {
-    console.warn("[callback] CSRF state mismatch — aborting");
+  if (!storedState || !incomingState || storedState !== incomingState) {
+    console.warn("[callback] CSRF state missing or mismatch — aborting");
     return NextResponse.redirect(`${origin}/login?error=invalid_state`);
   }
 

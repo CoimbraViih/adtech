@@ -46,9 +46,9 @@ export async function evaluateAudienceRules(
 
 /**
  * Hashes a user identifier (cookie/fingerprint) for privacy-safe storage.
- * Uses a simple base64 placeholder — real implementation uses crypto.subtle.
- * TODO(M8-backend): replace with crypto.subtle.digest SHA-256
+ * Uses SHA-256 via Node.js crypto module.
  */
 export function hashUserId(rawId: string): string {
-  return btoa(rawId).replace(/=/g, "").slice(0, 32);
+  if (!rawId) return "";
+  return createHash("sha256").update(rawId).digest("hex");
 }
