@@ -42,8 +42,8 @@ const mockEvent: PixelEvent = {
 describe("fanoutToPlatforms", () => {
   it("calls both adapters when pixel has both IDs configured", async () => {
     await fanoutToPlatforms(mockEvent, mockPixel);
-    expect(sendMetaCapiEvent).toHaveBeenCalledWith(mockEvent, mockPixel.meta_pixel_id);
-    expect(sendGoogleEcEvent).toHaveBeenCalledWith(mockEvent, mockPixel.google_tag_id);
+    expect(sendMetaCapiEvent).toHaveBeenCalledWith("", mockEvent, mockPixel.meta_pixel_id);
+    expect(sendGoogleEcEvent).toHaveBeenCalledWith("", mockEvent, mockPixel.google_tag_id);
   });
 
   it("skips Meta CAPI when meta_pixel_id is null", async () => {

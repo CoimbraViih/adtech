@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await checkPolicy(parsed.data);
+    const result = await checkPolicy(session.organization.id, parsed.data);
 
     // TODO(M3-backend): persist policy result to creatives table
     // if (parsed.data.creative_id) {

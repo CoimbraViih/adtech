@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await scoreCreative(parsed.data);
+    const result = await scoreCreative(session.organization.id, parsed.data);
 
     // TODO(M3-backend): persist score to creatives table
     // if (parsed.data.creative_id) {

@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const variations = await generateCopyVariations(safeBriefing, parsed.data.count);
+    const variations = await generateCopyVariations(session.organization.id, safeBriefing, parsed.data.count);
     return NextResponse.json({ variations });
   } catch (err) {
     console.error("[creatives/generate/copy]", (err as Error).message);

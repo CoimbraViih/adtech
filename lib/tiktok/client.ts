@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TikTok Ads API client wrapper.
  * Docs: https://ads.tiktok.com/marketing_api/docs
  * API version: v1.3
@@ -8,8 +8,17 @@
  */
 
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
+import { getCredentialField } from "@/lib/integrations/credentials";
 
 const BASE_URL = "https://business-api.tiktok.com/open_api/v1.3";
+
+async function getTikTokCredentials(organizationId: string) {
+  const [token, advertiserId] = await Promise.all([
+    getCredentialField(organizationId, "tiktok", "access_token", "TIKTOK_ACCESS_TOKEN"),
+    getCredentialField(organizationId, "tiktok", "advertiser_id", "TIKTOK_ADVERTISER_ID"),
+  ]);
+  return { token: token ?? "", advertiserId: advertiserId ?? "" };
+}
 
 function getAccessToken(override?: string) {
   return override ?? process.env.TIKTOK_ACCESS_TOKEN ?? "";
@@ -46,10 +55,12 @@ export type TikTokCampaignInput = {
 };
 
 export async function listTikTokCampaigns(
+  organizationId: string,
   opts?: { accessToken?: string; advertiserId?: string }
 ): Promise<{ id: string; name: string; status: string; budget: number }[]> {
-  const token = getAccessToken(opts?.accessToken);
-  const advertiserId = getAdvertiserId(opts?.advertiserId);
+  const dbCreds = await getTikTokCredentials(organizationId);
+  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
+  const advertiserId = getAdvertiserId((opts?.advertiserId ?? dbCreds.advertiserId) || undefined);
 
   if (!token || !advertiserId) return [];
 
@@ -72,11 +83,13 @@ export async function listTikTokCampaigns(
 }
 
 export async function createTikTokCampaign(
+  organizationId: string,
   input: TikTokCampaignInput,
   opts?: { accessToken?: string; advertiserId?: string }
 ): Promise<string> {
-  const token = getAccessToken(opts?.accessToken);
-  const advertiserId = getAdvertiserId(opts?.advertiserId);
+  const dbCreds = await getTikTokCredentials(organizationId);
+  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
+  const advertiserId = getAdvertiserId((opts?.advertiserId ?? dbCreds.advertiserId) || undefined);
 
   if (!token || !advertiserId) {
     throw new Error("TIKTOK_ACCESS_TOKEN and TIKTOK_ADVERTISER_ID are required");
@@ -116,12 +129,14 @@ export async function createTikTokCampaign(
 }
 
 export async function updateTikTokCampaign(
+  organizationId: string,
   campaignId: string,
   updates: { status?: CampaignStatus; dailyBudget?: number },
   opts?: { accessToken?: string; advertiserId?: string }
 ): Promise<void> {
-  const token = getAccessToken(opts?.accessToken);
-  const advertiserId = getAdvertiserId(opts?.advertiserId);
+  const dbCreds = await getTikTokCredentials(organizationId);
+  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
+  const advertiserId = getAdvertiserId((opts?.advertiserId ?? dbCreds.advertiserId) || undefined);
 
   if (!token || !advertiserId) {
     throw new Error("TIKTOK_ACCESS_TOKEN and TIKTOK_ADVERTISER_ID are required");
@@ -154,11 +169,13 @@ export async function updateTikTokCampaign(
 }
 
 export async function getTikTokCampaignInsights(
+  organizationId: string,
   campaignId: string,
   opts?: { accessToken?: string; advertiserId?: string }
 ): Promise<{ spend: number; impressions: number; clicks: number; conversions: number }> {
-  const token = getAccessToken(opts?.accessToken);
-  const advertiserId = getAdvertiserId(opts?.advertiserId);
+  const dbCreds = await getTikTokCredentials(organizationId);
+  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
+  const advertiserId = getAdvertiserId((opts?.advertiserId ?? dbCreds.advertiserId) || undefined);
 
   if (!token || !advertiserId) return { spend: 0, impressions: 0, clicks: 0, conversions: 0 };
 

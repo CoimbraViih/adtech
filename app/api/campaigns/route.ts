@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
     // Skip sync in dev when credentials are not configured
   } else if (sync) {
     try {
-      await syncCampaignsFromPlatform(session.workspace.id);
+      await syncCampaignsFromPlatform(session.workspace.id, session.organization.id);
     } catch (err) {
       console.error("[campaigns/sync] error:", err);
       // Non-fatal: return stale data
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
   let externalId: string | null = null;
   if (input.platform !== "programmatic") {
     try {
-      externalId = await createCampaignOnPlatform(input);
+      externalId = await createCampaignOnPlatform(session.organization.id, input);
     } catch (err) {
       console.error(`[campaigns/create] platform error:`, err);
       // Non-fatal for MVP: save locally without external ID

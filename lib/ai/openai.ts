@@ -1,14 +1,16 @@
 import type { CopyVariation, ScoreBreakdown, PolicyItem } from "@/types/database";
+import { getCredentialField } from "@/lib/integrations/credentials";
 
 const OPENAI_API_URL = "https://api.openai.com/v1";
 
-function apiKey(): string {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY não configurada.");
+async function getApiKey(organizationId: string): Promise<string> {
+  const key = await getCredentialField(organizationId, "openai", "api_key", "OPENAI_API_KEY");
+  if (!key) throw new Error("OPENAI_API_KEY não configurada. Configure em Settings → Integrações.");
   return key;
 }
 
 async function chatCompletion(
+  apiKey: string,
   messages: { role: "system" | "user" | "assistant"; content: string }[],
   opts: { model?: string; temperature?: number; maxRetries?: number } = {}
 ): Promise<string> {
@@ -20,7 +22,7 @@ async function chatCompletion(
       const res = await fetch(`${OPENAI_API_URL}/chat/completions`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey()}`,
+          Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ model, temperature, messages }),
@@ -47,9 +49,12 @@ async function chatCompletion(
 // ── Copy generation ───────────────────────────────────────────────────────────
 
 export async function generateCopyVariations(
+  organizationId: string,
   briefing: string,
   count: number = 4
 ): Promise<CopyVariation[]> {
+  const key = await getApiKey(organizationId);
+
   const system = `Você é um especialista em copywriting para anúncios digitais (Meta Ads e Google Ads).
 Gere exatamente ${count} variações de copy para anúncio com base no briefing do usuário.
 Responda APENAS com um JSON array válido, sem markdown, nenhum texto extra.
@@ -59,7 +64,7 @@ Regras:
 - description: 60-150 caracteres, benefício claro
 - cta: 2-4 palavras, verbo no imperativo`;
 
-  const raw = await chatCompletion([
+  const raw = await chatCompletion(key, [
     { role: "system", content: system },
     { role: "user", content: briefing },
   ]);
@@ -74,13 +79,18 @@ Regras:
 
 // ── Quality score ─────────────────────────────────────────────────────────────
 
-export async function scoreCreative(creative: {
-  type: string;
-  headline?: string | null;
-  description?: string | null;
-  cta?: string | null;
-  prompt?: string | null;
-}): Promise<{ score: number; breakdown: ScoreBreakdown }> {
+export async function scoreCreative(
+  organizationId: string,
+  creative: {
+    type: string;
+    headline?: string | null;
+    description?: string | null;
+    cta?: string | null;
+    prompt?: string | null;
+  }
+): Promise<{ score: number; breakdown: ScoreBreakdown }> {
+  const key = await getApiKey(organizationId);
+
   const content = [
     creative.headline && `Headline: ${creative.headline}`,
     creative.description && `Descrição: ${creative.description}`,
@@ -101,7 +111,7 @@ Critérios:
 - compliance (0-20): probabilidade de passar pelas políticas Meta/Google
 - relevance (0-20): relevância percebida para o público-alvo`;
 
-  const raw = await chatCompletion([
+  const raw = await chatCompletion(key, [
     { role: "system", content: system },
     { role: "user", content: content },
   ], { temperature: 0.3 });
@@ -117,12 +127,17 @@ Critérios:
 
 // ── Policy check ──────────────────────────────────────────────────────────────
 
-export async function checkPolicy(creative: {
-  type: string;
-  headline?: string | null;
-  description?: string | null;
-  cta?: string | null;
-}): Promise<{ items: PolicyItem[]; passed: boolean }> {
+export async function checkPolicy(
+  organizationId: string,
+  creative: {
+    type: string;
+    headline?: string | null;
+    description?: string | null;
+    cta?: string | null;
+  }
+): Promise<{ items: PolicyItem[]; passed: boolean }> {
+  const key = await getApiKey(organizationId);
+
   const content = [
     creative.headline && `Headline: ${creative.headline}`,
     creative.description && `Descrição: ${creative.description}`,
@@ -142,7 +157,7 @@ Regras a verificar:
 4. Headline dentro de 30 caracteres para Google Ads (se aplicável)
 5. Sem pressão excessiva ou linguagem de personalização proibida`;
 
-  const raw = await chatCompletion([
+  const raw = await chatCompletion(key, [
     { role: "system", content: system },
     { role: "user", content: content },
   ], { temperature: 0.2 });

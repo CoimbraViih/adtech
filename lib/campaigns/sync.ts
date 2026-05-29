@@ -53,16 +53,16 @@ function linkedinStatusToLocal(status: string): CampaignStatus {
 
 // ── sync ───────────────────────────────────────────────────────────────────
 
-export async function syncCampaignsFromPlatform(workspaceId: string): Promise<void> {
+export async function syncCampaignsFromPlatform(workspaceId: string, organizationId: string): Promise<void> {
   const errors: Error[] = [];
 
   // ── Meta ────────────────────────────────────────────────────────────────
   if (process.env.META_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID) {
     try {
-      const metaCampaigns = await listMetaCampaigns();
+      const metaCampaigns = await listMetaCampaigns(organizationId);
 
       for (const mc of metaCampaigns) {
-        const insights = await getMetaCampaignInsights(mc.id, { datePreset: "last_30d" });
+        const insights = await getMetaCampaignInsights(organizationId, mc.id, { datePreset: "last_30d" });
         const ins = insights[0];
 
         const spend = ins ? parseFloat(ins.spend) : 0;
@@ -98,10 +98,10 @@ export async function syncCampaignsFromPlatform(workspaceId: string): Promise<vo
   // ── Google ───────────────────────────────────────────────────────────────
   if (process.env.GOOGLE_ADS_DEVELOPER_TOKEN && process.env.GOOGLE_ADS_CUSTOMER_ID && process.env.GOOGLE_ADS_REFRESH_TOKEN) {
     try {
-      const googleCampaigns = await listGoogleCampaigns();
+      const googleCampaigns = await listGoogleCampaigns(organizationId);
 
       for (const gc of googleCampaigns) {
-        const metrics = await getGoogleCampaignMetrics(gc.id);
+        const metrics = await getGoogleCampaignMetrics(organizationId, gc.id);
         const m = metrics[0]?.metrics;
 
         const spend = m ? parseInt(m.costMicros, 10) / 1_000_000 : 0;
@@ -135,10 +135,10 @@ export async function syncCampaignsFromPlatform(workspaceId: string): Promise<vo
   // ── TikTok ───────────────────────────────────────────────────────────────
   if (process.env.TIKTOK_ACCESS_TOKEN && process.env.TIKTOK_ADVERTISER_ID) {
     try {
-      const tiktokCampaigns = await listTikTokCampaigns();
+      const tiktokCampaigns = await listTikTokCampaigns(organizationId);
 
       for (const tc of tiktokCampaigns) {
-        const insights = await getTikTokCampaignInsights(tc.id);
+        const insights = await getTikTokCampaignInsights(organizationId, tc.id);
         const cpa = insights.conversions > 0 ? insights.spend / insights.conversions : null;
 
         const upsertData = {
@@ -170,10 +170,10 @@ export async function syncCampaignsFromPlatform(workspaceId: string): Promise<vo
   // ── LinkedIn ─────────────────────────────────────────────────────────────
   if (process.env.LINKEDIN_ACCESS_TOKEN && process.env.LINKEDIN_AD_ACCOUNT_ID) {
     try {
-      const linkedinCampaigns = await listLinkedInCampaigns();
+      const linkedinCampaigns = await listLinkedInCampaigns(organizationId);
 
       for (const lc of linkedinCampaigns) {
-        const insights = await getLinkedInCampaignInsights(lc.id);
+        const insights = await getLinkedInCampaignInsights(organizationId, lc.id);
         const cpa = insights.conversions > 0 ? insights.spend / insights.conversions : null;
 
         const upsertData = {

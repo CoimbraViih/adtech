@@ -1,26 +1,27 @@
-/**
+﻿/**
  * Google Ads API wrapper.
  *
  * Docs: https://developers.google.com/google-ads/api/docs/start
  * API version: v18
  *
  * Required env vars:
- *   GOOGLE_ADS_DEVELOPER_TOKEN   — developer token from Google Ads API Center
- *   GOOGLE_ADS_CLIENT_ID         — OAuth2 client ID
- *   GOOGLE_ADS_CLIENT_SECRET     — OAuth2 client secret
- *   GOOGLE_ADS_REFRESH_TOKEN     — OAuth2 refresh token (offline access)
- *   GOOGLE_ADS_CUSTOMER_ID       — customer ID (without dashes, e.g. 1234567890)
+ *   GOOGLE_ADS_DEVELOPER_TOKEN   â€” developer token from Google Ads API Center
+ *   GOOGLE_ADS_CLIENT_ID         â€” OAuth2 client ID
+ *   GOOGLE_ADS_CLIENT_SECRET     â€” OAuth2 client secret
+ *   GOOGLE_ADS_REFRESH_TOKEN     â€” OAuth2 refresh token (offline access)
+ *   GOOGLE_ADS_CUSTOMER_ID       â€” customer ID (without dashes, e.g. 1234567890)
  *
  * TODO(M2-backend): store refresh tokens per workspace in DB (encrypted).
  */
 
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
+import { getCredentialField } from "@/lib/integrations/credentials";
 
 const GOOGLE_ADS_API_VERSION = "v18";
 const BASE_URL = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-// ── types ──────────────────────────────────────────────────────────────────
+// â”€â”€ types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type GoogleCampaignStatus = "ENABLED" | "PAUSED" | "REMOVED";
 type GoogleAdvertisingChannelType =
@@ -55,7 +56,7 @@ export type GoogleCampaignMetrics = {
   };
 };
 
-// ── objective / status mapping ─────────────────────────────────────────────
+// â”€â”€ objective / status mapping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CHANNEL_MAP: Record<CampaignObjective, GoogleAdvertisingChannelType> = {
   awareness:       "DISPLAY",
@@ -73,7 +74,26 @@ const STATUS_MAP: Record<CampaignStatus, GoogleCampaignStatus> = {
   archived: "REMOVED",
 };
 
-// ── auth ───────────────────────────────────────────────────────────────────
+// â”€â”€ credentials helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+async function getGoogleCredentials(organizationId: string) {
+  const [devToken, clientId, clientSecret, refreshToken, customerId] = await Promise.all([
+    getCredentialField(organizationId, "google", "developer_token", "GOOGLE_ADS_DEVELOPER_TOKEN"),
+    getCredentialField(organizationId, "google", "client_id", "GOOGLE_ADS_CLIENT_ID"),
+    getCredentialField(organizationId, "google", "client_secret", "GOOGLE_ADS_CLIENT_SECRET"),
+    getCredentialField(organizationId, "google", "refresh_token", "GOOGLE_ADS_REFRESH_TOKEN"),
+    getCredentialField(organizationId, "google", "customer_id", "GOOGLE_ADS_CUSTOMER_ID"),
+  ]);
+  return {
+    devToken: devToken ?? "",
+    clientId: clientId ?? "",
+    clientSecret: clientSecret ?? "",
+    refreshToken: refreshToken ?? "",
+    customerId: customerId ?? "",
+  };
+}
+
+// â”€â”€ auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type TokenResponse = { access_token: string; expires_in: number };
 
@@ -154,7 +174,7 @@ async function googleFetch<T>(
   return data;
 }
 
-// ── GAQL query helper ──────────────────────────────────────────────────────
+// â”€â”€ GAQL query helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function googleQuery<T>(
   query: string,
@@ -175,16 +195,26 @@ async function googleQuery<T>(
   return data.results ?? [];
 }
 
-// ── public API ─────────────────────────────────────────────────────────────
+// â”€â”€ public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * List campaigns for the configured customer.
  */
-export async function listGoogleCampaigns(opts?: {
-  customerId?: string;
-  refreshToken?: string;
-  statuses?: GoogleCampaignStatus[];
-}): Promise<GoogleCampaign[]> {
+export async function listGoogleCampaigns(
+  organizationId: string,
+  opts?: {
+    customerId?: string;
+    refreshToken?: string;
+    statuses?: GoogleCampaignStatus[];
+  }
+): Promise<GoogleCampaign[]> {
+  const dbCreds = await getGoogleCredentials(organizationId);
+  const mergedOpts = {
+    ...opts,
+    customerId: (opts?.customerId ?? dbCreds.customerId) || undefined,
+    refreshToken: (opts?.refreshToken ?? dbCreds.refreshToken) || undefined,
+  };
+
   const statusList = (opts?.statuses ?? ["ENABLED", "PAUSED"])
     .map((s) => `'${s}'`)
     .join(", ");
@@ -205,7 +235,7 @@ export async function listGoogleCampaigns(opts?: {
   `;
 
   type Row = { campaign: GoogleCampaign };
-  const rows = await googleQuery<Row>(query, opts);
+  const rows = await googleQuery<Row>(query, mergedOpts);
   return rows.map((r) => r.campaign);
 }
 
@@ -213,6 +243,7 @@ export async function listGoogleCampaigns(opts?: {
  * Create a campaign on Google Ads and return its external ID.
  */
 export async function createGoogleCampaign(
+  organizationId: string,
   input: {
     name: string;
     objective: CampaignObjective;
@@ -223,7 +254,12 @@ export async function createGoogleCampaign(
   },
   opts?: { customerId?: string; refreshToken?: string }
 ): Promise<string> {
-  const { customerId: cid } = getCredentials(opts?.customerId);
+  const dbCreds = await getGoogleCredentials(organizationId);
+  const mergedOpts = {
+    customerId: (opts?.customerId ?? dbCreds.customerId) || undefined,
+    refreshToken: (opts?.refreshToken ?? dbCreds.refreshToken) || undefined,
+  };
+  const { customerId: cid } = getCredentials(mergedOpts.customerId);
 
   // 1. Create a campaign budget first
   const budgetResult = await googleFetch<{ results: Array<{ resourceName: string }> }>(
@@ -241,7 +277,7 @@ export async function createGoogleCampaign(
         ],
       }),
       customerId: cid,
-      refreshToken: opts?.refreshToken,
+      refreshToken: mergedOpts.refreshToken,
     }
   );
 
@@ -273,7 +309,7 @@ export async function createGoogleCampaign(
         ],
       }),
       customerId: cid,
-      refreshToken: opts?.refreshToken,
+      refreshToken: mergedOpts.refreshToken,
     }
   );
 
@@ -288,11 +324,17 @@ export async function createGoogleCampaign(
  * Update campaign status or budget on Google Ads.
  */
 export async function updateGoogleCampaign(
+  organizationId: string,
   externalId: string,
   update: { status?: CampaignStatus; dailyBudget?: number },
   opts?: { customerId?: string; refreshToken?: string }
 ): Promise<void> {
-  const { customerId: cid } = getCredentials(opts?.customerId);
+  const dbCreds = await getGoogleCredentials(organizationId);
+  const mergedOpts = {
+    customerId: (opts?.customerId ?? dbCreds.customerId) || undefined,
+    refreshToken: (opts?.refreshToken ?? dbCreds.refreshToken) || undefined,
+  };
+  const { customerId: cid } = getCredentials(mergedOpts.customerId);
 
   if (!update.status && !update.dailyBudget) return;
 
@@ -316,7 +358,7 @@ export async function updateGoogleCampaign(
       method: "POST",
       body: JSON.stringify({ operations: ops }),
       customerId: cid,
-      refreshToken: opts?.refreshToken,
+      refreshToken: mergedOpts.refreshToken,
     }
   );
 }
@@ -325,6 +367,7 @@ export async function updateGoogleCampaign(
  * Fetch campaign performance metrics via GAQL.
  */
 export async function getGoogleCampaignMetrics(
+  organizationId: string,
   externalId: string,
   opts: {
     since?: string; // YYYY-MM-DD
@@ -333,6 +376,13 @@ export async function getGoogleCampaignMetrics(
     refreshToken?: string;
   } = {}
 ): Promise<GoogleCampaignMetrics[]> {
+  const dbCreds = await getGoogleCredentials(organizationId);
+  const mergedOpts = {
+    ...opts,
+    customerId: (opts.customerId ?? dbCreds.customerId) || undefined,
+    refreshToken: (opts.refreshToken ?? dbCreds.refreshToken) || undefined,
+  };
+
   const since = opts.since ?? (() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -357,5 +407,5 @@ export async function getGoogleCampaignMetrics(
   `;
 
   type Row = GoogleCampaignMetrics;
-  return googleQuery<Row>(query, opts);
+  return googleQuery<Row>(query, mergedOpts);
 }
