@@ -1,3 +1,5 @@
+"use client";
+
 import { BarChart2, Sparkles, Radio, LineChart, Zap, Globe } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 

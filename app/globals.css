@@ -161,3 +161,11 @@
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
+
+/* Nav link hover — used in MarketingHeader (Server Component, no JS handlers) */
+.mkt-nav-link {
+  color: #475569;
+}
+.mkt-nav-link:hover {
+  color: #E8390E;
+}

@@ -31,25 +31,28 @@ export function MarketingHeader() {
           </span>
         </Link>
 
+        {/* Nav — pure CSS hover via style tag trick using group/peer isn't needed;
+            Tailwind can't do dynamic color, so we use a global CSS class instead */}
         <nav className="hidden md:flex items-center gap-8">
-          {(["#features:Features", "#pricing:Preços", "#faq:FAQ"] as const).map((item) => {
-            const [href, label] = item.split(":");
-            return (
-              <a
-                key={href}
-                href={href}
-                className="text-xs font-medium uppercase tracking-widest text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-accent)] transition-colors duration-200"
-              >
-                {label}
-              </a>
-            );
-          })}
+          {[
+            { href: "#features", label: "Features" },
+            { href: "#pricing", label: "Preços" },
+            { href: "#faq", label: "FAQ" },
+          ].map(({ href, label }) => (
+            <a
+              key={href}
+              href={href}
+              className="mkt-nav-link text-xs font-medium uppercase tracking-widest transition-colors duration-200"
+            >
+              {label}
+            </a>
+          ))}
         </nav>
 
         <div className="flex items-center gap-3">
           <Link
             href="/login"
-            className="text-xs font-medium uppercase tracking-widest text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-fg)] transition-colors"
+            className="mkt-nav-link text-xs font-medium uppercase tracking-widest transition-colors"
           >
             Entrar
           </Link>
