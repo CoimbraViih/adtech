@@ -19,7 +19,10 @@ export function maskIp(ip: string | null): string | null {
   }
 
   const v6parts = ip.split(":");
-  if (v6parts.length >= 3) {
+  if (
+    v6parts.length >= 3 &&
+    v6parts.every((p) => !p.includes("."))
+  ) {
     return `${v6parts[0]}:${v6parts[1]}:${v6parts[2]}:0:0:0:0:0`;
   }
 
