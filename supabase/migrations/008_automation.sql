@@ -3,38 +3,42 @@
 -- Tables: alert_rules, alert_notifications
 -- ─────────────────────────────────────────────────────────────────────────────
 
-CREATE TYPE alert_condition AS ENUM (
-  'roas_below',
-  'cpa_above',
-  'spend_above',
-  'ctr_below',
-  'conversions_below'
-);
+DO $$ BEGIN
+  CREATE TYPE alert_condition AS ENUM (
+    'roas_below', 'cpa_above', 'spend_above', 'ctr_below', 'conversions_below'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE alert_status AS ENUM ('active', 'paused');
+DO $$ BEGIN
+  CREATE TYPE alert_status AS ENUM ('active', 'paused');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ── alert_rules ───────────────────────────────────────────────────────────────
 
-CREATE TABLE alert_rules (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id     UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  campaign_id      UUID REFERENCES campaigns(id) ON DELETE CASCADE,
-  name             TEXT NOT NULL,
-  condition        alert_condition NOT NULL,
-  threshold        NUMERIC(12, 4) NOT NULL,
-  status           alert_status NOT NULL DEFAULT 'active',
-  cooldown_minutes INTEGER NOT NULL DEFAULT 60,
+CREATE TABLE IF NOT EXISTS alert_rules (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id      UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  campaign_id       UUID REFERENCES campaigns(id) ON DELETE CASCADE,
+  name              TEXT NOT NULL,
+  condition         alert_condition NOT NULL,
+  threshold         NUMERIC(12, 4) NOT NULL,
+  status            alert_status NOT NULL DEFAULT 'active',
+  cooldown_minutes  INTEGER NOT NULL DEFAULT 60,
   last_triggered_at TIMESTAMPTZ,
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS alert_rules_updated_at ON alert_rules;
 CREATE TRIGGER alert_rules_updated_at
   BEFORE UPDATE ON alert_rules
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 ALTER TABLE alert_rules ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "alert_rules: workspace members can read" ON alert_rules;
 CREATE POLICY "alert_rules: workspace members can read"
   ON alert_rules FOR SELECT
   USING (
@@ -43,6 +47,7 @@ CREATE POLICY "alert_rules: workspace members can read"
     )
   );
 
+DROP POLICY IF EXISTS "alert_rules: workspace members can insert" ON alert_rules;
 CREATE POLICY "alert_rules: workspace members can insert"
   ON alert_rules FOR INSERT
   WITH CHECK (
@@ -51,6 +56,7 @@ CREATE POLICY "alert_rules: workspace members can insert"
     )
   );
 
+DROP POLICY IF EXISTS "alert_rules: workspace members can update" ON alert_rules;
 CREATE POLICY "alert_rules: workspace members can update"
   ON alert_rules FOR UPDATE
   USING (
@@ -59,6 +65,7 @@ CREATE POLICY "alert_rules: workspace members can update"
     )
   );
 
+DROP POLICY IF EXISTS "alert_rules: workspace members can delete" ON alert_rules;
 CREATE POLICY "alert_rules: workspace members can delete"
   ON alert_rules FOR DELETE
   USING (
@@ -69,7 +76,7 @@ CREATE POLICY "alert_rules: workspace members can delete"
 
 -- ── alert_notifications ───────────────────────────────────────────────────────
 
-CREATE TABLE alert_notifications (
+CREATE TABLE IF NOT EXISTS alert_notifications (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   rule_id      UUID NOT NULL REFERENCES alert_rules(id) ON DELETE CASCADE,
@@ -84,6 +91,7 @@ CREATE TABLE alert_notifications (
 
 ALTER TABLE alert_notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "alert_notifications: workspace members can read" ON alert_notifications;
 CREATE POLICY "alert_notifications: workspace members can read"
   ON alert_notifications FOR SELECT
   USING (
@@ -92,6 +100,7 @@ CREATE POLICY "alert_notifications: workspace members can read"
     )
   );
 
+DROP POLICY IF EXISTS "alert_notifications: workspace members can update" ON alert_notifications;
 CREATE POLICY "alert_notifications: workspace members can update"
   ON alert_notifications FOR UPDATE
   USING (
@@ -100,6 +109,6 @@ CREATE POLICY "alert_notifications: workspace members can update"
     )
   );
 
-CREATE POLICY "alert_notifications: service role can insert"
-  ON alert_notifications FOR INSERT
-  WITH CHECK (true);
+-- INSERT is performed exclusively by the service role (bypasses RLS).
+-- No INSERT policy needed — an explicit permissive policy would allow
+-- any authenticated user to insert, which is a security hole.

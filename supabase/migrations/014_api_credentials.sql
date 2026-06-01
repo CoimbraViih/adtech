@@ -3,7 +3,7 @@
 -- credentials column is an AES-256-GCM blob: "iv:authTag:ciphertext" (hex).
 -- Never store plaintext here.
 
-CREATE TABLE org_api_credentials (
+CREATE TABLE IF NOT EXISTS org_api_credentials (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   provider        TEXT NOT NULL,
@@ -14,12 +14,14 @@ CREATE TABLE org_api_credentials (
   UNIQUE (organization_id, provider)
 );
 
+DROP TRIGGER IF EXISTS org_api_credentials_updated_at ON org_api_credentials;
 CREATE TRIGGER org_api_credentials_updated_at
   BEFORE UPDATE ON org_api_credentials
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 ALTER TABLE org_api_credentials ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "api_creds: owners and admins can read" ON org_api_credentials;
 CREATE POLICY "api_creds: owners and admins can read"
   ON org_api_credentials FOR SELECT
   USING (
@@ -29,6 +31,7 @@ CREATE POLICY "api_creds: owners and admins can read"
     )
   );
 
+DROP POLICY IF EXISTS "api_creds: owners and admins can write" ON org_api_credentials;
 CREATE POLICY "api_creds: owners and admins can write"
   ON org_api_credentials FOR INSERT
   WITH CHECK (
@@ -38,6 +41,7 @@ CREATE POLICY "api_creds: owners and admins can write"
     )
   );
 
+DROP POLICY IF EXISTS "api_creds: owners and admins can update" ON org_api_credentials;
 CREATE POLICY "api_creds: owners and admins can update"
   ON org_api_credentials FOR UPDATE
   USING (
@@ -53,6 +57,7 @@ CREATE POLICY "api_creds: owners and admins can update"
     )
   );
 
+DROP POLICY IF EXISTS "api_creds: owners and admins can delete" ON org_api_credentials;
 CREATE POLICY "api_creds: owners and admins can delete"
   ON org_api_credentials FOR DELETE
   USING (
