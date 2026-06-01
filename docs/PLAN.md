@@ -24,6 +24,7 @@
 | M9 | Monetização & Stripe | `feat/m9-stripe` ✅ | M1–M5 |
 | MS | Segurança & Hardening | `feat/ms-security` | M1–M9 |
 | M10 | Deploy & Produção | `feat/m10-deploy` | M1–M9, MS |
+| M11 | AI Traffic Manager (Campaign Diagnostics) | `feat/integrations-api-keys` ✅ | M2, M4, M5 |
 
 ---
 
@@ -567,6 +568,69 @@ git commit -m "feat(m10): production deploy, CI/CD, monitoring, Stripe live, sec
 
 ---
 
+## M11 — AI Traffic Manager (Campaign Diagnostics) ✅ CONCLUÍDO
+
+**Branch:** `feat/integrations-api-keys` → mergeado em `main`  
+**Depende de:** M2 (campaigns), M4 (pixel), M5 (analytics)  
+**Plano detalhado:** `docs/superpowers/plans/2026-05-29-m10-ai-traffic-manager.md`  
+**Objetivo:** Motor de diagnóstico automático de campanhas. Detecta underperformance contra benchmarks com regras determinísticas e produz recomendações acionáveis escritas pelo GPT-4o. Human-in-the-loop: o usuário aprova ou descarta cada card — sem mutação automática de campanhas.
+
+> **Skills usadas:** `/brainstorming` · `/supabase` · `/supabase-postgres-best-practices` · `/claude-api` · `/frontend-design` · `/webapp-testing`
+
+### Database
+- [x] `supabase/migrations/015_ai_diagnostics.sql` — enums `diagnostic_severity/status/entity`, tabelas `campaign_benchmarks` + `ai_diagnostics`, índices, triggers `set_updated_at()`, RLS, seed de benchmarks de mercado
+
+### TypeScript / Biblioteca de diagnósticos
+- [x] `types/database.ts` — `DiagnosticSeverity`, `DiagnosticStatus`, `DiagnosticEntity`, `CampaignBenchmark`, `AiDiagnostic`
+- [x] `lib/ai/diagnostics/types.ts` — contratos `Skill`, `CampaignContext`, `SkillFinding`
+- [x] `lib/ai/diagnostics/benchmarks.ts` — `resolveBenchmarks`: workspace override > default de mercado
+- [x] `lib/ai/diagnostics/context.ts` — builder de `CampaignContext[]` (métricas + benchmarks + delta 7d)
+- [x] `lib/ai/diagnostics/skills/low-ctr.ts` — CTR < benchmark com volume → criativo/audiência
+- [x] `lib/ai/diagnostics/skills/high-cpa.ts` — CPA > target com conversões > 0 → oferta/página/audiência
+- [x] `lib/ai/diagnostics/skills/creative-fatigue.ts` — frequência alta + CTR delta ≤ −20% → rotacionar criativo
+- [x] `lib/ai/diagnostics/skills/spend-no-conversion.ts` — gasto ≥ 3× CPA target, conversões = 0 → rastreamento/segmentação (critical)
+- [x] `lib/ai/diagnostics/skills/click-no-convert.ts` — CTR bom, CVR < 0.5% com cliques > 100 → landing page/oferta
+- [x] `lib/ai/diagnostics/skills/learning-phase.ts` — < 50 conversões E < 7 dias → info, não alterar
+- [x] `lib/ai/diagnostics/skills/index.ts` — registry `SKILLS[]`
+- [x] `lib/ai/diagnostics/llm.ts` — GPT-4o JSON schema → `{ rationale, suggested_action }`, fallback seguro em erro de API
+- [x] `lib/ai/diagnostics/engine.ts` — orquestrador: context → trigger skills → LLM → upsert `ai_diagnostics`
+
+### API Routes
+- [x] `app/api/ai/diagnostics/run/route.ts` — POST autenticado, workspace RBAC member+, chama engine
+- [x] `app/api/ai/diagnostics/[id]/route.ts` — PATCH: atualiza status (`acknowledged/applied/dismissed`)
+
+### Interface — integrado em Campanhas (não página standalone)
+- [x] `app/(dashboard)/analytics/diagnostics/page.tsx` — página de diagnósticos por severidade (critical → warning → info)
+- [x] `app/(dashboard)/campaigns/[id]/page.tsx` — seção Diagnósticos integrada ao detalhe da campanha com DiagnosticCard colapsável + RunDiagnosticsButton
+- [x] `components/dashboard/campaign-alerts-widget.tsx` — widget no dashboard: campanhas com alertas, ícone de atenção, preview hover com rationale + ação sugerida
+- [x] `components/diagnostics/diagnostic-card.tsx` — chip de severidade, preview strip colapsável, rationale completo, ação recomendada, metrics_snapshot, Apply/Dismiss com UI otimista
+- [x] `components/diagnostics/severity-summary.tsx` — contagens por severidade
+- [x] `components/diagnostics/run-diagnostics-button.tsx` — POST → spinner → refresh; aceita `campaignId` opcional
+- [x] `lib/campaigns/mock-data.ts` — `MOCK_DIAGNOSTICS` + `getMockDiagnostics(campaignId)` com `TODO(M2-backend)` para swap-in Supabase
+- [x] `lib/dashboard/mock-data.ts` — `CampaignAlert` type + `getCampaignAlerts()` com dados consistentes com MOCK_DIAGNOSTICS
+- [x] Diagnósticos removidos do menu de navegação (integrados nativamente ao detalhe da campanha)
+
+### Integrações de plataforma (incluídas nesta branch)
+- [x] `app/(dashboard)/settings/integrations/page.tsx` — gestão de API keys por plataforma (Meta, Google, TikTok, LinkedIn)
+- [x] `app/api/settings/integrations/route.ts` + `[provider]/route.ts` + `[provider]/test/route.ts` — CRUD de credenciais + endpoint de teste
+- [x] `lib/integrations/` — `credentials.ts`, `crypto.ts`, `providers.ts`, `types.ts` — armazenamento criptografado de API keys
+
+### Testes
+- [x] `tests/unit/diagnostics-skills.test.ts` — fixture trigger + fixture não-trigger para cada skill
+- [x] `tests/unit/diagnostics-benchmarks.test.ts` — workspace override bate default de mercado
+- [x] `tests/e2e/diagnostics.spec.ts` — page render, nav, run button
+- [x] `tests/unit/integrations-credentials.test.ts` + `integrations-crypto.test.ts` + `integrations-providers.test.ts`
+
+### Entregáveis
+- `tsc --noEmit` zero erros
+- `vitest run` 299/299 passando
+- Regra `spend-no-conversion` produz `critical` em campanha com gasto e zero conversões
+- Re-run não cria duplicatas (partial unique index `open` por entity+skill)
+- Diagnósticos visíveis no detalhe de cada campanha e no dashboard com preview hover
+- Dados mock consistentes entre dashboard widget e detalhe da campanha
+
+---
+
 ## Ordem de execução recomendada
 
 ```
@@ -576,6 +640,7 @@ M0 (setup)
        │    └─ M3 (criativos AI)   ← paralelo com M4
        ├─ M4 (pixel)
        │    ├─ M5 (analytics)
+       │    │    └─ M11 (AI traffic manager) ← depende M2 + M4 + M5
        │    ├─ M7 (automação)      ← depende M2 + M4 + M5
        │    └─ M8 (programático)   ← depende M2 + M4
        ├─ M6 (landing page AdFlow) ← paralelo, depende só M1

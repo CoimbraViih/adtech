@@ -1,41 +1,70 @@
 import Link from "next/link";
 
+function CrosshairIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" strokeLinecap="round">
+      <circle cx="12" cy="12" r="7.5" stroke="#E8390E" strokeWidth="1.5" />
+      <line x1="12" y1="1" x2="12" y2="6" stroke="#E8390E" strokeWidth="1.5" />
+      <line x1="12" y1="18" x2="12" y2="23" stroke="#E8390E" strokeWidth="1.5" />
+      <line x1="1" y1="12" x2="6" y2="12" stroke="#E8390E" strokeWidth="1.5" />
+      <line x1="18" y1="12" x2="23" y2="12" stroke="#E8390E" strokeWidth="1.5" />
+      <circle cx="12" cy="12" r="2" fill="#E8390E" />
+    </svg>
+  );
+}
+
 export function MarketingHeader() {
   return (
-    <header className="sticky top-0 z-50 border-b border-[color:var(--adflow-border)] bg-[color:var(--adflow-base)]/90 backdrop-blur-sm">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <header
+      className="sticky top-0 z-50"
+      style={{
+        background: "rgba(13,13,26,0.95)",
+        backdropFilter: "blur(12px)",
+        borderBottom: "1px solid #1E1E2E",
+      }}
+    >
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-[color:var(--adflow-accent)]" />
-          <span className="font-semibold text-sm tracking-tight text-[color:var(--adflow-fg)]">
-            AdFlow
+          <CrosshairIcon />
+          <span
+            className="font-bold text-sm tracking-tight"
+            style={{ fontFamily: "var(--font-space-grotesk), sans-serif" }}
+          >
+            <span style={{ color: "#E8390E" }}>Ad</span>
+            <span style={{ color: "#F1F5F9" }}>Hunter</span>
           </span>
         </Link>
 
         {/* Nav */}
-        <nav className="hidden md:flex items-center gap-6 text-sm text-[color:var(--adflow-fg-muted)]">
-          <a href="#features" className="hover:text-[color:var(--adflow-fg)] transition-colors">
-            Features
-          </a>
-          <a href="#pricing" className="hover:text-[color:var(--adflow-fg)] transition-colors">
-            Preços
-          </a>
-          <a href="#faq" className="hover:text-[color:var(--adflow-fg)] transition-colors">
-            FAQ
-          </a>
+        <nav className="hidden md:flex items-center gap-6">
+          {[
+            { href: "#features", label: "Features" },
+            { href: "#pricing", label: "Preços" },
+            { href: "#faq", label: "FAQ" },
+          ].map(({ href, label }) => (
+            <a
+              key={href}
+              href={href}
+              className="mkt-nav-link text-xs font-medium tracking-wide"
+            >
+              {label}
+            </a>
+          ))}
         </nav>
 
         {/* Actions */}
         <div className="flex items-center gap-3">
           <Link
             href="/login"
-            className="text-sm text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-fg)] transition-colors"
+            className="mkt-nav-link text-xs font-medium"
           >
             Entrar
           </Link>
           <a
             href="#waitlist"
-            className="text-sm px-4 py-1.5 rounded-md bg-[color:var(--adflow-accent)] text-white font-medium hover:opacity-90 transition-opacity"
+            className="text-xs font-semibold px-4 py-1.5 rounded text-white"
+            style={{ background: "#E8390E" }}
           >
             Começar grátis
           </a>

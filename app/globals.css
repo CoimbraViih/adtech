@@ -10,6 +10,8 @@
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains);
   --font-heading: var(--font-inter);
+  --font-display: var(--font-space-grotesk);
+  --font-marketing: var(--font-manrope);
 
   /* AdFlow design tokens — available as Tailwind classes */
   --color-base: var(--adflow-base);
@@ -117,5 +119,55 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
+}
+
+/* ── Marketing / Landing page animations ─────────────────────────── */
+@keyframes mkt-float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33%       { transform: translateY(-18px) rotate(0.5deg); }
+  66%       { transform: translateY(-8px) rotate(-0.5deg); }
+}
+@keyframes mkt-float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-30px); }
+}
+@keyframes mkt-pulse-glow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%       { opacity: 0.7; transform: scale(1.08); }
+}
+@keyframes mkt-scan {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(400%); opacity: 0; }
+}
+@keyframes mkt-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes mkt-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes mkt-rotate-rev {
+  from { transform: rotate(360deg); }
+  to   { transform: rotate(0deg); }
+}
+@keyframes mkt-fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes mkt-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Nav link hover — used in MarketingHeader (Server Component, no JS handlers) */
+.mkt-nav-link {
+  color: #475569;
+}
+.mkt-nav-link:hover {
+  color: #E8390E;
 }

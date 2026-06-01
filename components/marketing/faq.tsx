@@ -2,38 +2,31 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const FAQ_ITEMS = [
   {
-    question: "O AdFlow funciona com Meta Ads e Google Ads ao mesmo tempo?",
-    answer:
-      "Sim. O AdFlow integra com a Meta Marketing API e a Google Ads API nativamente. Você cria, pausa e monitora campanhas nos dois canais num único painel, com sincronização automática de métricas.",
+    question: "O AdHunter funciona com Meta Ads e Google Ads ao mesmo tempo?",
+    answer: "Sim. Integração nativa com Meta Marketing API e Google Ads API v18. Você cria, pausa e monitora campanhas nos dois canais num único painel com sincronização automática.",
   },
   {
     question: "Como funciona o pixel server-side? Preciso mudar meu site?",
-    answer:
-      "Basta adicionar uma linha de JavaScript no seu site. O adflow.js envia eventos para nosso servidor, que repassa ao Meta CAPI e Google Enhanced Conversions. Isso contorna bloqueadores de anúncio e melhora a qualidade dos dados de conversão.",
+    answer: "Adicione uma linha de JavaScript. O adflow.js envia eventos ao nosso servidor, que repassa para Meta CAPI e Google Enhanced Conversions — contornando bloqueadores de anúncio sem expor dados PII no navegador.",
   },
   {
-    question: "O AI Creative Studio substitui um redator?",
-    answer:
-      "Não — ele acelera. O GPT-4o gera variações de headline, descrição e CTA a partir do seu briefing. Cada variação recebe um score de qualidade 0-100 com checagem automática de política Meta/Google. O redator faz a curadoria, não o trabalho braçal.",
+    question: "O AI Creative Studio substitui meu redator?",
+    answer: "Não — acelera. O GPT-4o gera variações de headline, descrição e CTA a partir do seu briefing. Cada variação recebe score 0–100 com checagem automática de política. Seu redator faz curadoria, não trabalho braçal.",
   },
   {
-    question: "Qual a diferença entre os planos Pro e Agency?",
-    answer:
-      "O Pro cobre a maioria das agências de performance: campanhas ilimitadas, analytics multi-touch e alertas automáticos. O Agency adiciona compra programática RTB com DMP proprietário, workspaces ilimitados, white-label (em breve) e suporte dedicado.",
+    question: "Qual a diferença entre Pro e Agency?",
+    answer: "Pro cobre a maioria das agências: campanhas ilimitadas, analytics multi-touch, alertas automáticos. Agency adiciona compra programática RTB, DMP proprietário, workspaces ilimitados e suporte dedicado.",
   },
   {
     question: "Posso cancelar quando quiser?",
-    answer:
-      "Sim. Não há fidelidade. Cancele pelo painel de billing a qualquer momento. Você mantém acesso até o fim do período pago.",
+    answer: "Sim. Sem fidelidade. Cancele pelo painel de billing a qualquer momento. Você mantém acesso até o fim do período pago.",
   },
   {
-    question: "Os dados dos meus clientes ficam separados?",
-    answer:
-      "Sim. A arquitetura multi-tenant isola os dados por workspace. Cada cliente da sua agência fica num workspace independente com Row Level Security no banco — nenhum usuário acessa dados de outro workspace.",
+    question: "Como fica a segurança dos dados dos meus clientes?",
+    answer: "Arquitetura multi-tenant com Row Level Security (RLS) no banco. Cada cliente fica num workspace isolado — nenhum usuário acessa dados de outro workspace. LGPD: IPs mascarados nos logs, opt-out disponível no DMP.",
   },
 ];
 
@@ -41,22 +34,35 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border-b border-[color:var(--adflow-border)] last:border-0">
+    <div style={{ borderBottom: "1px solid #1E1E2E" }}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between py-4 text-left gap-4"
         aria-expanded={open}
       >
-        <span className="text-sm font-medium text-[color:var(--adflow-fg)]">{question}</span>
+        <span
+          className="text-sm font-medium"
+          style={{
+            color: open ? "#F1F5F9" : "#94A3B8",
+            fontFamily: "var(--font-manrope),sans-serif",
+          }}
+        >
+          {question}
+        </span>
         <ChevronDown
-          className={cn(
-            "w-4 h-4 text-[color:var(--adflow-fg-muted)] shrink-0 transition-transform duration-200",
-            open && "rotate-180"
-          )}
+          className="w-4 h-4 shrink-0"
+          style={{
+            color: open ? "#E8390E" : "#334155",
+            transform: open ? "rotate(180deg)" : "none",
+            transition: "transform 0.2s",
+          }}
         />
       </button>
       {open && (
-        <p className="pb-4 text-sm text-[color:var(--adflow-fg-muted)] leading-relaxed pr-8">
+        <p
+          className="pb-4 text-sm leading-relaxed pr-8"
+          style={{ color: "#475569", fontFamily: "var(--font-manrope),sans-serif" }}
+        >
           {answer}
         </p>
       )}
@@ -66,17 +72,27 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 
 export function Faq() {
   return (
-    <section
-      id="faq"
-      className="py-20 md:py-28 px-4 sm:px-6 border-t border-[color:var(--adflow-border)]"
-    >
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-4xl font-bold text-[color:var(--adflow-fg)] mb-3">
-            Perguntas frequentes
-          </h2>
+    <section id="faq" className="border-b" style={{ borderColor: "#1E1E2E" }}>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+        {/* Header */}
+        <div className="flex items-baseline justify-between mb-8 pb-4" style={{ borderBottom: "1px solid #1E1E2E" }}>
+          <div>
+            <p
+              className="text-[10px] uppercase tracking-widest mb-1"
+              style={{ color: "#E8390E", fontFamily: "var(--font-manrope),sans-serif" }}
+            >
+              05 — FAQ
+            </p>
+            <h2
+              className="text-2xl md:text-3xl font-bold"
+              style={{ fontFamily: "var(--font-space-grotesk),sans-serif", color: "#F1F5F9" }}
+            >
+              Perguntas frequentes
+            </h2>
+          </div>
         </div>
-        <div className="rounded-lg border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] px-5">
+
+        <div className="max-w-2xl">
           {FAQ_ITEMS.map((item) => (
             <FaqItem key={item.question} question={item.question} answer={item.answer} />
           ))}

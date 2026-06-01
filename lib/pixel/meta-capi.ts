@@ -1,14 +1,16 @@
 import type { PixelEvent } from "@/types/database";
+import { getCredentialField } from "@/lib/integrations/credentials";
 
 const META_CAPI_URL = "https://graph.facebook.com/v18.0";
 
 export async function sendMetaCapiEvent(
+  organizationId: string,
   event: PixelEvent,
   metaPixelId: string
 ): Promise<void> {
-  const accessToken = process.env.META_CAPI_ACCESS_TOKEN;
+  const accessToken = await getCredentialField(organizationId, "meta", "access_token", "META_ACCESS_TOKEN");
   if (!accessToken) {
-    console.warn("[meta-capi] META_CAPI_ACCESS_TOKEN not set — skipping");
+    console.warn("[meta-capi] META_ACCESS_TOKEN not set — skipping");
     return;
   }
 

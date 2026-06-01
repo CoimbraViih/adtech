@@ -138,6 +138,43 @@ export function getImpressionsAndConversionsByDay(from: string, to: string): Dua
   }));
 }
 
+export type CampaignAlert = {
+  campaignId: string;
+  campaignName: string;
+  platform: string;
+  worstSeverity: "critical" | "warning";
+  worstTitle: string;
+  worstDescription: string;
+  suggestedAction: string;
+  openCount: number;
+};
+
+// TODO(M2-backend): replace with Supabase join on ai_diagnostics WHERE status = 'open'
+export function getCampaignAlerts(): CampaignAlert[] {
+  return [
+    {
+      campaignId: "cmp_001",
+      campaignName: "Black Friday 2025 — Meta",
+      platform: "meta",
+      worstSeverity: "critical",
+      worstTitle: "Gasto sem conversão detectado",
+      worstDescription: "R$ 450 investidos nos últimos 7 dias sem nenhuma conversão registrada — 3× o CPA-alvo definido para esta campanha.",
+      suggestedAction: "Pausar os conjuntos de anúncios com menor CTR e revisar o público-alvo antes de retomar o investimento.",
+      openCount: 2,
+    },
+    {
+      campaignId: "cmp_002",
+      campaignName: "Google Search — Marca",
+      platform: "google",
+      worstSeverity: "warning",
+      worstTitle: "Fase de aprendizado ativa",
+      worstDescription: "A campanha acumulou apenas 12 conversões desde a última alteração de lance — abaixo das 50 necessárias para sair da fase de aprendizado.",
+      suggestedAction: "Evite editar orçamento ou segmentação até atingir 50 conversões. Considere ampliar o público temporariamente.",
+      openCount: 1,
+    },
+  ];
+}
+
 export function getCreativesSummary() {
   const copies = MOCK_CREATIVES.filter((c) => c.type === "copy");
   const scores = copies.map((c) => c.score).filter((s): s is number => s !== null);

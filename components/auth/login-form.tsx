@@ -47,7 +47,7 @@ export function LoginForm() {
     startGoogleTransition(async () => {
       // TODO(M1-backend): call supabase.auth.signInWithOAuth({ provider: "google" })
       // For now redirect to fake callback
-      window.location.href = "/auth/callback?provider=google";
+      window.location.href = "/callback?provider=google";
     });
   }
 

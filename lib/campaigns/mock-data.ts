@@ -3,6 +3,7 @@ import type {
   AdSet,
   Ad,
   DailyMetricSnapshot,
+  AiDiagnostic,
 } from "@/types/database";
 
 export const MOCK_CAMPAIGNS: Campaign[] = [
@@ -316,6 +317,62 @@ export const MOCK_ADS: Ad[] = [
     updated_at: "2025-11-22T08:00:00Z",
   },
 ];
+
+// TODO(M2-backend): replace with Supabase query on ai_diagnostics
+const MOCK_DIAGNOSTICS: AiDiagnostic[] = [
+  {
+    id: "diag_001",
+    workspace_id: "ws_demo",
+    entity_type: "campaign",
+    entity_id: "cmp_001",
+    campaign_id: "cmp_001",
+    skill_id: "spend-no-conversion",
+    severity: "critical",
+    status: "open",
+    title: "Gasto sem conversão detectado",
+    rationale: "R$ 450 investidos nos últimos 7 dias sem nenhuma conversão registrada — 3× o CPA-alvo definido para esta campanha. O pixel está recebendo cliques mas nenhum evento de conversão foi disparado.",
+    suggested_action: "Pausar os conjuntos de anúncios com menor CTR e revisar o público-alvo antes de retomar o investimento. Verifique se o pixel de conversão está corretamente instalado na página de obrigado.",
+    metrics_snapshot: { spend: 450, conversions: 0, cpa_target: 150 },
+    created_at: "2026-05-28T10:00:00Z",
+    updated_at: "2026-05-28T10:00:00Z",
+  },
+  {
+    id: "diag_002",
+    workspace_id: "ws_demo",
+    entity_type: "campaign",
+    entity_id: "cmp_001",
+    campaign_id: "cmp_001",
+    skill_id: "low-ctr",
+    severity: "warning",
+    status: "open",
+    title: "CTR abaixo do benchmark",
+    rationale: "A taxa de cliques está em 0.8% contra o benchmark de 1.2% para campanhas de vendas no Meta. Isso indica que os criativos podem estar com fadiga ou o público-alvo está saturado.",
+    suggested_action: "Teste novos criativos com headlines diferentes. Considere expandir o público com Lookalike 2-3% ou adicionar interesses complementares.",
+    metrics_snapshot: { ctr: 0.008, ctr_benchmark: 0.012, impressions: 1240000 },
+    created_at: "2026-05-27T14:00:00Z",
+    updated_at: "2026-05-27T14:00:00Z",
+  },
+  {
+    id: "diag_003",
+    workspace_id: "ws_demo",
+    entity_type: "campaign",
+    entity_id: "cmp_002",
+    campaign_id: "cmp_002",
+    skill_id: "learning-phase",
+    severity: "warning",
+    status: "open",
+    title: "Fase de aprendizado ativa",
+    rationale: "A campanha acumulou apenas 12 conversões desde a última alteração de lance — abaixo das 50 necessárias para o algoritmo do Google sair da fase de aprendizado e otimizar adequadamente.",
+    suggested_action: "Evite editar orçamento, segmentação ou lances até atingir 50 conversões. Considere ampliar o público temporariamente ou reduzir o CPA-alvo para facilitar a saída do aprendizado.",
+    metrics_snapshot: { conversions: 12, conversions_needed: 50, spend: 280 },
+    created_at: "2026-05-26T09:00:00Z",
+    updated_at: "2026-05-26T09:00:00Z",
+  },
+];
+
+export function getMockDiagnostics(campaignId: string): AiDiagnostic[] {
+  return MOCK_DIAGNOSTICS.filter((d) => d.campaign_id === campaignId && d.status === "open");
+}
 
 // 30-day metric history for campaign cmp_001
 export function getMockMetricSnapshots(campaignId: string): DailyMetricSnapshot[] {

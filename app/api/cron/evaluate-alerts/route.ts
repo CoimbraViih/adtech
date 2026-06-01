@@ -60,7 +60,9 @@ export async function GET(request: Request) {
           triggered++;
 
           if (ownerEmail) {
-            await sendAlertEmail({
+            // TODO(M8-backend): resolve organizationId from workspaceId.
+            // Passing "" for now so Resend key falls back to env var.
+            await sendAlertEmail("", {
               to: ownerEmail,
               alertTitle: title,
               alertBody: body,

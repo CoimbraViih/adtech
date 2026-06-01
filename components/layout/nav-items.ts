@@ -16,6 +16,8 @@ export type NavItem = {
   label: string;
   href: string;
   icon: ComponentType<{ className?: string }>;
+  /** When true, marks this item active for any route starting with `href` */
+  matchPrefix?: boolean;
 };
 
 export const NAV_ITEMS: NavItem[] = [
@@ -28,5 +30,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Pixel",         href: "/pixel",                   icon: Radio },
   { label: "Landing Pages", href: "/landing-pages",           icon: FileText },
   { label: "Automação",     href: "/automation",              icon: Zap },
-  { label: "Configurações", href: "/settings",                icon: Settings },
+  { label: "Configurações", href: "/settings",                icon: Settings, matchPrefix: true },
 ];

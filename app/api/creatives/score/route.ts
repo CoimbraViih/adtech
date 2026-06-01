@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireServerSession } from "@/lib/supabase/server";
 import { scoreCreative } from "@/lib/ai/openai";
+import { createRateLimiter } from "@/lib/security/rate-limit";
 import { z } from "zod";
+
+const scoreLimiter = createRateLimiter("ai-score", 30, 60 * 60 * 1000);
 
 const schema = z.object({
   creative_id: z.string().optional(),
@@ -13,10 +16,18 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+  }
+
+  if (scoreLimiter(session.workspace.id)) {
+    return NextResponse.json(
+      { error: "Limite de avaliações atingido. Tente novamente em 1 hora." },
+      { status: 429 }
+    );
   }
 
   let body: unknown;
@@ -43,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await scoreCreative(parsed.data);
+    const result = await scoreCreative(session.organization.id, parsed.data);
 
     // TODO(M3-backend): persist score to creatives table
     // if (parsed.data.creative_id) {
@@ -53,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error("[creatives/score]", err);
+    console.error("[creatives/score]", (err as Error).message);
     return NextResponse.json(
       { error: "Erro ao calcular score. Tente novamente." },
       { status: 502 }

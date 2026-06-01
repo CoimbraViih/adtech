@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LinkedIn Ads (Campaign Manager) API client wrapper.
  * Docs: https://learn.microsoft.com/en-us/linkedin/marketing/
  * API version: v2 (Marketing Solutions)
@@ -8,8 +8,17 @@
  */
 
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
+import { getCredentialField } from "@/lib/integrations/credentials";
 
 const BASE_URL = "https://api.linkedin.com/v2";
+
+async function getLinkedInCredentials(organizationId: string) {
+  const [token, accountId] = await Promise.all([
+    getCredentialField(organizationId, "linkedin", "access_token", "LINKEDIN_ACCESS_TOKEN"),
+    getCredentialField(organizationId, "linkedin", "account_id", "LINKEDIN_ACCOUNT_ID"),
+  ]);
+  return { token: token ?? "", accountId: accountId ?? "" };
+}
 
 function getAccessToken(override?: string) {
   return override ?? process.env.LINKEDIN_ACCESS_TOKEN ?? "";
@@ -55,10 +64,12 @@ export type LinkedInCampaignInput = {
 };
 
 export async function listLinkedInCampaigns(
+  organizationId: string,
   opts?: { accessToken?: string; adAccountId?: string }
 ): Promise<{ id: string; name: string; status: string; budget: number }[]> {
-  const token = getAccessToken(opts?.accessToken);
-  const accountId = getAdAccountId(opts?.adAccountId);
+  const dbCreds = await getLinkedInCredentials(organizationId);
+  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
+  const accountId = getAdAccountId((opts?.adAccountId ?? dbCreds.accountId) || undefined);
 
   if (!token || !accountId) return [];
 
@@ -88,11 +99,13 @@ export async function listLinkedInCampaigns(
 }
 
 export async function createLinkedInCampaign(
+  organizationId: string,
   input: LinkedInCampaignInput,
   opts?: { accessToken?: string; adAccountId?: string }
 ): Promise<string> {
-  const token = getAccessToken(opts?.accessToken);
-  const accountId = getAdAccountId(opts?.adAccountId);
+  const dbCreds = await getLinkedInCredentials(organizationId);
+  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
+  const accountId = getAdAccountId((opts?.adAccountId ?? dbCreds.accountId) || undefined);
 
   if (!token || !accountId) {
     throw new Error("LINKEDIN_ACCESS_TOKEN and LINKEDIN_AD_ACCOUNT_ID are required");
@@ -144,11 +157,13 @@ export async function createLinkedInCampaign(
 }
 
 export async function updateLinkedInCampaign(
+  organizationId: string,
   campaignId: string,
   updates: { status?: CampaignStatus; dailyBudget?: number },
   opts?: { accessToken?: string; adAccountId?: string }
 ): Promise<void> {
-  const token = getAccessToken(opts?.accessToken);
+  const dbCreds = await getLinkedInCredentials(organizationId);
+  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
 
   if (!token) {
     throw new Error("LINKEDIN_ACCESS_TOKEN is required");
@@ -178,10 +193,12 @@ export async function updateLinkedInCampaign(
 }
 
 export async function getLinkedInCampaignInsights(
+  organizationId: string,
   campaignId: string,
   opts?: { accessToken?: string }
 ): Promise<{ spend: number; impressions: number; clicks: number; conversions: number }> {
-  const token = getAccessToken(opts?.accessToken);
+  const dbCreds = await getLinkedInCredentials(organizationId);
+  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
 
   if (!token) return { spend: 0, impressions: 0, clicks: 0, conversions: 0 };
 

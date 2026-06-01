@@ -4,8 +4,11 @@ import { canManageCampaigns } from "@/lib/auth/roles";
 import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
 import { syncCampaignsFromPlatform } from "@/lib/campaigns/sync";
 import { createCampaignOnPlatform } from "@/lib/campaigns/platform";
+import { createRateLimiter } from "@/lib/security/rate-limit";
 import { z } from "zod";
 import type { CampaignCreateInput } from "@/types/database";
+
+const campaignCreateLimiter = createRateLimiter("campaign-create", 20, 60 * 60 * 1000);
 
 const createSchema = z.object({
   name: z.string().min(3).max(255),
@@ -53,14 +56,12 @@ export async function GET(req: NextRequest) {
   if (status) campaigns = campaigns.filter((c) => c.status === status);
 
   // Optional: sync from external platforms before returning
-  if (sync && !process.env.META_ACCESS_TOKEN && !process.env.GOOGLE_ADS_DEVELOPER_TOKEN) {
-    // Skip sync in dev when credentials are not configured
-  } else if (sync) {
+  if (sync) {
     try {
-      await syncCampaignsFromPlatform(session.workspace.id);
+      await syncCampaignsFromPlatform(session.workspace.id, session.organization.id);
     } catch (err) {
-      console.error("[campaigns/sync] error:", err);
-      // Non-fatal: return stale data
+      console.error("[campaigns/sync] error:", (err as Error).message);
+      // Non-fatal: credentials not configured or API unreachable — return stale data
     }
   }
 
@@ -78,6 +79,13 @@ export async function POST(req: NextRequest) {
 
   if (!canManageCampaigns(session)) {
     return NextResponse.json({ error: "Permissão insuficiente." }, { status: 403 });
+  }
+
+  if (campaignCreateLimiter(session.workspace.id)) {
+    return NextResponse.json(
+      { error: "Limite de criação de campanhas atingido. Tente novamente em 1 hora." },
+      { status: 429 }
+    );
   }
 
   let body: unknown;
@@ -111,7 +119,7 @@ export async function POST(req: NextRequest) {
   let externalId: string | null = null;
   if (input.platform !== "programmatic") {
     try {
-      externalId = await createCampaignOnPlatform(input);
+      externalId = await createCampaignOnPlatform(session.organization.id, input);
     } catch (err) {
       console.error(`[campaigns/create] platform error:`, err);
       // Non-fatal for MVP: save locally without external ID

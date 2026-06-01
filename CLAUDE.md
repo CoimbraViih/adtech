@@ -294,5 +294,6 @@ See `.env.local.example` for the full list.
 | M7 | Programmatic DSP/SSP | — | — |
 | M8 | Automation & Alerts | — | — |
 | M9 | White-label & SuperAdmin | — | — |
+| M11 | AI Traffic Manager (Campaign Diagnostics) | Planned | `docs/superpowers/plans/2026-05-29-m10-ai-traffic-manager.md` |
 
-**Recommended execution order:** M1 → M2 → M4 → M5 → M3 / M6 → M8 / M7 → M9
+**Recommended execution order:** M1 → M2 → M4 → M5 → M3 / M6 → M8 / M7 → M9 → M11
