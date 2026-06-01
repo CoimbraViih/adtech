@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { MOCK_CAMPAIGNS, MOCK_AD_SETS, getMockMetricSnapshots } from "@/lib/campaigns/mock-data";
+import { MOCK_CAMPAIGNS, MOCK_AD_SETS, getMockMetricSnapshots, getMockDiagnostics } from "@/lib/campaigns/mock-data";
 import { StatusBadge } from "@/components/campaigns/status-badge";
 import { PlatformIcon } from "@/components/campaigns/platform-icon";
 import { CampaignCharts } from "@/components/campaigns/campaign-charts";
@@ -9,10 +9,6 @@ import { AdSetsTable } from "@/components/campaigns/ad-sets-table";
 import { DiagnosticCard } from "@/components/diagnostics/diagnostic-card";
 import { SeveritySummary } from "@/components/diagnostics/severity-summary";
 import { RunDiagnosticsButton } from "@/components/diagnostics/run-diagnostics-button";
-import { getSessionFromCookies } from "@/lib/auth/session";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
-import type { AiDiagnostic } from "@/types/database";
 
 function fmt(n: number, dec = 0) {
   return n.toLocaleString("pt-BR", {
@@ -34,22 +30,9 @@ export default async function CampaignDetailPage({
   const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
   if (!campaign) notFound();
 
-  const cookieHeader = (await cookies()).get("adflow_session")?.value ?? null;
-  const session = await getSessionFromCookies(cookieHeader);
-  const workspaceId = session?.workspace.id ?? "";
-
-  const supabase = await createServerSupabaseClient();
-  const { data: diagData } = await supabase
-    .from("ai_diagnostics")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .eq("campaign_id", id)
-    .eq("status", "open")
-    .order("created_at", { ascending: false });
-
-  const diagnostics = ((diagData ?? []) as AiDiagnostic[]).sort(
-    (a, b) => (SEVERITY_ORDER[a.severity] ?? 3) - (SEVERITY_ORDER[b.severity] ?? 3),
-  );
+  // TODO(M2-backend): replace with Supabase query on ai_diagnostics
+  const workspaceId = "ws_demo";
+  const diagnostics = getMockDiagnostics(id);
 
   const adSets = MOCK_AD_SETS.filter((a) => a.campaign_id === id);
   const snapshots = getMockMetricSnapshots(id);
