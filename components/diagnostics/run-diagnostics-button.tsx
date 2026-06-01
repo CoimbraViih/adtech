@@ -9,13 +9,16 @@ export function RunDiagnosticsButton({ workspaceId }: { workspaceId: string }) {
 
   async function run() {
     setLoading(true);
-    await fetch("/api/ai/diagnostics/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId }),
-    });
-    setLoading(false);
-    router.refresh();
+    try {
+      await fetch("/api/ai/diagnostics/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId }),
+      });
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

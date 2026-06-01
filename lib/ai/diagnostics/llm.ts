@@ -1,24 +1,6 @@
 import { getCredentialField } from "@/lib/integrations/credentials";
+import { chatCompletion } from "@/lib/ai/openai";
 import type { SkillFinding } from "./types";
-
-const OPENAI_API_URL = "https://api.openai.com/v1";
-
-async function chatCompletion(
-  apiKey: string,
-  messages: { role: "system" | "user" | "assistant"; content: string }[],
-): Promise<string> {
-  const res = await fetch(`${OPENAI_API_URL}/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "gpt-4o", temperature: 0.2, messages }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OpenAI ${res.status}: ${err}`);
-  }
-  const data = await res.json();
-  return data.choices[0].message.content as string;
-}
 
 export type NarratedDiagnostic = {
   rationale: string;
@@ -50,7 +32,7 @@ Formato: {"rationale":"...","suggested_action":"..."}`;
     const raw = await chatCompletion(apiKey, [
       { role: "system", content: system },
       { role: "user", content: user },
-    ]);
+    ], { temperature: 0.2 });
     const parsed: NarratedDiagnostic = JSON.parse(raw.trim());
     return parsed;
   } catch {

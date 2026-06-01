@@ -9,7 +9,7 @@ async function getApiKey(organizationId: string): Promise<string> {
   return key;
 }
 
-async function chatCompletion(
+export async function chatCompletion(
   apiKey: string,
   messages: { role: "system" | "user" | "assistant"; content: string }[],
   opts: { model?: string; temperature?: number; maxRetries?: number } = {}

@@ -25,51 +25,44 @@ export async function buildCampaignContexts(
   const { data, error } = await query;
   if (error) throw error;
 
-  // Cache benchmarks per (platform, objective) to avoid redundant Supabase calls
-  const benchmarkCache: Record<
-    string,
-    Record<string, { target: number; comparator: "gte" | "lte" }>
-  > = {};
+  const campaigns = ((data as unknown[]) ?? []) as Campaign[];
 
-  return Promise.all(
-    ((data as unknown[]) ?? []).map(async (row) => {
-      const r = row as Campaign;
-      const cacheKey = `${r.platform}:${r.objective}`;
-      if (!benchmarkCache[cacheKey]) {
-        benchmarkCache[cacheKey] = await resolveBenchmarks(
-          workspaceId,
-          r.platform,
-          r.objective,
-        );
-      }
-      const benchmarks = benchmarkCache[cacheKey];
+  // Pre-resolve benchmarks sequentially per unique (platform, objective) pair
+  const uniqueKeys = [...new Set(campaigns.map((r) => `${r.platform}:${r.objective}`))];
+  const benchmarkCache: Record<string, Record<string, { target: number; comparator: "gte" | "lte" }>> = {};
+  for (const key of uniqueKeys) {
+    const [platform, objective] = key.split(":");
+    benchmarkCache[key] = await resolveBenchmarks(workspaceId, platform, objective);
+  }
 
-      const clicks = Number(r.clicks ?? 0);
-      const conversions = Number(r.conversions ?? 0);
-      const cvr = clicks > 0 ? conversions / clicks : null;
+  return campaigns.map((row) => {
+    const cacheKey = `${row.platform}:${row.objective}`;
+    const benchmarks = benchmarkCache[cacheKey] ?? {};
+    const clicks = Number(row.clicks ?? 0);
+    const conversions = Number(row.conversions ?? 0);
+    const cvr = clicks > 0 ? conversions / clicks : null;
 
-      return {
-        workspaceId,
-        organizationId,
-        entityType: "campaign" as const,
-        entityId: r.id,
-        campaignId: r.id,
-        name: r.name,
-        platform: r.platform,
-        objective: r.objective,
-        spend: Number(r.spend ?? 0),
-        impressions: Number(r.impressions ?? 0),
-        clicks,
-        conversions,
-        revenue: Number(r.revenue ?? 0),
-        ctr: r.ctr != null ? Number(r.ctr) : null,
-        cpa: r.cpa != null ? Number(r.cpa) : null,
-        roas: r.roas != null ? Number(r.roas) : null,
-        frequency: null, // requires reach column — not stored yet
-        cvr,
-        ctrDelta7d: null, // future: pull from analytics views
-        benchmarks,
-      } satisfies CampaignContext;
-    }),
-  );
+    return {
+      workspaceId,
+      organizationId,
+      entityType: "campaign" as const,
+      entityId: row.id,
+      campaignId: row.id,
+      name: row.name,
+      platform: row.platform,
+      objective: row.objective,
+      spend: Number(row.spend ?? 0),
+      impressions: Number(row.impressions ?? 0),
+      clicks,
+      conversions,
+      revenue: Number(row.revenue ?? 0),
+      ctr: row.ctr != null ? Number(row.ctr) : null,
+      cpa: row.cpa != null ? Number(row.cpa) : null,
+      roas: row.roas != null ? Number(row.roas) : null,
+      frequency: null,
+      cvr,
+      ctrDelta7d: null,
+      benchmarks,
+    } satisfies CampaignContext;
+  });
 }

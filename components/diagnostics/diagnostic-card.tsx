@@ -23,18 +23,29 @@ type Props = { diagnostic: AiDiagnostic };
 export function DiagnosticCard({ diagnostic: initial }: Props) {
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState<"apply" | "dismiss" | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   if (dismissed) return null;
 
   async function updateStatus(status: "applied" | "dismissed") {
     setLoading(status === "applied" ? "apply" : "dismiss");
-    await fetch(`/api/ai/diagnostics/${initial.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    setDismissed(true);
-    setLoading(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/ai/diagnostics/${initial.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        setError("Falha ao atualizar. Tente novamente.");
+      } else {
+        setDismissed(true);
+      }
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+    } finally {
+      setLoading(null);
+    }
   }
 
   const style = SEVERITY_STYLES[initial.severity];
@@ -76,6 +87,8 @@ export function DiagnosticCard({ diagnostic: initial }: Props) {
           ))}
         </div>
       )}
+
+      {error && <p className="text-xs text-red-400">{error}</p>}
 
       <div className="flex gap-2 pt-1">
         <button

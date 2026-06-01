@@ -65,7 +65,7 @@ export async function runDiagnostics(
       const { data, error } = await supabase
         .from("ai_diagnostics")
         .upsert(row, {
-          onConflict: "entity_type,entity_id,skill_id",
+          onConflict: "workspace_id,entity_type,entity_id,skill_id",
           ignoreDuplicates: false,
         })
         .select()

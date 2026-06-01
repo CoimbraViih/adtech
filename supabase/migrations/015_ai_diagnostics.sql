@@ -64,6 +64,9 @@ CREATE INDEX IF NOT EXISTS ai_diagnostics_workspace_status_idx
 CREATE UNIQUE INDEX IF NOT EXISTS ai_diagnostics_open_unique_idx
   ON ai_diagnostics(entity_type, entity_id, skill_id)
   WHERE status = 'open';
+-- unconditional unique key for upsert conflict resolution (PostgREST requires non-partial index)
+ALTER TABLE ai_diagnostics ADD CONSTRAINT ai_diagnostics_entity_skill_unique
+  UNIQUE (workspace_id, entity_type, entity_id, skill_id);
 
 -- ── updated_at triggers ───────────────────────────────────────────────────────
 DROP TRIGGER IF EXISTS set_campaign_benchmarks_updated_at ON campaign_benchmarks;

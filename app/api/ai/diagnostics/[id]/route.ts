@@ -46,6 +46,7 @@ export async function PATCH(
     .from("ai_diagnostics")
     .update({ status: parsed.data.status as DiagnosticStatus })
     .eq("id", id)
+    .eq("workspace_id", diagnostic.workspace_id)
     .select()
     .single() as { data: unknown; error: unknown };
 

@@ -6,6 +6,7 @@ export const learningPhase: Skill = {
   requiredMetrics: ["conversions"],
   shouldTrigger(ctx) {
     if (ctx.spend < 10 || ctx.impressions < 100) return null;
+    if (!["sales", "leads"].includes(ctx.objective)) return null;
     if (ctx.conversions >= 50) return null;
     return {
       severity: "info",
