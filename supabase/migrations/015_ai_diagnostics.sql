@@ -58,16 +58,20 @@ CREATE TABLE IF NOT EXISTS ai_diagnostics (
 CREATE INDEX IF NOT EXISTS ai_diagnostics_workspace_idx ON ai_diagnostics(workspace_id);
 CREATE INDEX IF NOT EXISTS ai_diagnostics_campaign_idx  ON ai_diagnostics(campaign_id);
 CREATE INDEX IF NOT EXISTS ai_diagnostics_status_idx    ON ai_diagnostics(status);
+CREATE INDEX IF NOT EXISTS ai_diagnostics_workspace_status_idx
+  ON ai_diagnostics(workspace_id, status);
 -- prevents duplicate open diagnostics for same entity+skill
 CREATE UNIQUE INDEX IF NOT EXISTS ai_diagnostics_open_unique_idx
   ON ai_diagnostics(entity_type, entity_id, skill_id)
   WHERE status = 'open';
 
 -- ── updated_at triggers ───────────────────────────────────────────────────────
+DROP TRIGGER IF EXISTS set_campaign_benchmarks_updated_at ON campaign_benchmarks;
 CREATE TRIGGER set_campaign_benchmarks_updated_at
   BEFORE UPDATE ON campaign_benchmarks
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS set_ai_diagnostics_updated_at ON ai_diagnostics;
 CREATE TRIGGER set_ai_diagnostics_updated_at
   BEFORE UPDATE ON ai_diagnostics
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
