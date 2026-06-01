@@ -16,7 +16,7 @@ export async function buildCampaignContexts(
       "id, name, platform, objective, spend, impressions, clicks, conversions, revenue, cpa, roas, ctr, status",
     )
     .eq("workspace_id", workspaceId)
-    .or(`status.neq.archived`);
+    .neq("status", "archived");
 
   if (campaignId) {
     query = query.eq("id", campaignId);
