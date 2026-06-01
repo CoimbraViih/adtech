@@ -26,11 +26,21 @@ type Props = { diagnostic: AiDiagnostic };
 
 export function DiagnosticCard({ diagnostic: initial }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [done, setDone] = useState<"applied" | "dismissed" | null>(null);
   const [loading, setLoading] = useState<"apply" | "dismiss" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (dismissed) return null;
+  // Dismissed cards are removed from the list
+  if (done === "dismissed") return null;
+
+  // Applied cards show a confirmation banner instead of the full card
+  if (done === "applied") {
+    return (
+      <div className="border border-green-500/30 rounded-lg p-3 text-xs text-green-400 bg-[color:var(--adflow-surface)]">
+        ✓ Intenção marcada como aplicada — {initial.title}
+      </div>
+    );
+  }
 
   async function updateStatus(status: "applied" | "dismissed") {
     setLoading(status === "applied" ? "apply" : "dismiss");
@@ -44,7 +54,7 @@ export function DiagnosticCard({ diagnostic: initial }: Props) {
       if (!res.ok) {
         setError("Falha ao atualizar. Tente novamente.");
       } else {
-        setDismissed(true);
+        setDone(status);
       }
     } catch {
       setError("Erro de conexão. Tente novamente.");

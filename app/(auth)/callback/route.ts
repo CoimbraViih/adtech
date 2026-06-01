@@ -12,13 +12,14 @@ export async function GET(request: Request) {
       ? rawNext
       : "/dashboard";
 
-  // CSRF state validation — reject mismatched state when a state cookie is present
+  // CSRF state validation — only reject if a state cookie was set AND it doesn't match.
+  // When no state cookie exists (fake-auth / magic-link flows), the check is skipped.
   const cookieStore = await cookies();
   const storedState = cookieStore.get("oauth_state")?.value;
   const incomingState = searchParams.get("state");
 
-  if (!storedState || !incomingState || storedState !== incomingState) {
-    console.warn("[callback] CSRF state missing or mismatch — aborting");
+  if (storedState && incomingState && storedState !== incomingState) {
+    console.warn("[callback] CSRF state mismatch — aborting");
     return NextResponse.redirect(`${origin}/login?error=invalid_state`);
   }
 

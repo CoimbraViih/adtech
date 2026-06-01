@@ -28,7 +28,8 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.auth as any).exchangeCodeForSession(code);
 
   if (error) {
     console.error("[callback] PKCE exchange failed:", error.message);

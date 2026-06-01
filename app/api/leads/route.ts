@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseLeadInput } from "@/lib/leads/schema";
 import { createServiceClient } from "@/lib/supabase/service";
-import { payloadExceedsLimit } from "@/lib/security/payload";
 
 const LEAD_PAYLOAD_LIMIT = 5 * 1024;
 
@@ -24,7 +23,16 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  if (payloadExceedsLimit(req.headers.get("content-length"), LEAD_PAYLOAD_LIMIT)) {
+  // Read body as text first so we can check its actual byte length,
+  // regardless of whether Content-Length header is present (chunked encoding).
+  let bodyText: string;
+  try {
+    bodyText = await req.text();
+  } catch {
+    return NextResponse.json({ error: "Falha ao ler body." }, { status: 400 });
+  }
+
+  if (bodyText.length > LEAD_PAYLOAD_LIMIT) {
     return NextResponse.json({ error: "Payload muito grande." }, { status: 413 });
   }
 
@@ -42,7 +50,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let rawBody: unknown;
   try {
-    rawBody = await req.json();
+    rawBody = JSON.parse(bodyText);
   } catch {
     return NextResponse.json({ error: "JSON inválido." }, { status: 400 });
   }

@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+const patchRuleSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  condition: z.enum(["roas_below", "cpa_above", "spend_above", "ctr_below", "conversions_below"]).optional(),
+  threshold: z.number().finite().optional(),
+  status: z.enum(["active", "paused"]).optional(),
+  cooldown_minutes: z.number().int().min(1).optional(),
+  campaign_id: z.string().uuid().nullable().optional(),
+}).strict();
 
 export async function PATCH(
   request: Request,
@@ -15,14 +25,18 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const allowed = ["name", "condition", "threshold", "status", "cooldown_minutes", "campaign_id"];
-  const update = Object.fromEntries(
-    Object.entries(body as Record<string, unknown>).filter(([k]) => allowed.includes(k))
-  );
+  const parsed = patchRuleSchema.safeParse(body);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return NextResponse.json(
+      { error: `${first.path.join(".") || "body"}: ${first.message}` },
+      { status: 422 }
+    );
+  }
 
   const { data, error } = await supabase
     .from("alert_rules")
-    .update(update)
+    .update(parsed.data)
     .eq("id", id)
     .select()
     .single();

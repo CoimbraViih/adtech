@@ -312,7 +312,7 @@ function Step3Budget({ form }: { form: ReturnType<typeof useForm<CampaignFormVal
 }
 
 function Step4Review({ form }: { form: ReturnType<typeof useForm<CampaignFormValues>> }) {
-  const values = form.getValues();
+  const values = form.watch();
 
   const rows: { label: string; value: string }[] = [
     { label: "Nome", value: values.name },
@@ -421,6 +421,7 @@ export function CampaignForm() {
       }
 
       const created = (await res.json()) as { id: string };
+      setIsSubmitting(false);
       router.push(`/campaigns/${created.id}`);
     } catch {
       setServerError("Erro de conexão. Tente novamente.");

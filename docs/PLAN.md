@@ -504,6 +504,31 @@
 - [x] Checkout retorna apenas a URL da Stripe Session — `customer_id` nunca exposto ao client
 - [x] Idempotência de webhooks via `billing_events.stripe_event_id`
 
+### Auditoria pós-merge (2026-06-01) — multi-agente
+
+Segunda passagem de auditoria cobrindo segurança + qualidade de código + compatibilidade Next.js 15. Todos os issues abaixo foram corrigidos no mesmo commit.
+
+**Segurança:**
+- [x] **CSRF callback invertido** (`app/(auth)/callback/route.ts`) — condição `!storedState` bloqueava todos os logins; corrigido para rejeitar apenas em mismatch explícito
+- [x] **Open-redirect em dev-login** (`app/api/auth/dev-login/route.ts`) — parâmetro `?next=` sanitizado igual ao middleware
+- [x] **Stripe webhook 200 sem secrets em produção** (`app/api/stripe/webhook/route.ts`) — retorna 500 em produção quando secrets ausentes
+- [x] **IDOR em automation/rules POST** — `workspace_id` derivado da sessão; nunca aceito do body
+- [x] **IDOR em automation/notifications GET** — `workspace_id` validado contra sessão antes de buscar
+- [x] **IDOR em audiences GET** — removido override de `workspace_id` via query string
+- [x] **Payload check em leads** — payload lido como texto antes de parsear (bypassa ausência de `Content-Length`)
+- [x] **CSP connect-src wildcard** — restringido de `https:` para `https://*.supabase.co https://api.stripe.com`
+- [x] **PUBLIC_PATHS duplicados** — `/login` e `/signup` removidos de `PUBLIC_PATHS` (já cobertas por `AUTH_ONLY_PATHS`)
+- [x] **PATCH de rules sem Zod** (`app/api/automation/rules/[id]/route.ts`) — allowlist substituída por schema Zod tipado com `.strict()`
+
+**Qualidade de código:**
+- [x] **`isSubmitting` nunca resetado no happy path** (`campaign-form.tsx`) — `setIsSubmitting(false)` adicionado antes do `router.push`
+- [x] **`getValues()` stale em Step4Review** — substituído por `form.watch()` para subscrever mudanças
+- [x] **`DiagnosticCard` confundia "aplicado" com "descartado"** — estados separados; aplicado mostra banner de confirmação em vez de remover o card
+- [x] **`RunDiagnosticsButton` engolia erros silenciosamente** — checagem de `res.ok` + estado de erro visível
+
+**Next.js 15:**
+- [x] **Auditoria completa** — zero violações de `params`/`cookies`/`searchParams` síncronos; todos os padrões corretos
+
 ### Auditoria final pré-produção (pendente para M10)
 - [ ] Rotação de secrets: gerar novas chaves de produção — nunca reusar as de desenvolvimento
 - [ ] Varredura de segredos: `trufflehog` ou `gitleaks` em toda a história do git

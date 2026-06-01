@@ -37,6 +37,10 @@ export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!webhookSecret || !process.env.STRIPE_SECRET_KEY) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("[stripe/webhook] STRIPE_WEBHOOK_SECRET ou STRIPE_SECRET_KEY ausente em produção");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+    }
     return NextResponse.json({ received: true, mock: true });
   }
 

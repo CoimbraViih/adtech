@@ -29,8 +29,8 @@ export async function GET(req: NextRequest) {
   }
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { searchParams } = new URL(req.url);
-  const workspaceId = searchParams.get("workspace_id") ?? session.workspace.id;
+  // Always use workspace from the authenticated session — never trust query param
+  const workspaceId = session.workspace.id;
 
   // TODO(M8-backend): replace with Supabase query
   // const supabase = createServerSupabaseClient();

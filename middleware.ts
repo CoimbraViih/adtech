@@ -16,11 +16,11 @@ import type { NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { SESSION_COOKIE, decodeSession } from "@/lib/auth/session";
 
-// Routes that are always public (no auth required)
+// Routes that are always public (no auth required).
+// Note: /login and /signup are intentionally absent here — they are handled by
+// AUTH_ONLY_PATHS below, which redirects logged-in users to /dashboard.
 const PUBLIC_PATHS = [
   "/",                   // M6 — marketing landing page
-  "/login",
-  "/signup",
   "/onboarding",
   "/callback",
   "/api/health",
