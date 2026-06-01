@@ -109,6 +109,7 @@ export async function createServerSupabaseClient() {
     delete: () => Chain;
     order: (..._args: unknown[]) => Chain;
     limit: (..._args: unknown[]) => Chain;
+    or: (..._args: unknown[]) => Chain;
     single: () => Promise<QueryResult>;
   };
 
@@ -123,6 +124,7 @@ export async function createServerSupabaseClient() {
       delete: () => chain,
       order: (..._args: unknown[]) => chain,
       limit: (..._args: unknown[]) => chain,
+      or: (..._args: unknown[]) => chain,
       single: () => Promise.resolve({ data: null as unknown, error: null as unknown }),
     }) as Chain;
     return chain;
