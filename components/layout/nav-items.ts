@@ -10,6 +10,7 @@ import {
   Settings,
   Layers,
   Users,
+  AlertTriangle,
 } from "lucide-react";
 
 export type NavItem = {
@@ -27,6 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Audiências",    href: "/audiences",               icon: Users },
   { label: "Criativos",     href: "/creatives",               icon: Sparkles },
   { label: "Analytics",     href: "/analytics",               icon: BarChart3 },
+  { label: "Diagnósticos",  href: "/analytics/diagnostics",   icon: AlertTriangle },
   { label: "Pixel",         href: "/pixel",                   icon: Radio },
   { label: "Landing Pages", href: "/landing-pages",           icon: FileText },
   { label: "Automação",     href: "/automation",              icon: Zap },
