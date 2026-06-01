@@ -156,9 +156,7 @@ export default async function CampaignDetailPage({
       <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-[color:var(--adflow-fg)]">Diagnósticos</h2>
-          {workspaceId && (
-            <RunDiagnosticsButton workspaceId={workspaceId} campaignId={id} />
-          )}
+          <RunDiagnosticsButton workspaceId={workspaceId} campaignId={id} />
         </div>
 
         {diagnostics.length >= 2 && <SeveritySummary diagnostics={diagnostics} />}
