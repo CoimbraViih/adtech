@@ -72,8 +72,12 @@ export async function middleware(request: NextRequest) {
   // 6. Dashboard + all other protected routes: must be authenticated
   if (!isAuthenticated) {
     const loginUrl = new URL("/login", request.url);
-    // Preserve the intended destination so login can redirect back
-    loginUrl.searchParams.set("next", pathname);
+    // Sanitize against open-redirect: only allow same-origin relative paths
+    const safeNext =
+      pathname.startsWith("/") && !pathname.startsWith("//")
+        ? pathname
+        : "/dashboard";
+    loginUrl.searchParams.set("next", safeNext);
     return NextResponse.redirect(loginUrl);
   }
 

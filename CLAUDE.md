@@ -57,13 +57,14 @@ Revenue model: monthly subscription (R$500–3.000) + % of managed spend (3–8%
 | Whisper | Auto-subtitles |
 | Meta Marketing API | Campaign management |
 | Google Ads API | Campaign management |
-| OpenRTB 2.6 | Programmatic DSP/SSP |
+| OpenRTB 2.6 | Programmatic DSP/SSP (open auction) |
 | WhatsApp Business API | Automation messaging |
 
 ### Infrastructure
 - **Hosting:** Vercel (Next.js app) + AWS São Paulo (backend services, post-MVP)
 - **Containers:** Docker + Kubernetes (post-MVP)
 - **Region strategy:** AWS sa-east-1 (primary) + us-east-1 (secondary)
+- **Creative asset storage:** Supabase Storage bucket `creative-assets` — imagens de banners, thumbnails e assets de campanha (M15)
 
 ---
 
@@ -85,7 +86,7 @@ adtech/
 │   │   ├── analytics/            # M5: attribution dashboard
 │   │   ├── pixel/                # M4: pixel management
 │   │   ├── landing-pages/        # M6: LP builder
-│   │   ├── automation/           # M8: funnel automation
+│   │   ├── automation/           # M7: funnel automation
 │   │   ├── settings/
 │   │   │   └── billing/page.tsx  # Stripe billing portal
 │   │   └── onboarding/page.tsx   # Org + workspace setup wizard
@@ -124,6 +125,8 @@ adtech/
 │   │   ├── client.ts
 │   │   ├── plans.ts              # Plan definitions & feature gates
 │   │   └── webhooks.ts           # Webhook event handlers
+│   ├── storage/
+│   │   └── creative-assets.ts    # M15: upload/delete/list de assets no Supabase Storage
 │   └── auth/
 │       └── roles.ts              # RBAC helpers (canManageCampaigns, etc.)
 │
@@ -294,6 +297,9 @@ See `.env.local.example` for the full list.
 | M7 | Programmatic DSP/SSP | — | — |
 | M8 | Automation & Alerts | — | — |
 | M9 | White-label & SuperAdmin | — | — |
-| M11 | AI Traffic Manager (Campaign Diagnostics) | Planned | `docs/superpowers/plans/2026-05-29-m10-ai-traffic-manager.md` |
+| M11 | AI Traffic Manager (Campaign Diagnostics) | ✅ Done | `docs/superpowers/plans/2026-05-29-m10-ai-traffic-manager.md` |
+| M8-DMP | DMP Completion (real audience rule evaluation) | Planned | — |
+| M12 | PMP & Deal Enforcement | Planned | — |
+| M15 | Creative Asset Uploads (images) | Planned | — |
 
-**Recommended execution order:** M1 → M2 → M4 → M5 → M3 / M6 → M8 / M7 → M9 → M11
+**Recommended execution order:** M1 → M2 → M4 → M5 → M3 / M6 → M8 / M7 → M9 → M11 → M8-DMP → M12 / M15

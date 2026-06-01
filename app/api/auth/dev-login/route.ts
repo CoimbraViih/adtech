@@ -11,8 +11,11 @@ import { NextResponse } from "next/server";
 import { devLogin } from "@/lib/auth/actions";
 
 export async function GET(request: Request) {
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "Not available in production" }, { status: 404 });
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.ENABLE_DEV_LOGIN !== "true"
+  ) {
+    return NextResponse.json({ error: "Not available in this environment" }, { status: 404 });
   }
 
   const { searchParams } = new URL(request.url);

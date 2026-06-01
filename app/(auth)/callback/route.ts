@@ -5,7 +5,12 @@ import { encodeSession, FAKE_SESSION } from "@/lib/auth/session";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const onboarding = searchParams.get("onboarding");
-  const next = searchParams.get("next") ?? "/dashboard";
+  // Sanitize redirect destination against open-redirect attacks
+  const rawNext = searchParams.get("next") ?? "/dashboard";
+  const next =
+    rawNext.startsWith("/") && !rawNext.startsWith("//")
+      ? rawNext
+      : "/dashboard";
 
   // CSRF state validation — reject mismatched state when a state cookie is present
   const cookieStore = await cookies();

@@ -25,6 +25,9 @@
 | MS | Segurança & Hardening | `feat/integrations-api-keys` ✅ | M1–M9 |
 | M10 | Deploy & Produção | `feat/m10-deploy` | M1–M9, MS |
 | M11 | AI Traffic Manager (Campaign Diagnostics) | `feat/integrations-api-keys` ✅ | M2, M4, M5 |
+| M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M8 |
+| M12 | PMP & Deal Enforcement | `feat/m12-pmp` | M8, M8-DMP |
+| M15 | Upload de Criativos (imagens) | `feat/m15-creative-uploads` | M2, M3, M8 |
 
 ---
 
@@ -620,6 +623,122 @@ git commit -m "feat(m10): production deploy, CI/CD, monitoring, Stripe live, sec
 
 ---
 
+## M8-DMP — DMP Completion
+
+**Branch:** `feat/m8-dmp-complete`  
+**Depende de:** M8 (programático)  
+**Objetivo:** Completar a avaliação real de regras de audiência contra pixel events. Sem isso, PMP/CTV/DOOH não têm targeting real — `evaluateAudienceRules` é atualmente um stub que retorna estimativas hardcoded.
+
+> **Skills:** `/supabase` · `/supabase-postgres-best-practices` · `/webapp-testing`
+
+### Backend
+- [ ] `lib/rtb/dmp.ts` — `evaluateAudienceRules(rules, userId)`: substituir estimativa hardcoded por query real em `pixel_events` filtrada por `user_id_hash` + `lookback_days`
+- [ ] `lib/rtb/dmp.ts` — `buildAudienceMemberships(workspaceId)`: job que popula `audience_segments` com memberships calculados
+- [ ] Migration `016_audience_membership.sql`: schedule ou trigger em `pixel_events` para manter `audience_segments` atualizado
+
+### Entregáveis
+- `evaluateAudienceRules` retorna resultado real baseado em pixel events do usuário
+- `audience_segments` populado com user-to-audience memberships válidos
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M12 — PMP: Deal Enforcement & Programmatic Guaranteed
+
+**Branch:** `feat/m12-pmp`  
+**Depende de:** M8, M8-DMP  
+**Objetivo:** Fechar o ciclo programático privado. Atualmente campanhas `private`/`preferred`/`guaranteed` competem em todo leilão aberto porque `selectBid` não filtra por deal_id. PMP real exige que deal IDs sejam negociados e enforced no bid path.
+
+> **Skills:** `/supabase` · `/webapp-testing` · `/frontend-design`
+
+### Database
+- [ ] Migration `016_pmp_deals.sql`:
+  - Tabela `pmp_deals`: `id`, `workspace_id`, `deal_id TEXT UNIQUE`, `deal_name`, `deal_type` (`private|preferred|guaranteed`), `floor_price NUMERIC`, `publisher_name TEXT`, `status TEXT`, `wseat TEXT[]`, `start_date TIMESTAMPTZ`, `end_date TIMESTAMPTZ`
+  - Índice em `deal_id` para lookup O(log n) no bid path (latência crítica)
+  - RLS: workspace members leem; owners/admins escrevem
+
+### TypeScript / Biblioteca
+- [ ] `types/database.ts` — `PmpDeal` type
+- [ ] `types/database.ts` — Estender `OpenRtbImp`: `pmp?: { private_auction: 0|1; deals: Array<{ id: string; bidfloor?: number; bidfloorcur?: string; wseat?: string[] }> }`
+- [ ] `types/database.ts` — Estender `OpenRtbBid`: `dealid?: string`, `nurl?: string`, `burl?: string`
+- [ ] `lib/rtb/bidder.ts` — `selectBid`: se `imp.pmp.private_auction === 1`, filtrar somente campanhas cujo `deal_id` está em `imp.pmp.deals[].id`
+- [ ] `lib/rtb/bidder.ts` — campanha `guaranteed`: bypass de leilão, preço fixo = `deal.floor_price`; retornar `dealid` no `OpenRtbBid`
+
+### API Routes
+- [ ] `app/api/rtb/bid/route.ts` — estender Zod schema: aceitar `imp[].pmp` object
+- [ ] `app/api/rtb/deals/route.ts` — GET (lista deals do workspace) + POST (criar deal)
+- [ ] `app/api/rtb/deals/[id]/route.ts` — PATCH + DELETE
+
+### Interface
+- [ ] `app/(dashboard)/campaigns/programmatic/deals/page.tsx` — tabela de deals: publisher, deal_id, floor price, tipo, status, datas; botão "Novo Deal"
+- [ ] `components/campaigns/deal-selector.tsx` — select de deal disponível ao criar campanha; aparece apenas quando `deal_type !== "open"`
+- [ ] `components/campaigns/rtb-campaign-form.tsx` — integrar `DealSelector` no step 1 (Deal)
+- [ ] Sidebar: link "Deals" sob Programático
+
+### Testes
+- [ ] `tests/unit/rtb-bidder-pmp.test.ts` — private auction só seleciona campanhas com deal matching; guaranteed bypassa leilão com preço fixo; open auction ignora deals
+- [ ] `tests/unit/pmp-deals.test.ts` — validação Zod de criação de deal
+- [ ] `tests/e2e/programmatic-pmp.spec.ts` — criação de deal, criação de campanha privada vinculada ao deal
+
+### Entregáveis
+- `tsc --noEmit` zero erros
+- `vitest run` passando com novos testes de PMP
+- Campanha `private` não ganha bids sem deal ID correspondente no BidRequest
+- Campanha `guaranteed` retorna preço fixo do deal sem entrar em leilão
+
+---
+
+## M15 — Upload de Criativos (Imagens)
+
+**Branch:** `feat/m15-creative-uploads`  
+**Depende de:** M2 (campanhas), M3 (AI Creative Studio), M8 (programático)  
+**Objetivo:** Gestor de tráfego consegue fazer upload de imagens de criativos (banners, thumbnails, assets de campanha) diretamente na plataforma. Imagens vinculadas a criativos no AI Creative Studio, a ads em campanhas sociais e a anúncios display em campanhas programáticas.
+
+> **Agentes:** `@frontend-developer` · `@typescript-pro`  
+> **Skills:** `/supabase` · `/frontend-design` · `/webapp-testing`
+
+### Database
+- [ ] Migration `019_creative_assets.sql`:
+  - Tabela `creative_assets`: `id UUID PK`, `workspace_id UUID`, `creative_id UUID NULLABLE → creatives.id`, `campaign_id UUID NULLABLE → campaigns.id`, `rtb_campaign_id UUID NULLABLE → rtb_campaigns.id`, `storage_path TEXT NOT NULL`, `public_url TEXT NOT NULL`, `filename TEXT`, `mime_type TEXT`, `size_bytes INT`, `width_px INT`, `height_px INT`, `alt_text TEXT`, `created_at TIMESTAMPTZ`
+  - RLS: workspace members leem e escrevem; owners/admins deletam
+  - Índices em `workspace_id`, `creative_id`, `campaign_id`, `rtb_campaign_id`
+- [ ] Supabase Storage bucket `creative-assets` — público para leitura, autenticado para escrita; max 10MB por arquivo; tipos aceitos: `image/jpeg`, `image/png`, `image/webp`, `image/gif`
+
+### TypeScript
+- [ ] `types/database.ts` — `CreativeAsset` type
+- [ ] `lib/storage/creative-assets.ts` — `uploadCreativeAsset(file, workspaceId, opts)`: upload para Supabase Storage + insert em `creative_assets`; `deleteCreativeAsset(id)`: remove storage + registro; `getAssetsByCreative(creativeId)`, `getAssetsByCampaign(campaignId)`, `getAssetsByRtbCampaign(rtbCampaignId)`
+
+### API Routes
+- [ ] `app/api/creative-assets/route.ts` — GET (lista por workspace, filtra por `creative_id` / `campaign_id` / `rtb_campaign_id`) + POST (upload multipart, validação de tipo e tamanho, chama `uploadCreativeAsset`)
+- [ ] `app/api/creative-assets/[id]/route.ts` — DELETE (remove storage + registro, RBAC owner/admin)
+
+### Interface — AI Creative Studio (M3)
+- [ ] `components/creatives/asset-uploader.tsx` — dropzone (react-dropzone) com preview de imagem, barra de progresso, botão remover; aceita múltiplos arquivos; mostra dimensões e tamanho
+- [ ] `app/(dashboard)/creatives/new/page.tsx` — seção "Assets do Criativo" abaixo do gerador de copy; `AssetUploader` com POST para `/api/creative-assets?creative_id=...`
+- [ ] `app/(dashboard)/creatives/[id]/page.tsx` — galeria de assets vinculados ao criativo com thumbnails; botão de upload adicional; remover asset individual
+
+### Interface — Gestão de Campanhas (M2)
+- [ ] `components/campaigns/campaign-assets-section.tsx` — seção "Imagens da Campanha" no formulário de criação (step Revisão) e no detalhe da campanha; `AssetUploader` reutilizado com `campaign_id`
+- [ ] `app/(dashboard)/campaigns/[id]/page.tsx` — aba "Assets" com grid de imagens vinculadas; upload e remoção inline
+
+### Interface — Programático (M8)
+- [ ] `components/campaigns/rtb-assets-section.tsx` — seção "Criativos Display" no wizard de campanha RTB (step Revisão) e no detalhe; upload de banner (300×250, 728×90, 320×50) com validação de dimensão por formato
+- [ ] `app/(dashboard)/campaigns/programmatic/[id]/page.tsx` — aba "Banners" com assets agrupados por tamanho padrão IAB
+
+### Testes
+- [ ] `tests/unit/creative-assets.test.ts` — validação de tipo, tamanho máximo, upload path, delete
+- [ ] `tests/e2e/creative-uploads.spec.ts` — upload no AI Studio, upload em campanha social, upload em campanha programática; visualizar asset; remover asset
+
+### Entregáveis
+- `tsc --noEmit` zero erros
+- `vitest run` passando
+- Upload de PNG/JPEG/WebP funcional nos três contextos (criativo, campanha, RTB)
+- Imagem não aceita > 10MB — erro inline no dropzone
+- Assets visíveis e removíveis nas páginas de detalhe
+- Dados gateados atrás de `TODO(M15-backend)` para swap-in Supabase Storage real
+
+---
+
 ## Ordem de execução recomendada
 
 ```
@@ -632,10 +751,12 @@ M0 (setup)
        │    │    └─ M11 (AI traffic manager) ← depende M2 + M4 + M5
        │    ├─ M7 (automação)      ← depende M2 + M4 + M5
        │    └─ M8 (programático)   ← depende M2 + M4
+       │         └─ M8-DMP (completar avaliação real de regras)
+       │              └─ M12 (PMP deal enforcement)
        ├─ M6 (landing page AdFlow) ← paralelo, depende só M1
        └─ M9 (monetização Stripe)  ← depende M1–M5
             └─ MS (segurança)
                  └─ M10 (deploy)
 ```
 
-**Regra:** Interface mockada sempre antes do backend. Cada milestone deve estar demonstrável com dados reais antes de iniciar o próximo.
+**Regra:** Interface mockada sempre antes do backend. Cada milestone deve estar demonstrável com dados reais antes de iniciar o próximo. M15 pode ser desenvolvido em paralelo com M12 — não há dependência entre upload de assets e deal enforcement.
