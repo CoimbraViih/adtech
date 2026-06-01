@@ -144,6 +144,8 @@ export type CampaignAlert = {
   platform: string;
   worstSeverity: "critical" | "warning";
   worstTitle: string;
+  worstDescription: string;
+  suggestedAction: string;
   openCount: number;
 };
 
@@ -156,6 +158,8 @@ export function getCampaignAlerts(): CampaignAlert[] {
       platform: "meta",
       worstSeverity: "critical",
       worstTitle: "Gasto sem conversão detectado",
+      worstDescription: "R$ 450 investidos nos últimos 7 dias sem nenhuma conversão registrada — 3× o CPA-alvo definido para esta campanha.",
+      suggestedAction: "Pausar os conjuntos de anúncios com menor CTR e revisar o público-alvo antes de retomar o investimento.",
       openCount: 2,
     },
     {
@@ -164,6 +168,8 @@ export function getCampaignAlerts(): CampaignAlert[] {
       platform: "google",
       worstSeverity: "warning",
       worstTitle: "Fase de aprendizado ativa",
+      worstDescription: "A campanha acumulou apenas 12 conversões desde a última alteração de lance — abaixo das 50 necessárias para sair da fase de aprendizado.",
+      suggestedAction: "Evite editar orçamento ou segmentação até atingir 50 conversões. Considere ampliar o público temporariamente.",
       openCount: 1,
     },
   ];
