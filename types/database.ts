@@ -527,6 +527,8 @@ export type OpenRtbImp = {
   bidfloorcur?: string;
 };
 
+// ─── Integrations & API Keys ─────────────────────────────────────────────────
+
 export type OpenRtbBidRequest = {
   id: string;
   imp: OpenRtbImp[];
@@ -605,4 +607,39 @@ export type IntegrationStatus = {
   provider: string;
   configured: boolean;
   last_tested_at: string | null;
+};
+
+// ─── M11: AI Traffic Manager ──────────────────────────────────────────────────
+
+export type DiagnosticSeverity = "info" | "warning" | "critical";
+export type DiagnosticStatus = "open" | "acknowledged" | "applied" | "dismissed";
+export type DiagnosticEntity = "campaign" | "ad_set" | "ad";
+
+export type CampaignBenchmark = {
+  id: string;
+  workspace_id: string | null;
+  platform: string;
+  objective: string;
+  metric: string;
+  target_value: number;
+  comparator: "gte" | "lte";
+  created_at: string;
+  updated_at: string;
+};
+
+export type AiDiagnostic = {
+  id: string;
+  workspace_id: string;
+  entity_type: DiagnosticEntity;
+  entity_id: string;
+  campaign_id: string | null;
+  skill_id: string;
+  severity: DiagnosticSeverity;
+  status: DiagnosticStatus;
+  title: string;
+  rationale: string;
+  suggested_action: string;
+  metrics_snapshot: Record<string, number>;
+  created_at: string;
+  updated_at: string;
 };
