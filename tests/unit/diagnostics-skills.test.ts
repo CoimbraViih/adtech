@@ -6,6 +6,7 @@ import { creativeFatigue } from "@/lib/ai/diagnostics/skills/creative-fatigue";
 import { spendNoConversion } from "@/lib/ai/diagnostics/skills/spend-no-conversion";
 import { clickNoConvert } from "@/lib/ai/diagnostics/skills/click-no-convert";
 import { learningPhase } from "@/lib/ai/diagnostics/skills/learning-phase";
+import { SKILLS } from "@/lib/ai/diagnostics/skills/index";
 
 function baseCtx(overrides: Partial<CampaignContext> = {}): CampaignContext {
   return {
@@ -87,6 +88,13 @@ describe("creative-fatigue skill", () => {
     const ctx = baseCtx({ frequency: 2.0, ctrDelta7d: -0.30 });
     expect(creativeFatigue.shouldTrigger(ctx)).toBeNull();
   });
+
+  it("triggers as critical when frequency is very high (> 1.5x target)", () => {
+    const ctx = baseCtx({ frequency: 5.5, ctrDelta7d: -0.25 }); // 5.5 > 3.5*1.5=5.25
+    const finding = creativeFatigue.shouldTrigger(ctx);
+    expect(finding).not.toBeNull();
+    expect(finding?.severity).toBe("critical");
+  });
 });
 
 describe("spend-no-conversion skill", () => {
@@ -136,5 +144,20 @@ describe("learning-phase skill", () => {
   it("does not trigger once 50+ conversions accumulated", () => {
     const ctx = baseCtx({ conversions: 60 });
     expect(learningPhase.shouldTrigger(ctx)).toBeNull();
+  });
+});
+
+describe("SKILLS registry", () => {
+  it("contains all 6 skills", () => {
+    expect(SKILLS).toHaveLength(6);
+  });
+
+  it("has no duplicate skill IDs", () => {
+    const ids = SKILLS.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("spendNoConversion is first for early critical detection", () => {
+    expect(SKILLS[0].id).toBe("spend-no-conversion");
   });
 });

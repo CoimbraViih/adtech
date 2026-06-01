@@ -7,7 +7,7 @@ export const creativeFatigue: Skill = {
   shouldTrigger(ctx) {
     const bench = ctx.benchmarks["frequency"];
     if (!bench || ctx.frequency == null || ctx.ctrDelta7d == null) return null;
-    const freqHigh = bench.comparator === "lte" ? ctx.frequency > bench.target : ctx.frequency < bench.target;
+    const freqHigh = ctx.frequency > bench.target;
     if (!freqHigh) return null;
     if (ctx.ctrDelta7d > -0.20) return null;
     return {

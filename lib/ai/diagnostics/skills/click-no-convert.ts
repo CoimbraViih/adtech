@@ -7,9 +7,7 @@ export const clickNoConvert: Skill = {
   shouldTrigger(ctx) {
     if (ctx.ctr == null || ctx.cvr == null || ctx.clicks < 100) return null;
     const ctrBench = ctx.benchmarks["ctr"];
-    const ctrOk = ctrBench
-      ? (ctrBench.comparator === "gte" ? ctx.ctr >= ctrBench.target : ctx.ctr <= ctrBench.target)
-      : ctx.ctr >= 0.01;
+    const ctrOk = ctrBench ? ctx.ctr >= ctrBench.target : ctx.ctr >= 0.01;
     if (!ctrOk) return null;
     if (ctx.cvr >= 0.005) return null;
     return {

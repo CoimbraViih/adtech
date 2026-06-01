@@ -5,6 +5,7 @@ export const learningPhase: Skill = {
   label: "Fase de aprendizado",
   requiredMetrics: ["conversions"],
   shouldTrigger(ctx) {
+    if (ctx.spend < 10 || ctx.impressions < 100) return null;
     if (ctx.conversions >= 50) return null;
     return {
       severity: "info",

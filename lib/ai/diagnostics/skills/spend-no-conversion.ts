@@ -7,7 +7,7 @@ export const spendNoConversion: Skill = {
   shouldTrigger(ctx) {
     if (ctx.conversions > 0) return null;
     const cpaBench = ctx.benchmarks["cpa"];
-    const spendFloor = cpaBench ? cpaBench.target * 3 : 150;
+    const spendFloor = cpaBench && cpaBench.target > 0 ? cpaBench.target * 3 : 150;
     if (ctx.spend < spendFloor) return null;
     return {
       severity: "critical",
