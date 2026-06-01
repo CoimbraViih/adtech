@@ -138,6 +138,37 @@ export function getImpressionsAndConversionsByDay(from: string, to: string): Dua
   }));
 }
 
+export type CampaignAlert = {
+  campaignId: string;
+  campaignName: string;
+  platform: string;
+  worstSeverity: "critical" | "warning";
+  worstTitle: string;
+  openCount: number;
+};
+
+// TODO(M2-backend): replace with Supabase join on ai_diagnostics WHERE status = 'open'
+export function getCampaignAlerts(): CampaignAlert[] {
+  return [
+    {
+      campaignId: "cmp_001",
+      campaignName: "Black Friday 2025 — Meta",
+      platform: "meta",
+      worstSeverity: "critical",
+      worstTitle: "Gasto sem conversão detectado",
+      openCount: 2,
+    },
+    {
+      campaignId: "cmp_002",
+      campaignName: "Google Search — Marca",
+      platform: "google",
+      worstSeverity: "warning",
+      worstTitle: "Fase de aprendizado ativa",
+      openCount: 1,
+    },
+  ];
+}
+
 export function getCreativesSummary() {
   const copies = MOCK_CREATIVES.filter((c) => c.type === "copy");
   const scores = copies.map((c) => c.score).filter((s): s is number => s !== null);

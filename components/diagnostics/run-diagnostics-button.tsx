@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function RunDiagnosticsButton({ workspaceId }: { workspaceId: string }) {
+export function RunDiagnosticsButton({
+  workspaceId,
+  campaignId,
+}: {
+  workspaceId: string;
+  campaignId?: string;
+}) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -13,7 +19,7 @@ export function RunDiagnosticsButton({ workspaceId }: { workspaceId: string }) {
       await fetch("/api/ai/diagnostics/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId }),
+        body: JSON.stringify({ workspaceId, ...(campaignId ? { campaignId } : {}) }),
       });
       router.refresh();
     } finally {

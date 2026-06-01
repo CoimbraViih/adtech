@@ -9,6 +9,7 @@ import { ImpressionsConversionsChart } from "@/components/dashboard/impressions-
 import { CampaignStatusHub } from "@/components/dashboard/campaign-status-hub";
 import { SectionHubCards } from "@/components/dashboard/section-hub-cards";
 import { TopCampaignsTable } from "@/components/dashboard/top-campaigns-table";
+import { CampaignAlertsWidget } from "@/components/dashboard/campaign-alerts-widget";
 import {
   getDashboardKpis,
   getKpiDeltas,
@@ -18,6 +19,7 @@ import {
   getRoasAndSpendByDay,
   getImpressionsAndConversionsByDay,
   getCreativesSummary,
+  getCampaignAlerts,
 } from "@/lib/dashboard/mock-data";
 
 type SearchParams = { from?: string; to?: string; compare?: string };
@@ -47,6 +49,7 @@ export default async function DashboardPage({
   const deltas = getKpiDeltas();
   const statusCounts = getCampaignStatusCounts();
   const topCampaigns = getTopCampaigns(5);
+  const campaignAlerts = getCampaignAlerts();
   const revenueData = getRevenueByDay(dateFrom, dateTo);
   const roasSpendData = getRoasAndSpendByDay(dateFrom, dateTo);
   const impConvData = getImpressionsAndConversionsByDay(dateFrom, dateTo);
@@ -101,6 +104,9 @@ export default async function DashboardPage({
           />
         </div>
       </div>
+
+      {/* Campaign alerts */}
+      <CampaignAlertsWidget alerts={campaignAlerts} />
 
       {/* Top campaigns */}
       <TopCampaignsTable campaigns={topCampaigns} />

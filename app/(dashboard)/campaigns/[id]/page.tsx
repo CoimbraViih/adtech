@@ -6,6 +6,13 @@ import { StatusBadge } from "@/components/campaigns/status-badge";
 import { PlatformIcon } from "@/components/campaigns/platform-icon";
 import { CampaignCharts } from "@/components/campaigns/campaign-charts";
 import { AdSetsTable } from "@/components/campaigns/ad-sets-table";
+import { DiagnosticCard } from "@/components/diagnostics/diagnostic-card";
+import { SeveritySummary } from "@/components/diagnostics/severity-summary";
+import { RunDiagnosticsButton } from "@/components/diagnostics/run-diagnostics-button";
+import { getSessionFromCookies } from "@/lib/auth/session";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import type { AiDiagnostic } from "@/types/database";
 
 function fmt(n: number, dec = 0) {
   return n.toLocaleString("pt-BR", {
@@ -13,6 +20,8 @@ function fmt(n: number, dec = 0) {
     maximumFractionDigits: dec,
   });
 }
+
+const SEVERITY_ORDER: Record<string, number> = { critical: 0, warning: 1, info: 2 };
 
 export default async function CampaignDetailPage({
   params,
@@ -24,6 +33,23 @@ export default async function CampaignDetailPage({
   // TODO(M2-backend): replace with Supabase query
   const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
   if (!campaign) notFound();
+
+  const cookieHeader = (await cookies()).get("adflow_session")?.value ?? null;
+  const session = await getSessionFromCookies(cookieHeader);
+  const workspaceId = session?.workspace.id ?? "";
+
+  const supabase = await createServerSupabaseClient();
+  const { data: diagData } = await supabase
+    .from("ai_diagnostics")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("campaign_id", id)
+    .eq("status", "open")
+    .order("created_at", { ascending: false });
+
+  const diagnostics = ((diagData ?? []) as AiDiagnostic[]).sort(
+    (a, b) => (SEVERITY_ORDER[a.severity] ?? 3) - (SEVERITY_ORDER[b.severity] ?? 3),
+  );
 
   const adSets = MOCK_AD_SETS.filter((a) => a.campaign_id === id);
   const snapshots = getMockMetricSnapshots(id);
@@ -125,6 +151,30 @@ export default async function CampaignDetailPage({
           <AdSetsTable adSets={adSets} />
         </div>
       )}
+
+      {/* Diagnostics */}
+      <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-[color:var(--adflow-fg)]">Diagnósticos</h2>
+          {workspaceId && (
+            <RunDiagnosticsButton workspaceId={workspaceId} campaignId={id} />
+          )}
+        </div>
+
+        {diagnostics.length >= 2 && <SeveritySummary diagnostics={diagnostics} />}
+
+        {diagnostics.length === 0 ? (
+          <p className="text-sm text-[color:var(--adflow-fg-muted)] py-4 text-center">
+            Nenhum problema detectado — rode uma análise para começar.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {diagnostics.map((d) => (
+              <DiagnosticCard key={d.id} diagnostic={d} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
