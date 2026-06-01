@@ -108,6 +108,7 @@ export async function createServerSupabaseClient() {
     in: (..._args: unknown[]) => Chain;
     insert: (..._args: unknown[]) => Chain;
     update: (..._args: unknown[]) => Chain;
+    upsert: (..._args: unknown[]) => Chain;
     delete: () => Chain;
     order: (..._args: unknown[]) => Chain;
     limit: (..._args: unknown[]) => Chain;
@@ -125,6 +126,7 @@ export async function createServerSupabaseClient() {
       in: (..._args: unknown[]) => chain,
       insert: (..._args: unknown[]) => chain,
       update: (..._args: unknown[]) => chain,
+      upsert: (..._args: unknown[]) => chain,
       delete: () => chain,
       order: (..._args: unknown[]) => chain,
       limit: (..._args: unknown[]) => chain,
