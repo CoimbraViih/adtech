@@ -17,7 +17,8 @@ async function getTikTokCredentials(organizationId: string) {
     getCredentialField(organizationId, "tiktok", "access_token", "TIKTOK_ACCESS_TOKEN"),
     getCredentialField(organizationId, "tiktok", "advertiser_id", "TIKTOK_ADVERTISER_ID"),
   ]);
-  return { token: token ?? "", advertiserId: advertiserId ?? "" };
+  if (!token) throw new Error("TikTok Ads Access Token não configurado. Configure em Settings → Integrações.");
+  return { token, advertiserId: advertiserId ?? "" };
 }
 
 function getAccessToken(override?: string) {
