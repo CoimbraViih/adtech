@@ -3,7 +3,8 @@
  * upserts into the local `campaigns` table.
  *
  * Called on-demand via GET /api/campaigns?sync=true or by a cron job.
- * TODO(M2-backend): replace mock upsert with real Supabase calls.
+ * Real Supabase upsert is wired in M-ADS-backend (currently stubbed with
+ * TODO(M-ADS-backend) comments inline — DB write path is a no-op until then).
  */
 
 import { listMetaCampaigns, getMetaCampaignInsights } from "@/lib/meta/client";
@@ -55,8 +56,16 @@ function linkedinStatusToLocal(status: string): CampaignStatus {
 // ── credential guard ────────────────────────────────────────────────────────
 
 async function hasCredentials(workspaceId: string, provider: string): Promise<boolean> {
-  const token = await getCredentialField(workspaceId, provider, "access_token", undefined);
-  return !!token;
+  // Google uses refresh_token (OAuth2), all other providers use access_token.
+  const fields: Record<string, string> = {
+    meta:     "access_token",
+    google:   "refresh_token",
+    tiktok:   "access_token",
+    linkedin: "access_token",
+  };
+  const field = fields[provider] ?? "access_token";
+  const val = await getCredentialField(workspaceId, provider, field, undefined);
+  return !!val;
 }
 
 // ── sync ───────────────────────────────────────────────────────────────────

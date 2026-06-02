@@ -1,10 +1,12 @@
 /**
- * TikTok Ads API client wrapper.
+ * TikTok Ads API client wrapper — real implementation.
  * Docs: https://ads.tiktok.com/marketing_api/docs
  * API version: v1.3
  *
- * TODO(M2-backend): replace stub with real TikTok Ads API calls once
- * TIKTOK_ACCESS_TOKEN and TIKTOK_ADVERTISER_ID are configured.
+ * Credentials are resolved per-org from `org_api_credentials` via
+ * `getTikTokCredentials()`. Env-var fallbacks (TIKTOK_ACCESS_TOKEN,
+ * TIKTOK_ADVERTISER_ID) are handled inside `getCredentialField` and are NOT
+ * read directly in this module.
  */
 
 import type { CampaignObjective, CampaignStatus } from "@/types/database";

@@ -107,6 +107,8 @@ async function getGoogleCredentials(organizationId: string): Promise<GoogleCreds
 
 type TokenResponse = { access_token: string; expires_in: number };
 
+// Intentionally unbounded for MVP: one entry per org, bounded by number of orgs.
+// Post-MVP: add TTL-based eviction if memory becomes a concern at scale.
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
 async function getAccessToken(orgId: string, creds: GoogleCreds): Promise<string> {
@@ -234,10 +236,6 @@ export async function listGoogleCampaigns(
 
 /**
  * Create a campaign on Google Ads and return its external ID.
- *
- * The `_legacyOpts` parameter is accepted for call-site compatibility only
- * and is intentionally ignored — credentials are always resolved from the DB
- * via `getGoogleCredentials(organizationId)`.
  */
 export async function createGoogleCampaign(
   organizationId: string,
@@ -248,9 +246,7 @@ export async function createGoogleCampaign(
     dailyBudget: number; // BRL
     startDate: string; // YYYY-MM-DD
     endDate?: string | null;
-  },
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _legacyOpts?: { customerId?: string; refreshToken?: string }
+  }
 ): Promise<string> {
   const creds = await getGoogleCredentials(organizationId);
   const customerId = creds.customerId.replace(/-/g, "");
@@ -316,17 +312,11 @@ export async function createGoogleCampaign(
 
 /**
  * Update campaign status or budget on Google Ads.
- *
- * The `_legacyOpts` parameter is accepted for call-site compatibility only
- * and is intentionally ignored — credentials are always resolved from the DB
- * via `getGoogleCredentials(organizationId)`.
  */
 export async function updateGoogleCampaign(
   organizationId: string,
   externalId: string,
-  update: { status?: CampaignStatus; dailyBudget?: number },
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _legacyOpts?: { customerId?: string; refreshToken?: string }
+  update: { status?: CampaignStatus; dailyBudget?: number }
 ): Promise<void> {
   const creds = await getGoogleCredentials(organizationId);
   const customerId = creds.customerId.replace(/-/g, "");

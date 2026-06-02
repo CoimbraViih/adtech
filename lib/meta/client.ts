@@ -1,15 +1,13 @@
 /**
- * Meta Marketing API wrapper.
+ * Meta Marketing API wrapper — real implementation.
  *
  * Docs: https://developers.facebook.com/docs/marketing-apis
  * API version: v25.0
  *
- * Required env vars:
- *   META_ACCESS_TOKEN      – long-lived User or System User access token
- *   META_AD_ACCOUNT_ID     – ad account ID (act_XXXXXXXXX)
- *
- * TODO(M2-backend): wire META_ACCESS_TOKEN per workspace (stored in DB encrypted).
- * For now falls back to env vars for single-tenant dev.
+ * Credentials are resolved per-org from `org_api_credentials` via
+ * `getMetaCredentials()`. Env-var fallbacks (META_ACCESS_TOKEN,
+ * META_AD_ACCOUNT_ID) are handled inside `getCredentialField` and are NOT
+ * read directly in this module.
  */
 
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
