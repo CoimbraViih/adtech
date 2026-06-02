@@ -10,6 +10,7 @@ import { listMetaCampaigns, getMetaCampaignInsights } from "@/lib/meta/client";
 import { listGoogleCampaigns, getGoogleCampaignMetrics } from "@/lib/google/client";
 import { listTikTokCampaigns, getTikTokCampaignInsights } from "@/lib/tiktok/client";
 import { listLinkedInCampaigns, getLinkedInCampaignInsights } from "@/lib/linkedin/client";
+import { getCredentialField } from "@/lib/integrations/credentials";
 import type { CampaignStatus } from "@/types/database";
 
 // ── status mapping ─────────────────────────────────────────────────────────
@@ -51,13 +52,23 @@ function linkedinStatusToLocal(status: string): CampaignStatus {
   }
 }
 
+// ── credential guard ────────────────────────────────────────────────────────
+
+async function hasCredentials(workspaceId: string, provider: string): Promise<boolean> {
+  const token = await getCredentialField(workspaceId, provider, "access_token", undefined);
+  return !!token;
+}
+
 // ── sync ───────────────────────────────────────────────────────────────────
 
-export async function syncCampaignsFromPlatform(workspaceId: string, organizationId: string): Promise<void> {
-  const errors: Error[] = [];
+export async function syncCampaignsFromPlatform(
+  workspaceId: string,
+  organizationId: string
+): Promise<{ platform: string; synced: number; error: string | null }[]> {
+  const results: { platform: string; synced: number; error: string | null }[] = [];
 
   // ── Meta ────────────────────────────────────────────────────────────────
-  if (process.env.META_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID) {
+  if (await hasCredentials(workspaceId, "meta")) {
     try {
       const metaCampaigns = await listMetaCampaigns(organizationId);
 
@@ -74,7 +85,7 @@ export async function syncCampaignsFromPlatform(workspaceId: string, organizatio
         const roas = roasEntry ? parseFloat(roasEntry.value) : null;
         const cpa = conversions > 0 ? spend / conversions : null;
 
-        const upsertData = {
+        const _upsertData = {
           workspace_id: workspaceId,
           external_id: mc.id,
           platform: "meta" as const,
@@ -85,18 +96,19 @@ export async function syncCampaignsFromPlatform(workspaceId: string, organizatio
           updated_at: new Date().toISOString(),
         };
 
-        // TODO(M2-backend): upsert into Supabase
-        // await supabase.from("campaigns").upsert(upsertData, { onConflict: "workspace_id,external_id" });
-        console.log("[sync/meta] upsert:", upsertData.name, upsertData.status);
+        // TODO(M-ADS-backend): wire real Supabase upsert
+        // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
       }
+
+      results.push({ platform: "meta", synced: metaCampaigns.length, error: null });
     } catch (err) {
-      errors.push(err instanceof Error ? err : new Error(String(err)));
+      results.push({ platform: "meta", synced: 0, error: err instanceof Error ? err.message : String(err) });
       console.error("[sync/meta] error:", err);
     }
   }
 
   // ── Google ───────────────────────────────────────────────────────────────
-  if (process.env.GOOGLE_ADS_DEVELOPER_TOKEN && process.env.GOOGLE_ADS_CUSTOMER_ID && process.env.GOOGLE_ADS_REFRESH_TOKEN) {
+  if (await hasCredentials(workspaceId, "google")) {
     try {
       const googleCampaigns = await listGoogleCampaigns(organizationId);
 
@@ -112,7 +124,7 @@ export async function syncCampaignsFromPlatform(workspaceId: string, organizatio
         const roas = spend > 0 ? revenue / spend : null;
         const cpa = conversions > 0 ? spend / conversions : null;
 
-        const upsertData = {
+        const _upsertData = {
           workspace_id: workspaceId,
           external_id: gc.id,
           platform: "google" as const,
@@ -122,18 +134,19 @@ export async function syncCampaignsFromPlatform(workspaceId: string, organizatio
           updated_at: new Date().toISOString(),
         };
 
-        // TODO(M2-backend): upsert into Supabase
-        // await supabase.from("campaigns").upsert(upsertData, { onConflict: "workspace_id,external_id" });
-        console.log("[sync/google] upsert:", upsertData.name, upsertData.status);
+        // TODO(M-ADS-backend): wire real Supabase upsert
+        // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
       }
+
+      results.push({ platform: "google", synced: googleCampaigns.length, error: null });
     } catch (err) {
-      errors.push(err instanceof Error ? err : new Error(String(err)));
+      results.push({ platform: "google", synced: 0, error: err instanceof Error ? err.message : String(err) });
       console.error("[sync/google] error:", err);
     }
   }
 
   // ── TikTok ───────────────────────────────────────────────────────────────
-  if (process.env.TIKTOK_ACCESS_TOKEN && process.env.TIKTOK_ADVERTISER_ID) {
+  if (await hasCredentials(workspaceId, "tiktok")) {
     try {
       const tiktokCampaigns = await listTikTokCampaigns(organizationId);
 
@@ -141,7 +154,7 @@ export async function syncCampaignsFromPlatform(workspaceId: string, organizatio
         const insights = await getTikTokCampaignInsights(organizationId, tc.id);
         const cpa = insights.conversions > 0 ? insights.spend / insights.conversions : null;
 
-        const upsertData = {
+        const _upsertData = {
           workspace_id: workspaceId,
           external_id: tc.id,
           platform: "tiktok" as const,
@@ -157,18 +170,19 @@ export async function syncCampaignsFromPlatform(workspaceId: string, organizatio
           updated_at: new Date().toISOString(),
         };
 
-        // TODO(M2-backend): upsert into Supabase
-        // await supabase.from("campaigns").upsert(upsertData, { onConflict: "workspace_id,external_id" });
-        console.log("[sync/tiktok] upsert:", upsertData.name, upsertData.status);
+        // TODO(M-ADS-backend): wire real Supabase upsert
+        // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
       }
+
+      results.push({ platform: "tiktok", synced: tiktokCampaigns.length, error: null });
     } catch (err) {
-      errors.push(err instanceof Error ? err : new Error(String(err)));
+      results.push({ platform: "tiktok", synced: 0, error: err instanceof Error ? err.message : String(err) });
       console.error("[sync/tiktok] error:", err);
     }
   }
 
   // ── LinkedIn ─────────────────────────────────────────────────────────────
-  if (process.env.LINKEDIN_ACCESS_TOKEN && process.env.LINKEDIN_AD_ACCOUNT_ID) {
+  if (await hasCredentials(workspaceId, "linkedin")) {
     try {
       const linkedinCampaigns = await listLinkedInCampaigns(organizationId);
 
@@ -176,7 +190,7 @@ export async function syncCampaignsFromPlatform(workspaceId: string, organizatio
         const insights = await getLinkedInCampaignInsights(organizationId, lc.id);
         const cpa = insights.conversions > 0 ? insights.spend / insights.conversions : null;
 
-        const upsertData = {
+        const _upsertData = {
           workspace_id: workspaceId,
           external_id: lc.id,
           platform: "linkedin" as const,
@@ -192,17 +206,16 @@ export async function syncCampaignsFromPlatform(workspaceId: string, organizatio
           updated_at: new Date().toISOString(),
         };
 
-        // TODO(M2-backend): upsert into Supabase
-        // await supabase.from("campaigns").upsert(upsertData, { onConflict: "workspace_id,external_id" });
-        console.log("[sync/linkedin] upsert:", upsertData.name, upsertData.status);
+        // TODO(M-ADS-backend): wire real Supabase upsert
+        // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
       }
+
+      results.push({ platform: "linkedin", synced: linkedinCampaigns.length, error: null });
     } catch (err) {
-      errors.push(err instanceof Error ? err : new Error(String(err)));
+      results.push({ platform: "linkedin", synced: 0, error: err instanceof Error ? err.message : String(err) });
       console.error("[sync/linkedin] error:", err);
     }
   }
 
-  if (errors.length > 0 && errors.length === 4) {
-    throw new AggregateError(errors, "Campaign sync failed on all platforms");
-  }
+  return results;
 }

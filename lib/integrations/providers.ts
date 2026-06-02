@@ -89,7 +89,7 @@ const PROVIDERS_LIST: ProviderDef[] = [
     ],
     async testConnection(creds) {
       const r = await fetchSafe(
-        `https://business-api.tiktok.com/open_api/v1.3/advertiser/info/?advertiser_ids=["${creds.advertiser_id}"]`,
+        `https://business-api.tiktok.com/open_api/v1.3/oauth2/advertiser/get/?app_id=&secret=`,
         { headers: { "Access-Token": creds.access_token } }
       );
       if (r.ok) return { ok: true, message: "Conectado com sucesso ao TikTok Ads." };
@@ -108,10 +108,13 @@ const PROVIDERS_LIST: ProviderDef[] = [
       { key: "account_id", label: "Account ID (URN)", placeholder: "123456789", secret: false },
     ],
     async testConnection(creds) {
-      const r = await fetchSafe("https://api.linkedin.com/v2/me", {
-        headers: { Authorization: `Bearer ${creds.access_token}` },
+      const r = await fetchSafe("https://api.linkedin.com/rest/adAccounts?q=search&search.status.values[0]=ACTIVE", {
+        headers: {
+          Authorization: `Bearer ${creds.access_token}`,
+          "LinkedIn-Version": "202506",
+        },
       });
-      if (r.ok) return { ok: true, message: "Conectado com sucesso ao LinkedIn." };
+      if (r.ok) return { ok: true, message: "Conectado com sucesso ao LinkedIn Ads." };
       return { ok: false, message: `Token inválido. (HTTP ${r.status})` };
     },
   },
