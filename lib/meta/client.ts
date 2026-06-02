@@ -2,7 +2,7 @@
  * Meta Marketing API wrapper.
  *
  * Docs: https://developers.facebook.com/docs/marketing-apis
- * API version: v21.0
+ * API version: v25.0
  *
  * Required env vars:
  *   META_ACCESS_TOKEN      â€” long-lived User or System User access token
@@ -15,7 +15,7 @@
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
 import { getCredentialField } from "@/lib/integrations/credentials";
 
-const BASE_URL = "https://graph.facebook.com/v21.0";
+const BASE_URL = "https://graph.facebook.com/v25.0";
 
 // â”€â”€ types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 

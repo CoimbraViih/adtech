@@ -24,7 +24,7 @@ const PROVIDERS_LIST: ProviderDef[] = [
     ],
     async testConnection(creds) {
       const r = await fetchSafe(
-        `https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${creds.access_token}`
+        `https://graph.facebook.com/v25.0/me?fields=id,name&access_token=${creds.access_token}`
       );
       if (r.ok) return { ok: true, message: "Conectado com sucesso ao Meta Ads." };
       return { ok: false, message: `Token inválido ou expirado. (HTTP ${r.status})` };
@@ -61,7 +61,7 @@ const PROVIDERS_LIST: ProviderDef[] = [
       const { access_token } = JSON.parse(tokenRes.body) as { access_token?: string };
       if (!access_token) return { ok: false, message: "Não foi possível obter access_token do Google." };
       const r = await fetchSafe(
-        `https://googleads.googleapis.com/v18/customers/${creds.customer_id}/googleAds:search`,
+        `https://googleads.googleapis.com/v24/customers/${creds.customer_id}/googleAds:search`,
         {
           method: "POST",
           headers: {
@@ -248,7 +248,7 @@ const PROVIDERS_LIST: ProviderDef[] = [
     ],
     async testConnection(creds) {
       const r = await fetchSafe(
-        `https://graph.facebook.com/v21.0/${creds.phone_id}?access_token=${creds.token}`
+        `https://graph.facebook.com/v25.0/${creds.phone_id}?access_token=${creds.token}`
       );
       if (r.ok) return { ok: true, message: "Conectado com sucesso ao WhatsApp Business." };
       return { ok: false, message: `Credenciais inválidas. (HTTP ${r.status})` };

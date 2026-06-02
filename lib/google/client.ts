@@ -2,7 +2,7 @@
  * Google Ads API wrapper.
  *
  * Docs: https://developers.google.com/google-ads/api/docs/start
- * API version: v18
+ * API version: v24
  *
  * Required env vars:
  *   GOOGLE_ADS_DEVELOPER_TOKEN   â€” developer token from Google Ads API Center
@@ -17,7 +17,7 @@
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
 import { getCredentialField } from "@/lib/integrations/credentials";
 
-const GOOGLE_ADS_API_VERSION = "v18";
+const GOOGLE_ADS_API_VERSION = "v24";
 const BASE_URL = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
