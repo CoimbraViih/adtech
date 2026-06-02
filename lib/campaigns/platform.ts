@@ -41,8 +41,7 @@ export async function createCampaignOnPlatform(
   if (input.platform === "linkedin") {
     return createLinkedInCampaign(
       organizationId,
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date },
-      { accessToken: opts?.accessToken, adAccountId: opts?.adAccountId }
+      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date }
     );
   }
 
@@ -95,8 +94,7 @@ export async function updateCampaignOnPlatform(
     return updateLinkedInCampaign(
       organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { accessToken: update.accessToken, adAccountId: update.adAccountId }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 }
