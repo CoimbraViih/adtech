@@ -25,6 +25,7 @@
 | MS | Segurança & Hardening | `feat/integrations-api-keys` ✅ | M1–M9 |
 | M10 | Deploy & Produção | `feat/m10-deploy` | M1–M9, MS |
 | M11 | AI Traffic Manager (Campaign Diagnostics) | `feat/integrations-api-keys` ✅ | M2, M4, M5 |
+| M-ADS | Melhorias de Integrações de Anúncios | `feat/m-ads-integrations` ✅ F1 | M2, M11, MS |
 | M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M8 |
 | M12 | PMP & Deal Enforcement | `feat/m12-pmp` | M8, M8-DMP |
 | M15 | Upload de Criativos (imagens) | `feat/m15-creative-uploads` | M2, M3, M8 |
@@ -648,6 +649,166 @@ git commit -m "feat(m10): production deploy, CI/CD, monitoring, Stripe live, sec
 
 ---
 
+## M-ADS — Melhorias de Integrações de Anúncios
+
+**Branch:** `feat/m-ads-integrations` → mergeado em `main` via PR #10 (Fase 1 ✅)  
+**Depende de:** M2 (campanhas), M11 (AI Traffic Manager), MS (segurança)  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-02-ads-integrations-improvement-plan.md`  
+**Objetivo:** Tornar as integrações com Meta, Google, TikTok e LinkedIn funcionais e robustas em produção. Hoje os clients existem mas operam com bugs de multi-tenant, versões de API defasadas, sync ainda mockado e nenhum retry/refresh automático. Este milestone fecha essas lacunas em 4 fases sequenciais.
+
+> **Agentes:** `@backend-architect` · `@typescript-pro` · `@api-security-audit` · `@code-reviewer`  
+> **Skills:** `/brainstorming` · `/webapp-testing` · `/supabase` · `/writing-plans`
+
+---
+
+### Fase 1 — Corretude e multi-tenant ✅ CONCLUÍDO
+
+**Branch:** `feat/m-ads-integrations` → mergeado em `main` via PR #10 (`be2b90a`)  
+**Resultado:** `tsc --noEmit` zero erros · `npm test` 299/299 passando · auditoria de segurança limpa
+
+**Problema raiz:** sync jamais rodava para um tenant real porque (a) `sync.ts` checava `process.env.META_ACCESS_TOKEN` em vez das credenciais do banco, (b) o Google client tinha `cachedToken` global de módulo e lia `process.env` diretamente, e (c) a API do LinkedIn usada (`/v2/adCampaignsV2 + LinkedIn-Version: 202401`) estava no limiar do sunset (janela de 1 ano).
+
+#### Backend — Google client (multi-tenant fix)
+- [x] `lib/google/client.ts` — removido `cachedToken` global; substituído por `Map<string, {token:string; expiresAt:number}>` keyed por `organizationId`
+- [x] `lib/google/client.ts` — removidos `getCredentials(customerId?)` e `getAccessToken(refreshToken?)` que liam `process.env`; toda autenticação passa por `getGoogleCredentials(orgId)` antes de chegar ao `googleFetch`
+- [x] `lib/google/client.ts` — campo `login_customer_id` separado de `customer_id` (MCC vs conta folha) nas credenciais; header `login-customer-id` atualizado
+- [x] `lib/google/client.ts` — versão subida `v18` → `v24`; constante `GOOGLE_ADS_API_VERSION = "v24"`
+- [x] `lib/google/client.ts` — update real de `dailyBudget` em `updateGoogleCampaign` implementado (query GAQL para budget resource name + `campaignBudgets:mutate`)
+- [x] `lib/google/client.ts` — parâmetros `opts?` removidos de todas as funções públicas; `organizationId` é o único identificador
+
+#### Backend — LinkedIn client (migração urgente)
+- [x] `lib/linkedin/client.ts` — migrado de `/v2/adCampaignsV2` para `/rest/adCampaigns`; analytics de `/v2/adAnalyticsV2` para `/rest/adAnalytics`
+- [x] `lib/linkedin/client.ts` — `LinkedIn-Version` atualizado para `202506`; constante `LINKEDIN_API_VERSION`
+- [x] `lib/linkedin/client.ts` — `X-RestLi-Protocol-Version: 2.0.0` adicionado nos headers de partial update
+- [x] `lib/linkedin/client.ts` — `getAccessToken(override?)` e `getAdAccountId(override?)` removidos; `getLinkedInCredentials(orgId)` com throw se ausente
+- [x] `lib/linkedin/client.ts` — parâmetros `opts?` removidos de todas as funções públicas
+
+#### Backend — Meta e TikTok (limpeza)
+- [x] `lib/meta/client.ts` — subido `v21.0` → `v25.0`; `access_token` movido da query string para header `Authorization: Bearer <token>`
+- [x] `lib/pixel/meta-capi.ts` — URL bumped de `v18.0` para `v25.0`
+- [x] `lib/tiktok/client.ts` — `getAccessToken(override?)` e `getAdvertiserId(override?)` removidos; `getTikTokCredentials(orgId)` exclusivamente
+- [x] `lib/tiktok/client.ts` — parâmetros `opts?` removidos de todas as funções públicas
+- [x] `lib/integrations/providers.ts` — Meta/WhatsApp bumped para v25.0; Google bumped para v24
+
+#### Backend — Sync e guards DB-first (bug crítico corrigido)
+- [x] `lib/campaigns/sync.ts` — guards `if (process.env.META_ACCESS_TOKEN)` substituídos por `hasCredentials(orgId, provider)` via `getCredentialField`
+- [x] `lib/campaigns/sync.ts` — **bug crítico:** `hasCredentials` usava campo `access_token` para Google (inexistente); corrigido para `refresh_token` (campo correto do schema Google)
+- [x] `lib/campaigns/sync.ts` — retorna status por plataforma `{platform, synced, error}[]`; falhas parciais não engolidas
+- [x] `lib/campaigns/sync.ts` — upsert stub com `TODO(M-ADS-backend)` para swap-in Supabase real
+
+#### Backend — platform.ts
+- [x] `lib/campaigns/platform.ts` — repasse de `opts` (accessToken, customerId etc.) removido; `createCampaignOnPlatform` e `updateCampaignOnPlatform` recebem apenas `organizationId` + payload tipado
+
+#### Auditoria de segurança (Fase 1)
+- [x] Nenhum token em `console.log`/`console.error` nos clients
+- [x] `Authorization: Bearer` (não query string) confirmado no Meta
+- [x] Cache Google keyed por org; zero risco de cross-tenant token leak
+- [x] `hasCredentials` retorna apenas `boolean` — nunca expõe o valor
+- [x] `app/api/campaigns/route.ts` chama `requireServerSession()` antes de qualquer sync
+
+---
+
+### Fase 2 — Robustez
+
+#### Backend — Retry e rate limit de saída
+- [ ] `lib/integrations/fetch-retry.ts` — criar `fetchWithRetry(url, init, opts)`: backoff exponencial (base 500ms, multiplicador 2, jitter ±20%), respeito a `Retry-After`, max 3 tentativas; exportar para uso nos 4 clients
+- [ ] `lib/integrations/fetch-retry.ts` — tratar HTTP 429, `503`, `RESOURCE_EXHAUSTED` (Google), `code 40100`/`50002` (TikTok) como retriable; erros de auth (401/403) como não-retriable
+- [ ] `lib/google/client.ts`, `lib/meta/client.ts`, `lib/tiktok/client.ts`, `lib/linkedin/client.ts` — substituir `fetch(...)` direto por `fetchWithRetry`
+
+#### Backend — Refresh automático de token
+- [ ] `lib/integrations/credentials.ts` — adicionar `saveTokenRefresh(orgId, provider, {accessToken, refreshToken, expiresAt})`: atualiza `org_api_credentials` com novos tokens sem sobrescrever outras credenciais
+- [ ] `lib/linkedin/token-refresh.ts` — `refreshLinkedInToken(orgId)`: POST para `https://www.linkedin.com/oauth/v2/accessToken` com `grant_type=refresh_token`; salva novo par via `saveTokenRefresh`; chamado em `getLinkedInCredentials` quando `expires_at < now + 7d`
+- [ ] `lib/meta/token-refresh.ts` — `refreshMetaToken(orgId)`: endpoint `/oauth/access_token?grant_type=fb_exchange_token` para trocar token de usuário por System User token de longa duração; salva e verifica expiração
+- [ ] `lib/google/client.ts` — `getAccessToken` por org já faz refresh via `refresh_token`; apenas garantir que o resultado é salvo no cache keyed por org (já corrigido na Fase 1)
+- [ ] Migration `020_credentials_expiry.sql` — adicionar coluna `expires_at TIMESTAMPTZ` e `refresh_token TEXT ENCRYPTED` à tabela `org_api_credentials` (com `pgcrypto` consistente com `lib/integrations/crypto.ts`)
+
+#### Backend — Paginação real
+- [ ] `lib/tiktok/client.ts` — `listTikTokCampaigns`: iterar `page_info.has_more` com cursor incremental até carregar todos; max 1000 registros
+- [ ] `lib/linkedin/client.ts` — `listLinkedInCampaigns`: iterar com `start` / `count` até receber lista menor que o limit
+- [ ] `lib/meta/client.ts` — `listMetaCampaigns`: seguir `paging.next` cursor até ausência do link
+- [ ] `lib/google/client.ts` — `listGoogleCampaigns`: remover `LIMIT 1000` fixo no GAQL; usar `pageToken` se retornado
+
+#### Backend — Insights em batch
+- [ ] `lib/campaigns/sync.ts` — em vez de chamar `getInsights(campaignId)` N vezes, buscar métricas de **toda a conta** de uma vez: `getMetaCampaignInsights(orgId, accountId, {level:'campaign'})`, GAQL com `WHERE campaign.id IN (...)`, TikTok `report/integrated/get` com lista de IDs, LinkedIn `adAnalytics` com `pivot=CAMPAIGN`
+- [ ] Tabela `sync_runs` — migration `021_sync_runs.sql`: `id`, `workspace_id`, `platform`, `status TEXT CHECK IN ('success','error','partial')`, `campaigns_synced INT`, `error_message TEXT`, `started_at TIMESTAMPTZ`, `finished_at TIMESTAMPTZ`; índice em `(workspace_id, platform, started_at DESC)`
+
+#### Interface — Status de sync
+- [ ] `app/(dashboard)/settings/integrations/page.tsx` — exibir per-platform: última sincronização (`sync_runs.finished_at`) + status (ícone verde/amarelo/vermelho) + count de campanhas sincronizadas
+- [ ] Botão "Sincronizar agora" por plataforma: POST `/api/campaigns/sync?platform=meta&workspaceId=...`
+- [ ] `app/api/campaigns/sync/route.ts` — POST autenticado, RBAC member+; dispara `syncCampaignsFromPlatform` para a plataforma indicada; retorna `{platform, synced, error}`
+
+#### Testes
+- [ ] `tests/unit/fetch-retry.test.ts` — backoff correto, respeito a `Retry-After`, não-retry em 401
+- [ ] `tests/unit/token-refresh.test.ts` — LinkedIn e Meta: refresh chamado quando próximo de expirar, token salvo
+- [ ] `tests/unit/sync-batch-insights.test.ts` — 1 chamada de insights por plataforma, não N
+
+---
+
+### Fase 3 — Cobertura de features
+
+#### Backend — OAuth onboarding
+- [ ] `app/api/integrations/[provider]/oauth/start/route.ts` — GET autenticado; gera `state` CSRF; redireciona para authorization URL da plataforma (Meta, Google, LinkedIn, TikTok); suporta `scope` mínimo por provider
+- [ ] `app/api/integrations/[provider]/oauth/callback/route.ts` — GET: valida `state` CSRF, troca `code` por access+refresh token, salva via `saveTokenRefresh`; redireciona para `/settings/integrations?connected=<provider>`
+- [ ] `lib/integrations/oauth.ts` — `buildAuthUrl(provider, state, redirectUri)` e `exchangeCode(provider, code, redirectUri)`: lógica de OAuth2 por provider; segredos exclusivamente server-side
+
+#### Interface — OAuth onboarding
+- [ ] `app/(dashboard)/settings/integrations/page.tsx` — substituir campo de texto de token por botão "Conectar com Meta / Google / LinkedIn / TikTok" que dispara o fluxo OAuth; manter fallback de colar token manual para TikTok (que exige conta business verificada)
+- [ ] Exibir estado da conexão pós-OAuth: nome da conta, `account_id`, badge "Conectado" + data de expiração do token
+
+#### Backend — Ad sets e ads no sync
+- [ ] `lib/meta/client.ts` — `listMetaAdSets(orgId, campaignId)` e `listMetaAds(orgId, adSetId)`: campos `id, name, status, daily_budget, targeting`
+- [ ] `lib/google/client.ts` — `listGoogleAdGroups(orgId, campaignId)` e `listGoogleAds(orgId, adGroupId)` via GAQL
+- [ ] `lib/tiktok/client.ts` — `listTikTokAdGroups(orgId, campaignId)` e `listTikTokAds(orgId, adGroupId)`
+- [ ] `lib/linkedin/client.ts` — `listLinkedInCreatives(orgId, campaignId)` (LinkedIn não tem "ad set" formal)
+- [ ] `lib/campaigns/sync.ts` — após sync de campanhas, sync de ad sets e ads das campanhas ativas; upsert em `ad_sets` e `ads` (schema já existe em `004_campaigns.sql`)
+
+#### Backend — Conversões server-side (fechar o loop)
+- [ ] `lib/pixel/meta-capi.ts` — ligar ao fluxo de conversão do pixel: quando `pixel_events.type IN ('purchase', 'lead')` for inserido, fan-out para CAPI usando credenciais Meta da org (via `getMetaCredentials`)
+- [ ] `lib/pixel/google-ec.ts` — idem para Google Enhanced Conversions: `gtag` server-side measurement protocol
+- [ ] `lib/pixel/fanout.ts` — passar `organizationId` para os adapters CAPI/EC; hoje são chamados sem contexto de org
+
+#### Testes
+- [ ] `tests/unit/oauth-flow.test.ts` — geração de `state`, troca de code, save de tokens
+- [ ] `tests/unit/sync-adsets.test.ts` — sync de ad sets e ads por plataforma
+- [ ] `tests/e2e/integrations-connect.spec.ts` — fluxo completo: botão OAuth → callback → estado "Conectado"
+
+---
+
+### Fase 4 — Loop de otimização
+
+#### Backend — Modelo de atribuição unificado
+- [ ] `lib/analytics/cross-platform.ts` — `normalizeCampaignMetrics(campaigns[])`: converte métricas das 4 plataformas + pixel próprio para schema comum `{spend, impressions, clicks, conversions, revenue, roas, cpa}` por `(workspace_id, campaign_id, date)`
+- [ ] `lib/analytics/cross-platform.ts` — `reconcileWithPixel(campaignMetrics, pixelEvents)`: compara conversões reportadas pela plataforma com as capturadas pelo pixel server-side; retorna `{reported, measured, divergence_pct}` por campanha
+- [ ] Migration `022_campaign_metrics_daily.sql` — tabela `campaign_metrics_daily`: `workspace_id`, `campaign_id`, `platform`, `date DATE`, métricas numéricas, `pixel_conversions INT` (do pixel próprio); índice único em `(campaign_id, date)`; populated pelo sync
+
+#### Backend — Realimentação do AI Traffic Manager
+- [ ] `lib/ai/diagnostics/context.ts` — estender `CampaignContext` com `crossPlatformMetrics` e `pixelReconciliation`: diagnósticos passam a considerar a divergência pixel×plataforma como sinal de rastreamento quebrado
+- [ ] `lib/ai/diagnostics/skills/tracking-divergence.ts` — nova skill: `pixel_conversions < platform_conversions * 0.5` + gasto > threshold → severidade `warning`; rationale = "pixel server-side registrando menos da metade das conversões reportadas pela plataforma"
+
+#### Interface — Dashboard de reconciliação
+- [ ] `app/(dashboard)/analytics/reconciliation/page.tsx` — tabela por campanha: spend, conversões plataforma, conversões pixel, divergência %; alerta visual quando divergência > 30%
+- [ ] Sidebar: link "Reconciliação" sob Analytics
+
+#### Testes
+- [ ] `tests/unit/cross-platform-metrics.test.ts` — normalização e reconciliação com dados de fixture
+- [ ] `tests/unit/diagnostics-tracking-divergence.test.ts` — trigger e não-trigger da nova skill
+- [ ] `tests/e2e/analytics-reconciliation.spec.ts` — página de reconciliação renderiza
+
+---
+
+### Entregáveis por fase
+
+| Fase | Resultado verificável | Status |
+|------|-----------------------|--------|
+| 1 | `syncCampaignsFromPlatform` dispara para tenants reais; Google multi-tenant sem cache global; LinkedIn na API `/rest/`; Meta v25.0 com `Authorization: Bearer`; bug `hasCredentials` Google corrigido | ✅ PR #10 mergeado (`be2b90a`) — 299/299 testes |
+| 2 | `fetchWithRetry` cobrindo os 4 clients; LinkedIn/Meta com refresh automático; sync registra `sync_runs`; UI mostra status por plataforma | Planejado — branch `feat/m-ads-f2-robustness` |
+| 3 | Botão OAuth conecta Meta, Google, LinkedIn; ad sets e ads sincronizados; pixel fan-out usa credenciais por org | Planejado |
+| 4 | `campaign_metrics_daily` populado; skill `tracking-divergence` ativa no AI Traffic Manager; página de reconciliação visível | Planejado |
+
+`tsc --noEmit` zero erros e `vitest run` passando após cada fase.
+
+---
+
 ## M8-DMP — DMP Completion
 
 **Branch:** `feat/m8-dmp-complete`  
@@ -774,6 +935,11 @@ M0 (setup)
        ├─ M4 (pixel)
        │    ├─ M5 (analytics)
        │    │    └─ M11 (AI traffic manager) ← depende M2 + M4 + M5
+       │    │         └─ M-ADS (integrações de anúncios — 4 fases)
+       │    │              └─ Fase 1: multi-tenant fix + sync real
+       │    │              └─ Fase 2: robustez (retry, refresh, paginação)
+       │    │              └─ Fase 3: OAuth + ad sets + CAPI
+       │    │              └─ Fase 4: reconciliação pixel × plataforma
        │    ├─ M7 (automação)      ← depende M2 + M4 + M5
        │    └─ M8 (programático)   ← depende M2 + M4
        │         └─ M8-DMP (completar avaliação real de regras)
@@ -784,4 +950,4 @@ M0 (setup)
                  └─ M10 (deploy)
 ```
 
-**Regra:** Interface mockada sempre antes do backend. Cada milestone deve estar demonstrável com dados reais antes de iniciar o próximo. M15 pode ser desenvolvido em paralelo com M12 — não há dependência entre upload de assets e deal enforcement.
+**Regra:** Interface mockada sempre antes do backend. Cada milestone deve estar demonstrável com dados reais antes de iniciar o próximo. M-ADS Fase 1 é pré-requisito de M10 (deploy) pois o sync precisa funcionar de verdade antes de ir a produção. M15 pode ser desenvolvido em paralelo com M12 — não há dependência entre upload de assets e deal enforcement.

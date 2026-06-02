@@ -60,8 +60,10 @@ function linkedinStatusToLocal(status: string): CampaignStatus {
 
 // ── credential guard ────────────────────────────────────────────────────────
 
-async function hasCredentials(workspaceId: string, provider: string): Promise<boolean> {
+async function hasCredentials(organizationId: string, provider: string): Promise<boolean> {
   // Google uses refresh_token (OAuth2), all other providers use access_token.
+  // NOTE: credentials are stored per-organization, not per-workspace —
+  // always pass organizationId here, not workspaceId.
   const fields: Record<string, string> = {
     meta:     "access_token",
     google:   "refresh_token",
@@ -69,7 +71,7 @@ async function hasCredentials(workspaceId: string, provider: string): Promise<bo
     linkedin: "access_token",
   };
   const field = fields[provider] ?? "access_token";
-  const val = await getCredentialField(workspaceId, provider, field, undefined);
+  const val = await getCredentialField(organizationId, provider, field, undefined);
   return !!val;
 }
 
@@ -114,7 +116,7 @@ export async function syncCampaignsFromPlatform(
   const results: { platform: string; synced: number; error: string | null }[] = [];
 
   // ── Meta ────────────────────────────────────────────────────────────────
-  if (await hasCredentials(workspaceId, "meta")) {
+  if (await hasCredentials(organizationId, "meta")) {
     const startedAt = new Date();
     try {
       // 1 call for campaign list + 1 call for all insights (batch).
@@ -170,7 +172,7 @@ export async function syncCampaignsFromPlatform(
   }
 
   // ── Google ───────────────────────────────────────────────────────────────
-  if (await hasCredentials(workspaceId, "google")) {
+  if (await hasCredentials(organizationId, "google")) {
     const startedAt = new Date();
     try {
       // 1 GAQL query for campaign list + 1 GAQL query for all metrics (batch).
@@ -225,7 +227,7 @@ export async function syncCampaignsFromPlatform(
   }
 
   // ── TikTok ───────────────────────────────────────────────────────────────
-  if (await hasCredentials(workspaceId, "tiktok")) {
+  if (await hasCredentials(organizationId, "tiktok")) {
     const startedAt = new Date();
     try {
       const tiktokCampaigns = await listTikTokCampaigns(organizationId);
@@ -288,7 +290,7 @@ export async function syncCampaignsFromPlatform(
   }
 
   // ── LinkedIn ─────────────────────────────────────────────────────────────
-  if (await hasCredentials(workspaceId, "linkedin")) {
+  if (await hasCredentials(organizationId, "linkedin")) {
     const startedAt = new Date();
     try {
       // 1 call for campaign list + 1 call for all account insights (batch).

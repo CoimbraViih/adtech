@@ -288,6 +288,7 @@ export async function getMetaAccountInsights(
     );
     accumulated.push(...response.data);
     if (!response.paging?.next) break;
+    if (accumulated.length >= META_SAFETY_LIMIT) break;
     nextPath = response.paging.next;
   }
 
