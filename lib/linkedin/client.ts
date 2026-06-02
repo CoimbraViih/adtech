@@ -1,34 +1,25 @@
-﻿/**
+/**
  * LinkedIn Ads (Campaign Manager) API client wrapper.
  * Docs: https://learn.microsoft.com/en-us/linkedin/marketing/
- * API version: v2 (Marketing Solutions)
- *
- * TODO(M2-backend): replace stub with real LinkedIn API calls once
- * LINKEDIN_ACCESS_TOKEN and LINKEDIN_AD_ACCOUNT_ID are configured.
+ * API version: 202506 (Marketing Solutions REST API)
  */
 
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
 import { getCredentialField } from "@/lib/integrations/credentials";
 
-const BASE_URL = "https://api.linkedin.com/v2";
+const BASE_URL = "https://api.linkedin.com/rest";
+const LINKEDIN_API_VERSION = "202506";
 
 async function getLinkedInCredentials(organizationId: string) {
   const [token, accountId] = await Promise.all([
     getCredentialField(organizationId, "linkedin", "access_token", "LINKEDIN_ACCESS_TOKEN"),
     getCredentialField(organizationId, "linkedin", "account_id", "LINKEDIN_ACCOUNT_ID"),
   ]);
-  return { token: token ?? "", accountId: accountId ?? "" };
-}
-
-function getAccessToken(override?: string) {
-  return override ?? process.env.LINKEDIN_ACCESS_TOKEN ?? "";
-}
-
-function getAdAccountId(override?: string) {
-  const raw = override ?? process.env.LINKEDIN_AD_ACCOUNT_ID ?? "";
+  if (!token) throw new Error("LinkedIn Access Token não configurado. Configure em Settings → Integrações.");
+  if (!accountId) throw new Error("LinkedIn Ad Account ID não configurado. Configure em Settings → Integrações.");
   // LinkedIn uses URN format: urn:li:sponsoredAccount:<id>
-  if (raw.startsWith("urn:")) return raw;
-  return `urn:li:sponsoredAccount:${raw}`;
+  const urn = accountId.startsWith("urn:") ? accountId : `urn:li:sponsoredAccount:${accountId}`;
+  return { token, accountId: urn };
 }
 
 function mapObjective(objective: CampaignObjective): string {
@@ -64,24 +55,19 @@ export type LinkedInCampaignInput = {
 };
 
 export async function listLinkedInCampaigns(
-  organizationId: string,
-  opts?: { accessToken?: string; adAccountId?: string }
+  organizationId: string
 ): Promise<{ id: string; name: string; status: string; budget: number }[]> {
-  const dbCreds = await getLinkedInCredentials(organizationId);
-  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
-  const accountId = getAdAccountId((opts?.adAccountId ?? dbCreds.accountId) || undefined);
-
-  if (!token || !accountId) return [];
+  const { token, accountId } = await getLinkedInCredentials(organizationId);
 
   const params = new URLSearchParams({
     q: "search",
     "search.account.values[0]": accountId,
   });
 
-  const res = await fetch(`${BASE_URL}/adCampaignsV2?${params}`, {
+  const res = await fetch(`${BASE_URL}/adCampaigns?${params}`, {
     headers: {
       Authorization: `Bearer ${token}`,
-      "LinkedIn-Version": "202401",
+      "LinkedIn-Version": LINKEDIN_API_VERSION,
     },
   });
 
@@ -100,16 +86,9 @@ export async function listLinkedInCampaigns(
 
 export async function createLinkedInCampaign(
   organizationId: string,
-  input: LinkedInCampaignInput,
-  opts?: { accessToken?: string; adAccountId?: string }
+  input: LinkedInCampaignInput
 ): Promise<string> {
-  const dbCreds = await getLinkedInCredentials(organizationId);
-  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
-  const accountId = getAdAccountId((opts?.adAccountId ?? dbCreds.accountId) || undefined);
-
-  if (!token || !accountId) {
-    throw new Error("LINKEDIN_ACCESS_TOKEN and LINKEDIN_AD_ACCOUNT_ID are required");
-  }
+  const { token, accountId } = await getLinkedInCredentials(organizationId);
 
   const body: Record<string, unknown> = {
     account: accountId,
@@ -136,11 +115,11 @@ export async function createLinkedInCampaign(
     }
   }
 
-  const res = await fetch(`${BASE_URL}/adCampaignsV2`, {
+  const res = await fetch(`${BASE_URL}/adCampaigns`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      "LinkedIn-Version": "202401",
+      "LinkedIn-Version": LINKEDIN_API_VERSION,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -159,15 +138,9 @@ export async function createLinkedInCampaign(
 export async function updateLinkedInCampaign(
   organizationId: string,
   campaignId: string,
-  updates: { status?: CampaignStatus; dailyBudget?: number },
-  opts?: { accessToken?: string; adAccountId?: string }
+  updates: { status?: CampaignStatus; dailyBudget?: number }
 ): Promise<void> {
-  const dbCreds = await getLinkedInCredentials(organizationId);
-  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
-
-  if (!token) {
-    throw new Error("LINKEDIN_ACCESS_TOKEN is required");
-  }
+  const { token } = await getLinkedInCredentials(organizationId);
 
   const patch: Record<string, unknown> = {};
   if (updates.status) patch.status = mapStatus(updates.status);
@@ -175,13 +148,14 @@ export async function updateLinkedInCampaign(
     patch.dailyBudget = { currencyCode: "BRL", amount: String(updates.dailyBudget) };
   }
 
-  const res = await fetch(`${BASE_URL}/adCampaignsV2/${campaignId}`, {
+  const res = await fetch(`${BASE_URL}/adCampaigns/${campaignId}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      "LinkedIn-Version": "202401",
+      "LinkedIn-Version": LINKEDIN_API_VERSION,
       "Content-Type": "application/json",
       "X-RestLi-Method": "PARTIAL_UPDATE",
+      "X-RestLi-Protocol-Version": "2.0.0",
     },
     body: JSON.stringify({ patch: { "$set": patch } }),
   });
@@ -194,13 +168,9 @@ export async function updateLinkedInCampaign(
 
 export async function getLinkedInCampaignInsights(
   organizationId: string,
-  campaignId: string,
-  opts?: { accessToken?: string }
+  campaignId: string
 ): Promise<{ spend: number; impressions: number; clicks: number; conversions: number }> {
-  const dbCreds = await getLinkedInCredentials(organizationId);
-  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
-
-  if (!token) return { spend: 0, impressions: 0, clicks: 0, conversions: 0 };
+  const { token } = await getLinkedInCredentials(organizationId);
 
   const endDate = new Date();
   const startDate = new Date(Date.now() - 30 * 86400000);
@@ -217,10 +187,10 @@ export async function getLinkedInCampaignInsights(
     fields: "costInLocalCurrency,impressions,clicks,externalWebsiteConversions",
   });
 
-  const res = await fetch(`${BASE_URL}/adAnalyticsV2?${params}`, {
+  const res = await fetch(`${BASE_URL}/adAnalytics?${params}`, {
     headers: {
       Authorization: `Bearer ${token}`,
-      "LinkedIn-Version": "202401",
+      "LinkedIn-Version": LINKEDIN_API_VERSION,
     },
   });
 
