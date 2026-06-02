@@ -609,6 +609,22 @@ export type IntegrationStatus = {
   last_tested_at: string | null;
 };
 
+// ─── M-ADS: Sync Runs ────────────────────────────────────────────────────────
+
+export type SyncRunStatus = "success" | "error" | "partial"
+
+export type SyncRun = {
+  id: string
+  workspace_id: string
+  platform: string
+  status: SyncRunStatus
+  campaigns_synced: number
+  error_message: string | null
+  started_at: string
+  finished_at: string | null
+  created_at: string
+}
+
 // ─── M11: AI Traffic Manager ──────────────────────────────────────────────────
 
 export type DiagnosticSeverity = "info" | "warning" | "critical";

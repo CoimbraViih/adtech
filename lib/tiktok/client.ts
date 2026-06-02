@@ -11,6 +11,7 @@
 
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
 import { getCredentialField } from "@/lib/integrations/credentials";
+import { fetchWithRetry } from "@/lib/integrations/fetch-retry";
 
 const BASE_URL = "https://business-api.tiktok.com/open_api/v1.3";
 
@@ -50,22 +51,56 @@ export type TikTokCampaignInput = {
   endDate?: string | null;
 };
 
+type TikTokPageInfo = {
+  page: number;
+  total_number: number;
+  has_more: boolean;
+};
+
+type TikTokListResponse = {
+  data?: {
+    list?: Record<string, unknown>[];
+    page_info?: TikTokPageInfo;
+  };
+};
+
+const TIKTOK_PAGE_SIZE = 20;
+const TIKTOK_SAFETY_LIMIT = 1000;
+
 export async function listTikTokCampaigns(
   organizationId: string
 ): Promise<{ id: string; name: string; status: string; budget: number }[]> {
   const { token, advertiserId } = await getTikTokCredentials(organizationId);
 
-  const params = new URLSearchParams({ advertiser_id: advertiserId });
-  const res = await fetch(`${BASE_URL}/campaign/get/?${params}`, {
-    headers: { "Access-Token": token },
-  });
+  const accumulated: Record<string, unknown>[] = [];
+  let page = 1;
 
-  if (!res.ok) {
-    throw new Error(`TikTok listCampaigns error: ${res.status}`);
+  while (true) {
+    const params = new URLSearchParams({
+      advertiser_id: advertiserId,
+      page: String(page),
+      page_size: String(TIKTOK_PAGE_SIZE),
+    });
+
+    const res = await fetchWithRetry(`${BASE_URL}/campaign/get/?${params}`, {
+      headers: { "Access-Token": token },
+    });
+
+    if (!res.ok) {
+      throw new Error(`TikTok listCampaigns error: ${res.status}`);
+    }
+
+    const json = (await res.json()) as TikTokListResponse;
+    const list = json.data?.list ?? [];
+    accumulated.push(...list);
+
+    if (!json.data?.page_info?.has_more) break;
+    if (accumulated.length >= TIKTOK_SAFETY_LIMIT) break;
+
+    page++;
   }
 
-  const json = await res.json();
-  return (json.data?.list ?? []).map((c: Record<string, unknown>) => ({
+  return accumulated.map((c) => ({
     id: String(c.campaign_id),
     name: String(c.campaign_name),
     status: String(c.status),
@@ -94,7 +129,7 @@ export async function createTikTokCampaign(
     body.budget = input.lifetimeBudget;
   }
 
-  const res = await fetch(`${BASE_URL}/campaign/create/`, {
+  const res = await fetchWithRetry(`${BASE_URL}/campaign/create/`, {
     method: "POST",
     headers: {
       "Access-Token": token,
@@ -130,7 +165,7 @@ export async function updateTikTokCampaign(
     body.budget = updates.dailyBudget;
   }
 
-  const res = await fetch(`${BASE_URL}/campaign/update/`, {
+  const res = await fetchWithRetry(`${BASE_URL}/campaign/update/`, {
     method: "POST",
     headers: {
       "Access-Token": token,
@@ -143,6 +178,66 @@ export async function updateTikTokCampaign(
     const err = await res.text();
     throw new Error(`TikTok updateCampaign error: ${res.status} ${err}`);
   }
+}
+
+/**
+ * Fetch insights for multiple campaigns in a single API call.
+ * TikTok's report endpoint supports filtering by a list of campaign IDs via
+ * filter_type: "IN", so we can batch all IDs into one request instead of
+ * one request per campaign.
+ * Returns a Record keyed by campaign_id string.
+ */
+export async function getTikTokBatchInsights(
+  organizationId: string,
+  campaignIds: string[]
+): Promise<Record<string, { spend: number; impressions: number; clicks: number; conversions: number }>> {
+  if (campaignIds.length === 0) return {};
+
+  const { token, advertiserId } = await getTikTokCredentials(organizationId);
+
+  const endDate = new Date().toISOString().slice(0, 10);
+  const startDate = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+  const params = new URLSearchParams({
+    advertiser_id: advertiserId,
+    report_type: "BASIC",
+    dimensions: JSON.stringify(["campaign_id"]),
+    metrics: JSON.stringify(["spend", "impressions", "clicks", "conversions"]),
+    start_date: startDate,
+    end_date: endDate,
+    filtering: JSON.stringify([
+      {
+        field_name: "campaign_id",
+        filter_type: "IN",
+        filter_value: JSON.stringify(campaignIds),
+      },
+    ]),
+    page_size: "1000",
+  });
+
+  const res = await fetchWithRetry(`${BASE_URL}/report/integrated/get/?${params}`, {
+    headers: { "Access-Token": token },
+  });
+
+  if (!res.ok) return {};
+
+  const json = await res.json();
+  const list: Record<string, unknown>[] = (json.data?.list as Record<string, unknown>[] | undefined) ?? [];
+
+  const result: Record<string, { spend: number; impressions: number; clicks: number; conversions: number }> = {};
+  for (const row of list) {
+    const dimensions = row.dimensions as Record<string, unknown> | undefined;
+    const metrics = row.metrics as Record<string, unknown> | undefined;
+    const id = String(dimensions?.campaign_id ?? "");
+    if (!id) continue;
+    result[id] = {
+      spend: Number(metrics?.spend ?? 0),
+      impressions: Number(metrics?.impressions ?? 0),
+      clicks: Number(metrics?.clicks ?? 0),
+      conversions: Number(metrics?.conversions ?? 0),
+    };
+  }
+  return result;
 }
 
 export async function getTikTokCampaignInsights(
@@ -164,7 +259,7 @@ export async function getTikTokCampaignInsights(
     filtering: JSON.stringify([{ field_name: "campaign_id", filter_type: "IN", filter_value: JSON.stringify([campaignId]) }]),
   });
 
-  const res = await fetch(`${BASE_URL}/report/integrated/get/?${params}`, {
+  const res = await fetchWithRetry(`${BASE_URL}/report/integrated/get/?${params}`, {
     headers: { "Access-Token": token },
   });
 

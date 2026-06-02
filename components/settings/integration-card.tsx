@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { CheckCircle2, Circle, Trash2 } from "lucide-react";
 import { IntegrationModal } from "@/components/settings/integration-modal";
+import { SyncStatusWidget } from "@/components/integrations/sync-status-widget";
+import type { SyncRun } from "@/types/database";
+
+const SYNC_PLATFORMS = new Set(["meta", "google", "tiktok", "linkedin"]);
 
 type Field = {
   key: string;
@@ -20,6 +24,10 @@ type IntegrationCardProps = {
   fields: Field[];
   configured: boolean;
   lastTestedAt: string | null;
+  /** Most-recent sync run for this platform; null if never synced or not a sync platform */
+  syncRun: SyncRun | null;
+  /** Workspace ID needed by the sync widget */
+  workspaceId: string;
   onSaved: () => void;
 };
 
@@ -31,6 +39,8 @@ export function IntegrationCard({
   fields,
   configured,
   lastTestedAt,
+  syncRun,
+  workspaceId,
   onSaved,
 }: IntegrationCardProps) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -50,6 +60,8 @@ export function IntegrationCard({
   const testedDate = lastTestedAt
     ? new Date(lastTestedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
     : null;
+
+  const isSyncable = SYNC_PLATFORMS.has(providerKey);
 
   return (
     <>
@@ -74,6 +86,16 @@ export function IntegrationCard({
           <p className="text-[10px] text-[color:var(--adflow-fg-muted)]">
             Testado em {testedDate}
           </p>
+        )}
+
+        {/* Sync status + button — only for ad platforms */}
+        {isSyncable && (
+          <SyncStatusWidget
+            platform={providerKey}
+            workspaceId={workspaceId}
+            initialRun={syncRun}
+            configured={configured}
+          />
         )}
 
         <div className="flex gap-2 mt-auto pt-1">

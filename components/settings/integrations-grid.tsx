@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { IntegrationCard } from "@/components/settings/integration-card";
+import type { SyncRun } from "@/types/database";
 
 type Field = {
   key: string;
@@ -19,6 +20,7 @@ type ProviderStatus = {
   fields: Field[];
   configured: boolean;
   last_tested_at: string | null;
+  syncRun: SyncRun | null;
 };
 
 type Category = {
@@ -29,9 +31,10 @@ type Category = {
 
 type IntegrationsGridProps = {
   initialCategories: Category[];
+  workspaceId: string;
 };
 
-export function IntegrationsGrid({ initialCategories }: IntegrationsGridProps) {
+export function IntegrationsGrid({ initialCategories, workspaceId }: IntegrationsGridProps) {
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [activeTab, setActiveTab] = useState(initialCategories[0]?.key ?? "ads");
   const [refreshing, setRefreshing] = useState(false);
@@ -95,6 +98,8 @@ export function IntegrationsGrid({ initialCategories }: IntegrationsGridProps) {
               fields={provider.fields}
               configured={provider.configured}
               lastTestedAt={provider.last_tested_at}
+              syncRun={provider.syncRun}
+              workspaceId={workspaceId}
               onSaved={refresh}
             />
           ))}

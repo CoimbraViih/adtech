@@ -2,8 +2,41 @@ import { IntegrationsGrid } from "@/components/settings/integrations-grid";
 import { requireServerSession } from "@/lib/supabase/server";
 import { listCredentialStatuses } from "@/lib/integrations/credentials";
 import { PROVIDERS, PROVIDER_CATEGORIES } from "@/lib/integrations/providers";
+import { createServiceClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
-import type { IntegrationStatus } from "@/types/database";
+import type { IntegrationStatus, SyncRun } from "@/types/database";
+
+const SYNC_PLATFORMS = new Set(["meta", "google", "tiktok", "linkedin"]);
+
+async function fetchLatestSyncRuns(workspaceId: string): Promise<Map<string, SyncRun>> {
+  const supabase = createServiceClient();
+
+  // Fetch the most-recent run per platform in a single query.
+  // TODO(M-ADS-backend): when the real Supabase client is wired, this query
+  // executes as:
+  //   SELECT DISTINCT ON (platform) * FROM sync_runs
+  //   WHERE workspace_id = $1
+  //   ORDER BY platform, started_at DESC
+  // The stub returns null, so the map will be empty — no sync status shown.
+  const { data } = (await supabase
+    .from("sync_runs")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("started_at", { ascending: false })
+    .limit(100)) as { data: SyncRun[] | null };
+
+  const map = new Map<string, SyncRun>();
+  if (!data) return map;
+
+  for (const row of data) {
+    // keep only the first (most recent) row per platform
+    if (!map.has(row.platform)) {
+      map.set(row.platform, row);
+    }
+  }
+
+  return map;
+}
 
 export default async function IntegrationsPage() {
   let session;
@@ -18,7 +51,11 @@ export default async function IntegrationsPage() {
     redirect("/login");
   }
 
-  const configured = await listCredentialStatuses(session.organization.id);
+  const [configured, syncRunsMap] = await Promise.all([
+    listCredentialStatuses(session.organization.id),
+    fetchLatestSyncRuns(session.workspace.id),
+  ]);
+
   const configuredMap = new Map<string, IntegrationStatus>(
     configured.map((s) => [s.provider, s])
   );
@@ -30,6 +67,7 @@ export default async function IntegrationsPage() {
       .filter((p) => p.category === cat.key)
       .map((p) => {
         const status = configuredMap.get(p.key);
+        const syncRun = SYNC_PLATFORMS.has(p.key) ? (syncRunsMap.get(p.key) ?? null) : null;
         return {
           key: p.key,
           label: p.label,
@@ -44,6 +82,7 @@ export default async function IntegrationsPage() {
           })),
           configured: !!status,
           last_tested_at: status?.last_tested_at ?? null,
+          syncRun,
         };
       }),
   }));
@@ -53,7 +92,10 @@ export default async function IntegrationsPage() {
       <p className="text-sm text-[color:var(--adflow-fg-muted)] mb-6">
         Configure as chaves de API das plataformas. As credenciais são criptografadas e armazenadas com segurança.
       </p>
-      <IntegrationsGrid initialCategories={categories} />
+      <IntegrationsGrid
+        initialCategories={categories}
+        workspaceId={session.workspace.id}
+      />
     </div>
   );
 }
