@@ -5,13 +5,18 @@
  * Called on-demand via GET /api/campaigns?sync=true or by a cron job.
  * Real Supabase upsert is wired in M-ADS-backend (currently stubbed with
  * TODO(M-ADS-backend) comments inline — DB write path is a no-op until then).
+ *
+ * Onda 3E: batch insights — each platform is synced with 1 insights call
+ * instead of N (one per campaign).  sync_runs are recorded after every
+ * platform sync attempt.
  */
 
-import { listMetaCampaigns, getMetaCampaignInsights } from "@/lib/meta/client";
-import { listGoogleCampaigns, getGoogleCampaignMetrics } from "@/lib/google/client";
-import { listTikTokCampaigns, getTikTokCampaignInsights } from "@/lib/tiktok/client";
-import { listLinkedInCampaigns, getLinkedInCampaignInsights } from "@/lib/linkedin/client";
+import { listMetaCampaigns, getMetaAccountInsights } from "@/lib/meta/client";
+import { listGoogleCampaigns, getGoogleAccountMetrics } from "@/lib/google/client";
+import { listTikTokCampaigns, getTikTokBatchInsights } from "@/lib/tiktok/client";
+import { listLinkedInCampaigns, getLinkedInAccountInsights } from "@/lib/linkedin/client";
 import { getCredentialField } from "@/lib/integrations/credentials";
+import { createServiceClient } from "@/lib/supabase/service";
 import type { CampaignStatus } from "@/types/database";
 
 // ── status mapping ─────────────────────────────────────────────────────────
@@ -68,6 +73,38 @@ async function hasCredentials(workspaceId: string, provider: string): Promise<bo
   return !!val;
 }
 
+// ── sync_runs recorder ──────────────────────────────────────────────────────
+
+type SyncRunResult = {
+  campaignsSynced: number;
+  status: "success" | "error" | "partial";
+  errorMessage: string | null;
+};
+
+async function recordSyncRun(
+  workspaceId: string,
+  platform: string,
+  startedAt: Date,
+  result: SyncRunResult
+): Promise<void> {
+  try {
+    const db = createServiceClient();
+    await db.from("sync_runs").insert({
+      workspace_id: workspaceId,
+      platform,
+      status: result.status,
+      campaigns_synced: result.campaignsSynced,
+      error_message: result.errorMessage,
+      started_at: startedAt.toISOString(),
+      finished_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    // Recording a sync_run failure must never surface to the caller —
+    // the underlying sync outcome is already captured in the return value.
+    console.error("[sync/record_sync_run] failed to write sync_runs row:", err);
+  }
+}
+
 // ── sync ───────────────────────────────────────────────────────────────────
 
 export async function syncCampaignsFromPlatform(
@@ -78,12 +115,16 @@ export async function syncCampaignsFromPlatform(
 
   // ── Meta ────────────────────────────────────────────────────────────────
   if (await hasCredentials(workspaceId, "meta")) {
+    const startedAt = new Date();
     try {
-      const metaCampaigns = await listMetaCampaigns(organizationId);
+      // 1 call for campaign list + 1 call for all insights (batch).
+      const [metaCampaigns, insightsByid] = await Promise.all([
+        listMetaCampaigns(organizationId),
+        getMetaAccountInsights(organizationId, { datePreset: "last_30d" }),
+      ]);
 
       for (const mc of metaCampaigns) {
-        const insights = await getMetaCampaignInsights(organizationId, mc.id, { datePreset: "last_30d" });
-        const ins = insights[0];
+        const ins = insightsByid[mc.id];
 
         const spend = ins ? parseFloat(ins.spend) : 0;
         const impressions = ins ? parseInt(ins.impressions, 10) : 0;
@@ -107,23 +148,40 @@ export async function syncCampaignsFromPlatform(
 
         // TODO(M-ADS-backend): wire real Supabase upsert
         // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
+        void _upsertData;
       }
 
       results.push({ platform: "meta", synced: metaCampaigns.length, error: null });
+      await recordSyncRun(workspaceId, "meta", startedAt, {
+        campaignsSynced: metaCampaigns.length,
+        status: "success",
+        errorMessage: null,
+      });
     } catch (err) {
-      results.push({ platform: "meta", synced: 0, error: err instanceof Error ? err.message : String(err) });
+      const msg = err instanceof Error ? err.message : String(err);
+      results.push({ platform: "meta", synced: 0, error: msg });
       console.error("[sync/meta] error:", err);
+      await recordSyncRun(workspaceId, "meta", startedAt, {
+        campaignsSynced: 0,
+        status: "error",
+        errorMessage: msg,
+      });
     }
   }
 
   // ── Google ───────────────────────────────────────────────────────────────
   if (await hasCredentials(workspaceId, "google")) {
+    const startedAt = new Date();
     try {
-      const googleCampaigns = await listGoogleCampaigns(organizationId);
+      // 1 GAQL query for campaign list + 1 GAQL query for all metrics (batch).
+      const [googleCampaigns, metricsByid] = await Promise.all([
+        listGoogleCampaigns(organizationId),
+        getGoogleAccountMetrics(organizationId),
+      ]);
 
       for (const gc of googleCampaigns) {
-        const metrics = await getGoogleCampaignMetrics(organizationId, gc.id);
-        const m = metrics[0]?.metrics;
+        const row = metricsByid[gc.id];
+        const m = row?.metrics;
 
         const spend = m ? parseInt(m.costMicros, 10) / 1_000_000 : 0;
         const impressions = m ? parseInt(m.impressions, 10) : 0;
@@ -145,23 +203,43 @@ export async function syncCampaignsFromPlatform(
 
         // TODO(M-ADS-backend): wire real Supabase upsert
         // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
+        void _upsertData;
       }
 
       results.push({ platform: "google", synced: googleCampaigns.length, error: null });
+      await recordSyncRun(workspaceId, "google", startedAt, {
+        campaignsSynced: googleCampaigns.length,
+        status: "success",
+        errorMessage: null,
+      });
     } catch (err) {
-      results.push({ platform: "google", synced: 0, error: err instanceof Error ? err.message : String(err) });
+      const msg = err instanceof Error ? err.message : String(err);
+      results.push({ platform: "google", synced: 0, error: msg });
       console.error("[sync/google] error:", err);
+      await recordSyncRun(workspaceId, "google", startedAt, {
+        campaignsSynced: 0,
+        status: "error",
+        errorMessage: msg,
+      });
     }
   }
 
   // ── TikTok ───────────────────────────────────────────────────────────────
   if (await hasCredentials(workspaceId, "tiktok")) {
+    const startedAt = new Date();
     try {
       const tiktokCampaigns = await listTikTokCampaigns(organizationId);
 
+      // Batch: collect all campaign IDs, fetch insights in one call.
+      const ids = tiktokCampaigns.map((tc) => tc.id);
+      const insightsByid = await getTikTokBatchInsights(organizationId, ids);
+
+      let syncedCount = 0;
+      let partialError: string | null = null;
+
       for (const tc of tiktokCampaigns) {
-        const insights = await getTikTokCampaignInsights(organizationId, tc.id);
-        const cpa = insights.conversions > 0 ? insights.spend / insights.conversions : null;
+        const ins = insightsByid[tc.id] ?? { spend: 0, impressions: 0, clicks: 0, conversions: 0 };
+        const cpa = ins.conversions > 0 ? ins.spend / ins.conversions : null;
 
         const _upsertData = {
           workspace_id: workspaceId,
@@ -170,10 +248,10 @@ export async function syncCampaignsFromPlatform(
           name: tc.name,
           status: tiktokStatusToLocal(tc.status),
           daily_budget: tc.budget,
-          spend: insights.spend,
-          impressions: insights.impressions,
-          clicks: insights.clicks,
-          conversions: insights.conversions,
+          spend: ins.spend,
+          impressions: ins.impressions,
+          clicks: ins.clicks,
+          conversions: ins.conversions,
           roas: null,
           cpa,
           updated_at: new Date().toISOString(),
@@ -181,23 +259,50 @@ export async function syncCampaignsFromPlatform(
 
         // TODO(M-ADS-backend): wire real Supabase upsert
         // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
+        void _upsertData;
+        syncedCount++;
       }
 
-      results.push({ platform: "tiktok", synced: tiktokCampaigns.length, error: null });
+      const campaignsWithoutInsights = tiktokCampaigns.filter((tc) => !insightsByid[tc.id]).length;
+      if (campaignsWithoutInsights > 0 && tiktokCampaigns.length > 0) {
+        partialError = `${campaignsWithoutInsights} campanha(s) sem dados de insights`;
+      }
+
+      const runStatus = partialError ? "partial" : "success";
+      results.push({ platform: "tiktok", synced: syncedCount, error: partialError });
+      await recordSyncRun(workspaceId, "tiktok", startedAt, {
+        campaignsSynced: syncedCount,
+        status: runStatus,
+        errorMessage: partialError,
+      });
     } catch (err) {
-      results.push({ platform: "tiktok", synced: 0, error: err instanceof Error ? err.message : String(err) });
+      const msg = err instanceof Error ? err.message : String(err);
+      results.push({ platform: "tiktok", synced: 0, error: msg });
       console.error("[sync/tiktok] error:", err);
+      await recordSyncRun(workspaceId, "tiktok", startedAt, {
+        campaignsSynced: 0,
+        status: "error",
+        errorMessage: msg,
+      });
     }
   }
 
   // ── LinkedIn ─────────────────────────────────────────────────────────────
   if (await hasCredentials(workspaceId, "linkedin")) {
+    const startedAt = new Date();
     try {
-      const linkedinCampaigns = await listLinkedInCampaigns(organizationId);
+      // 1 call for campaign list + 1 call for all account insights (batch).
+      const [linkedinCampaigns, insightsByid] = await Promise.all([
+        listLinkedInCampaigns(organizationId),
+        getLinkedInAccountInsights(organizationId),
+      ]);
+
+      let syncedCount = 0;
+      let partialError: string | null = null;
 
       for (const lc of linkedinCampaigns) {
-        const insights = await getLinkedInCampaignInsights(organizationId, lc.id);
-        const cpa = insights.conversions > 0 ? insights.spend / insights.conversions : null;
+        const ins = insightsByid[lc.id] ?? { spend: 0, impressions: 0, clicks: 0, conversions: 0 };
+        const cpa = ins.conversions > 0 ? ins.spend / ins.conversions : null;
 
         const _upsertData = {
           workspace_id: workspaceId,
@@ -206,10 +311,10 @@ export async function syncCampaignsFromPlatform(
           name: lc.name,
           status: linkedinStatusToLocal(lc.status),
           daily_budget: lc.budget,
-          spend: insights.spend,
-          impressions: insights.impressions,
-          clicks: insights.clicks,
-          conversions: insights.conversions,
+          spend: ins.spend,
+          impressions: ins.impressions,
+          clicks: ins.clicks,
+          conversions: ins.conversions,
           roas: null,
           cpa,
           updated_at: new Date().toISOString(),
@@ -217,12 +322,31 @@ export async function syncCampaignsFromPlatform(
 
         // TODO(M-ADS-backend): wire real Supabase upsert
         // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
+        void _upsertData;
+        syncedCount++;
       }
 
-      results.push({ platform: "linkedin", synced: linkedinCampaigns.length, error: null });
+      const campaignsWithoutInsights = linkedinCampaigns.filter((lc) => !insightsByid[lc.id]).length;
+      if (campaignsWithoutInsights > 0 && linkedinCampaigns.length > 0) {
+        partialError = `${campaignsWithoutInsights} campanha(s) sem dados de insights`;
+      }
+
+      const runStatus = partialError ? "partial" : "success";
+      results.push({ platform: "linkedin", synced: syncedCount, error: partialError });
+      await recordSyncRun(workspaceId, "linkedin", startedAt, {
+        campaignsSynced: syncedCount,
+        status: runStatus,
+        errorMessage: partialError,
+      });
     } catch (err) {
-      results.push({ platform: "linkedin", synced: 0, error: err instanceof Error ? err.message : String(err) });
+      const msg = err instanceof Error ? err.message : String(err);
+      results.push({ platform: "linkedin", synced: 0, error: msg });
       console.error("[sync/linkedin] error:", err);
+      await recordSyncRun(workspaceId, "linkedin", startedAt, {
+        campaignsSynced: 0,
+        status: "error",
+        errorMessage: msg,
+      });
     }
   }
 

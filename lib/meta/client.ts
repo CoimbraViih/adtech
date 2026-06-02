@@ -12,6 +12,8 @@
 
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
 import { getCredentialField } from "@/lib/integrations/credentials";
+import { fetchWithRetry } from "@/lib/integrations/fetch-retry";
+import { refreshMetaTokenIfNeeded } from "@/lib/meta/token-refresh";
 
 const BASE_URL = "https://graph.facebook.com/v25.0";
 
@@ -81,6 +83,14 @@ const STATUS_MAP: Record<CampaignStatus, MetaCampaignStatus> = {
 // ── http helpers ────────────────────────────────────────────────────────────
 
 async function getMetaCredentials(organizationId: string) {
+  // Best-effort proactive refresh — a refresh failure must not block the
+  // caller from using whatever valid token is currently stored.
+  try {
+    await refreshMetaTokenIfNeeded(organizationId);
+  } catch (err) {
+    console.warn("[meta] token refresh skipped:", (err as Error).message);
+  }
+
   const [token, accountId] = await Promise.all([
     getCredentialField(organizationId, "meta", "access_token", "META_ACCESS_TOKEN"),
     getCredentialField(organizationId, "meta", "ad_account_id", "META_AD_ACCOUNT_ID"),
@@ -100,7 +110,7 @@ async function metaFetch<T>(
   const { token, ...rest } = options;
   const url = path.startsWith("http") ? path : `${BASE_URL}${path}`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     ...rest,
     headers: {
       ...(rest.headers as Record<string, string> | undefined),
@@ -119,8 +129,18 @@ async function metaFetch<T>(
 
 // ── public API ──────────────────────────────────────────────────────────────
 
+type MetaListResponse = {
+  data: MetaCampaign[];
+  paging?: {
+    cursors?: { before: string; after: string };
+    next?: string;
+  };
+};
+
+const META_SAFETY_LIMIT = 5000;
+
 /**
- * List all campaigns for the configured ad account.
+ * List all campaigns for the configured ad account (fully paginated).
  */
 export async function listMetaCampaigns(
   organizationId: string,
@@ -133,12 +153,24 @@ export async function listMetaCampaigns(
   const fields = "id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time";
   const statusFilter = opts?.status?.join(",") ?? "ACTIVE,PAUSED";
 
-  const data = await metaFetch<{ data: MetaCampaign[] }>(
-    `/${account}/campaigns?fields=${fields}&effective_status=['${statusFilter.replace(/,/g, "','")}']&limit=200`,
-    { token, method: "GET" }
-  );
+  const initialPath = `/${account}/campaigns?fields=${fields}&effective_status=['${statusFilter.replace(/,/g, "','")}']&limit=200`;
 
-  return data.data;
+  const accumulated: MetaCampaign[] = [];
+  let nextPath: string | undefined = initialPath;
+
+  while (nextPath !== undefined) {
+    const response: MetaListResponse = await metaFetch<MetaListResponse>(nextPath, { token, method: "GET" });
+    accumulated.push(...response.data);
+
+    if (!response.paging?.next) break;
+    if (accumulated.length >= META_SAFETY_LIMIT) break;
+
+    // paging.next is an absolute URL — metaFetch routes it correctly via
+    // the `path.startsWith("http")` check in its URL construction.
+    nextPath = response.paging.next;
+  }
+
+  return accumulated;
 }
 
 /**
@@ -218,6 +250,53 @@ export async function updateMetaCampaign(
       body: formBody.toString(),
     }
   );
+}
+
+/**
+ * Fetch account-level insights for all campaigns in a single API call.
+ * Uses /{accountId}/insights?level=campaign to retrieve metrics for every
+ * campaign under the account, then returns them keyed by campaign_id.
+ * This replaces the N-per-campaign pattern with 1 call per account.
+ */
+export async function getMetaAccountInsights(
+  organizationId: string,
+  opts: {
+    datePreset?: "today" | "last_7d" | "last_30d" | "last_month";
+    since?: string; // YYYY-MM-DD
+    until?: string;
+  } = {}
+): Promise<Record<string, MetaInsights>> {
+  const { token, account } = await getMetaCredentials(organizationId);
+
+  const fields = "campaign_id,spend,impressions,clicks,actions,purchase_roas,date_start,date_stop";
+  const timeRange = opts.since && opts.until
+    ? `&time_range={'since':'${opts.since}','until':'${opts.until}'}`
+    : `&date_preset=${opts.datePreset ?? "last_30d"}`;
+
+  // level=campaign on an account endpoint returns one row per campaign.
+  const initialPath = `/${account}/insights?fields=${fields}&level=campaign${timeRange}&limit=200`;
+
+  const accumulated: MetaInsights[] = [];
+  let nextPath: string | undefined = initialPath;
+
+  type AccountInsightsPage = { data: MetaInsights[]; paging?: { next?: string } };
+
+  while (nextPath !== undefined) {
+    const response: AccountInsightsPage = await metaFetch<AccountInsightsPage>(
+      nextPath,
+      { token, method: "GET" }
+    );
+    accumulated.push(...response.data);
+    if (!response.paging?.next) break;
+    nextPath = response.paging.next;
+  }
+
+  // Key by campaign_id for O(1) join in the sync loop.
+  const byId: Record<string, MetaInsights> = {};
+  for (const ins of accumulated) {
+    byId[ins.campaign_id] = ins;
+  }
+  return byId;
 }
 
 /**

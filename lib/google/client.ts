@@ -11,6 +11,7 @@
 
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
 import { getCredentialField } from "@/lib/integrations/credentials";
+import { fetchWithRetry } from "@/lib/integrations/fetch-retry";
 
 const GOOGLE_ADS_API_VERSION = "v24";
 const BASE_URL = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
@@ -158,7 +159,7 @@ async function googleFetch<T>(
 
   const url = path.startsWith("http") ? path : `${BASE_URL}${path}`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     ...rest,
     headers: {
       "Content-Type": "application/json",
@@ -181,22 +182,55 @@ async function googleFetch<T>(
 
 // -- GAQL query helper --------------------------------------------------------
 
+type GoogleSearchResponse<T> = {
+  results?: T[];
+  nextPageToken?: string;
+};
+
+async function googleQueryPage<T>(
+  query: string,
+  orgId: string,
+  creds: GoogleCreds,
+  pageToken?: string
+): Promise<GoogleSearchResponse<T>> {
+  const customerId = creds.customerId.replace(/-/g, "");
+  const body: Record<string, string> = { query };
+  if (pageToken !== undefined) {
+    body.pageToken = pageToken;
+  }
+  return googleFetch<GoogleSearchResponse<T>>(
+    `/customers/${customerId}/googleAds:search`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+      orgId,
+      creds,
+    }
+  );
+}
+
+const GOOGLE_SAFETY_LIMIT = 10_000;
+
+/**
+ * Execute a GAQL query and return all results across all pages.
+ * The query must NOT include a LIMIT clause when full pagination is desired.
+ */
 async function googleQuery<T>(
   query: string,
   orgId: string,
   creds: GoogleCreds
 ): Promise<T[]> {
-  const customerId = creds.customerId.replace(/-/g, "");
-  const data = await googleFetch<{ results?: T[] }>(
-    `/customers/${customerId}/googleAds:search`,
-    {
-      method: "POST",
-      body: JSON.stringify({ query }),
-      orgId,
-      creds,
-    }
-  );
-  return data.results ?? [];
+  const accumulated: T[] = [];
+  let pageToken: string | undefined = undefined;
+
+  do {
+    const response: GoogleSearchResponse<T> = await googleQueryPage<T>(query, orgId, creds, pageToken);
+    const results = response.results ?? [];
+    accumulated.push(...results);
+    pageToken = response.nextPageToken;
+  } while (pageToken !== undefined && accumulated.length < GOOGLE_SAFETY_LIMIT);
+
+  return accumulated;
 }
 
 // -- public API ---------------------------------------------------------------
@@ -226,7 +260,6 @@ export async function listGoogleCampaigns(
     FROM campaign
     WHERE campaign.status IN (${statusList})
     ORDER BY campaign.id DESC
-    LIMIT 1000
   `;
 
   type Row = { campaign: GoogleCampaign };
@@ -379,6 +412,54 @@ export async function updateGoogleCampaign(
       }
     );
   }
+}
+
+/**
+ * Fetch metrics for all campaigns in the account with a single GAQL query.
+ * The query omits the `campaign.id = X` filter so Google returns one row per
+ * campaign, covering the last 30 days.
+ * Returns a Record keyed by campaign ID string.
+ */
+export async function getGoogleAccountMetrics(
+  organizationId: string,
+  opts: {
+    since?: string; // YYYY-MM-DD
+    until?: string;
+  } = {}
+): Promise<Record<string, GoogleCampaignMetrics>> {
+  const creds = await getGoogleCredentials(organizationId);
+
+  const since = opts.since ?? (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().slice(0, 10);
+  })();
+  const until = opts.until ?? new Date().toISOString().slice(0, 10);
+
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      metrics.cost_micros,
+      metrics.impressions,
+      metrics.clicks,
+      metrics.conversions,
+      metrics.conversions_value,
+      metrics.average_cpc,
+      metrics.ctr
+    FROM campaign
+    WHERE segments.date BETWEEN '${since}' AND '${until}'
+      AND campaign.status IN ('ENABLED', 'PAUSED')
+  `;
+
+  type Row = GoogleCampaignMetrics;
+  const rows = await googleQuery<Row>(query, organizationId, creds);
+
+  const byId: Record<string, GoogleCampaignMetrics> = {};
+  for (const row of rows) {
+    byId[row.campaign.id] = row;
+  }
+  return byId;
 }
 
 /**
