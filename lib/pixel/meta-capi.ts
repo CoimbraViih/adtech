@@ -1,7 +1,7 @@
 import type { PixelEvent } from "@/types/database";
 import { getCredentialField } from "@/lib/integrations/credentials";
 
-const META_CAPI_URL = "https://graph.facebook.com/v18.0";
+const META_CAPI_URL = "https://graph.facebook.com/v25.0";
 
 export async function sendMetaCapiEvent(
   organizationId: string,

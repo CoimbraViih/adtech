@@ -24,7 +24,7 @@ const PROVIDERS_LIST: ProviderDef[] = [
     ],
     async testConnection(creds) {
       const r = await fetchSafe(
-        `https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${creds.access_token}`
+        `https://graph.facebook.com/v25.0/me?fields=id,name&access_token=${creds.access_token}`
       );
       if (r.ok) return { ok: true, message: "Conectado com sucesso ao Meta Ads." };
       return { ok: false, message: `Token inválido ou expirado. (HTTP ${r.status})` };
@@ -61,7 +61,7 @@ const PROVIDERS_LIST: ProviderDef[] = [
       const { access_token } = JSON.parse(tokenRes.body) as { access_token?: string };
       if (!access_token) return { ok: false, message: "Não foi possível obter access_token do Google." };
       const r = await fetchSafe(
-        `https://googleads.googleapis.com/v18/customers/${creds.customer_id}/googleAds:search`,
+        `https://googleads.googleapis.com/v24/customers/${creds.customer_id}/googleAds:search`,
         {
           method: "POST",
           headers: {
@@ -89,7 +89,7 @@ const PROVIDERS_LIST: ProviderDef[] = [
     ],
     async testConnection(creds) {
       const r = await fetchSafe(
-        `https://business-api.tiktok.com/open_api/v1.3/advertiser/info/?advertiser_ids=["${creds.advertiser_id}"]`,
+        `https://business-api.tiktok.com/open_api/v1.3/oauth2/advertiser/get/?app_id=&secret=`,
         { headers: { "Access-Token": creds.access_token } }
       );
       if (r.ok) return { ok: true, message: "Conectado com sucesso ao TikTok Ads." };
@@ -108,10 +108,13 @@ const PROVIDERS_LIST: ProviderDef[] = [
       { key: "account_id", label: "Account ID (URN)", placeholder: "123456789", secret: false },
     ],
     async testConnection(creds) {
-      const r = await fetchSafe("https://api.linkedin.com/v2/me", {
-        headers: { Authorization: `Bearer ${creds.access_token}` },
+      const r = await fetchSafe("https://api.linkedin.com/rest/adAccounts?q=search&search.status.values[0]=ACTIVE", {
+        headers: {
+          Authorization: `Bearer ${creds.access_token}`,
+          "LinkedIn-Version": "202506",
+        },
       });
-      if (r.ok) return { ok: true, message: "Conectado com sucesso ao LinkedIn." };
+      if (r.ok) return { ok: true, message: "Conectado com sucesso ao LinkedIn Ads." };
       return { ok: false, message: `Token inválido. (HTTP ${r.status})` };
     },
   },
@@ -248,7 +251,7 @@ const PROVIDERS_LIST: ProviderDef[] = [
     ],
     async testConnection(creds) {
       const r = await fetchSafe(
-        `https://graph.facebook.com/v21.0/${creds.phone_id}?access_token=${creds.token}`
+        `https://graph.facebook.com/v25.0/${creds.phone_id}?access_token=${creds.token}`
       );
       if (r.ok) return { ok: true, message: "Conectado com sucesso ao WhatsApp Business." };
       return { ok: false, message: `Credenciais inválidas. (HTTP ${r.status})` };

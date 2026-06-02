@@ -1,6 +1,7 @@
 /**
  * Platform abstraction layer for campaign operations.
  * Routes create/update calls to the correct external API.
+ * Credentials are resolved per-org from the DB — no opts pass-through.
  */
 
 import type { CampaignCreateInput, CampaignPlatform, CampaignStatus } from "@/types/database";
@@ -11,38 +12,64 @@ import { createLinkedInCampaign, updateLinkedInCampaign } from "@/lib/linkedin/c
 
 export async function createCampaignOnPlatform(
   organizationId: string,
-  input: CampaignCreateInput,
-  opts?: { accessToken?: string; customerId?: string; refreshToken?: string; advertiserId?: string; adAccountId?: string }
+  input: CampaignCreateInput
 ): Promise<string> {
   if (input.platform === "meta") {
     return createMetaCampaign(
       organizationId,
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date },
-      { accessToken: opts?.accessToken }
+      {
+        name: input.name,
+        objective: input.objective,
+        status: "draft",
+        dailyBudget: input.daily_budget,
+        lifetimeBudget: input.lifetime_budget,
+        startDate: input.start_date,
+        endDate: input.end_date,
+      }
     );
   }
 
   if (input.platform === "google") {
     return createGoogleCampaign(
       organizationId,
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, startDate: input.start_date, endDate: input.end_date },
-      { customerId: opts?.customerId, refreshToken: opts?.refreshToken }
+      {
+        name: input.name,
+        objective: input.objective,
+        status: "draft",
+        dailyBudget: input.daily_budget,
+        startDate: input.start_date,
+        endDate: input.end_date,
+      }
     );
   }
 
   if (input.platform === "tiktok") {
     return createTikTokCampaign(
       organizationId,
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date },
-      { accessToken: opts?.accessToken, advertiserId: opts?.advertiserId }
+      {
+        name: input.name,
+        objective: input.objective,
+        status: "draft",
+        dailyBudget: input.daily_budget,
+        lifetimeBudget: input.lifetime_budget,
+        startDate: input.start_date,
+        endDate: input.end_date,
+      }
     );
   }
 
   if (input.platform === "linkedin") {
     return createLinkedInCampaign(
       organizationId,
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date },
-      { accessToken: opts?.accessToken, adAccountId: opts?.adAccountId }
+      {
+        name: input.name,
+        objective: input.objective,
+        status: "draft",
+        dailyBudget: input.daily_budget,
+        lifetimeBudget: input.lifetime_budget,
+        startDate: input.start_date,
+        endDate: input.end_date,
+      }
     );
   }
 
@@ -57,19 +84,13 @@ export async function updateCampaignOnPlatform(
     externalId: string;
     status?: CampaignStatus;
     dailyBudget?: number;
-    accessToken?: string;
-    customerId?: string;
-    refreshToken?: string;
-    advertiserId?: string;
-    adAccountId?: string;
   }
 ): Promise<void> {
   if (update.platform === "meta") {
     return updateMetaCampaign(
       organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { accessToken: update.accessToken }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 
@@ -77,8 +98,7 @@ export async function updateCampaignOnPlatform(
     return updateGoogleCampaign(
       organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { customerId: update.customerId, refreshToken: update.refreshToken }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 
@@ -86,8 +106,7 @@ export async function updateCampaignOnPlatform(
     return updateTikTokCampaign(
       organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { accessToken: update.accessToken, advertiserId: update.advertiserId }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 
@@ -95,8 +114,7 @@ export async function updateCampaignOnPlatform(
     return updateLinkedInCampaign(
       organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { accessToken: update.accessToken, adAccountId: update.adAccountId }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 }
