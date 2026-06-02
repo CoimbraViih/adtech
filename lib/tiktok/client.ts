@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TikTok Ads API client wrapper.
  * Docs: https://ads.tiktok.com/marketing_api/docs
  * API version: v1.3
@@ -17,15 +17,9 @@ async function getTikTokCredentials(organizationId: string) {
     getCredentialField(organizationId, "tiktok", "access_token", "TIKTOK_ACCESS_TOKEN"),
     getCredentialField(organizationId, "tiktok", "advertiser_id", "TIKTOK_ADVERTISER_ID"),
   ]);
-  return { token: token ?? "", advertiserId: advertiserId ?? "" };
-}
-
-function getAccessToken(override?: string) {
-  return override ?? process.env.TIKTOK_ACCESS_TOKEN ?? "";
-}
-
-function getAdvertiserId(override?: string) {
-  return override ?? process.env.TIKTOK_ADVERTISER_ID ?? "";
+  if (!token) throw new Error("TikTok Access Token não configurado. Configure em Settings → Integrações.");
+  if (!advertiserId) throw new Error("TikTok Advertiser ID não configurado. Configure em Settings → Integrações.");
+  return { token, advertiserId };
 }
 
 function mapObjective(objective: CampaignObjective): string {
@@ -55,14 +49,9 @@ export type TikTokCampaignInput = {
 };
 
 export async function listTikTokCampaigns(
-  organizationId: string,
-  opts?: { accessToken?: string; advertiserId?: string }
+  organizationId: string
 ): Promise<{ id: string; name: string; status: string; budget: number }[]> {
-  const dbCreds = await getTikTokCredentials(organizationId);
-  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
-  const advertiserId = getAdvertiserId((opts?.advertiserId ?? dbCreds.advertiserId) || undefined);
-
-  if (!token || !advertiserId) return [];
+  const { token, advertiserId } = await getTikTokCredentials(organizationId);
 
   const params = new URLSearchParams({ advertiser_id: advertiserId });
   const res = await fetch(`${BASE_URL}/campaign/get/?${params}`, {
@@ -84,16 +73,9 @@ export async function listTikTokCampaigns(
 
 export async function createTikTokCampaign(
   organizationId: string,
-  input: TikTokCampaignInput,
-  opts?: { accessToken?: string; advertiserId?: string }
+  input: TikTokCampaignInput
 ): Promise<string> {
-  const dbCreds = await getTikTokCredentials(organizationId);
-  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
-  const advertiserId = getAdvertiserId((opts?.advertiserId ?? dbCreds.advertiserId) || undefined);
-
-  if (!token || !advertiserId) {
-    throw new Error("TIKTOK_ACCESS_TOKEN and TIKTOK_ADVERTISER_ID are required");
-  }
+  const { token, advertiserId } = await getTikTokCredentials(organizationId);
 
   const body: Record<string, unknown> = {
     advertiser_id: advertiserId,
@@ -131,16 +113,9 @@ export async function createTikTokCampaign(
 export async function updateTikTokCampaign(
   organizationId: string,
   campaignId: string,
-  updates: { status?: CampaignStatus; dailyBudget?: number },
-  opts?: { accessToken?: string; advertiserId?: string }
+  updates: { status?: CampaignStatus; dailyBudget?: number }
 ): Promise<void> {
-  const dbCreds = await getTikTokCredentials(organizationId);
-  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
-  const advertiserId = getAdvertiserId((opts?.advertiserId ?? dbCreds.advertiserId) || undefined);
-
-  if (!token || !advertiserId) {
-    throw new Error("TIKTOK_ACCESS_TOKEN and TIKTOK_ADVERTISER_ID are required");
-  }
+  const { token, advertiserId } = await getTikTokCredentials(organizationId);
 
   const body: Record<string, unknown> = {
     advertiser_id: advertiserId,
@@ -170,14 +145,9 @@ export async function updateTikTokCampaign(
 
 export async function getTikTokCampaignInsights(
   organizationId: string,
-  campaignId: string,
-  opts?: { accessToken?: string; advertiserId?: string }
+  campaignId: string
 ): Promise<{ spend: number; impressions: number; clicks: number; conversions: number }> {
-  const dbCreds = await getTikTokCredentials(organizationId);
-  const token = getAccessToken((opts?.accessToken ?? dbCreds.token) || undefined);
-  const advertiserId = getAdvertiserId((opts?.advertiserId ?? dbCreds.advertiserId) || undefined);
-
-  if (!token || !advertiserId) return { spend: 0, impressions: 0, clicks: 0, conversions: 0 };
+  const { token, advertiserId } = await getTikTokCredentials(organizationId);
 
   const endDate = new Date().toISOString().slice(0, 10);
   const startDate = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);

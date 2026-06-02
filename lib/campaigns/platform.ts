@@ -17,8 +17,7 @@ export async function createCampaignOnPlatform(
   if (input.platform === "meta") {
     return createMetaCampaign(
       organizationId,
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date },
-      { accessToken: opts?.accessToken }
+      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date }
     );
   }
 
@@ -33,8 +32,7 @@ export async function createCampaignOnPlatform(
   if (input.platform === "tiktok") {
     return createTikTokCampaign(
       organizationId,
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date },
-      { accessToken: opts?.accessToken, advertiserId: opts?.advertiserId }
+      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date }
     );
   }
 
@@ -68,8 +66,7 @@ export async function updateCampaignOnPlatform(
     return updateMetaCampaign(
       organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { accessToken: update.accessToken }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 
@@ -86,8 +83,7 @@ export async function updateCampaignOnPlatform(
     return updateTikTokCampaign(
       organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { accessToken: update.accessToken, advertiserId: update.advertiserId }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 

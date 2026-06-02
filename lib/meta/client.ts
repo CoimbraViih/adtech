@@ -1,12 +1,12 @@
-﻿/**
+/**
  * Meta Marketing API wrapper.
  *
  * Docs: https://developers.facebook.com/docs/marketing-apis
- * API version: v21.0
+ * API version: v23.0
  *
  * Required env vars:
- *   META_ACCESS_TOKEN      â€” long-lived User or System User access token
- *   META_AD_ACCOUNT_ID     â€” ad account ID (act_XXXXXXXXX)
+ *   META_ACCESS_TOKEN      – long-lived User or System User access token
+ *   META_AD_ACCOUNT_ID     – ad account ID (act_XXXXXXXXX)
  *
  * TODO(M2-backend): wire META_ACCESS_TOKEN per workspace (stored in DB encrypted).
  * For now falls back to env vars for single-tenant dev.
@@ -15,9 +15,9 @@
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
 import { getCredentialField } from "@/lib/integrations/credentials";
 
-const BASE_URL = "https://graph.facebook.com/v21.0";
+const BASE_URL = "https://graph.facebook.com/v23.0";
 
-// â”€â”€ types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── types ──────────────────────────────────────────────────────────────────
 
 type MetaCampaignStatus = "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED";
 type MetaObjective =
@@ -62,7 +62,7 @@ type MetaCreateCampaignInput = {
   stop_time?: string;
 };
 
-// â”€â”€ objective mapping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── objective mapping ───────────────────────────────────────────────────────
 
 const OBJECTIVE_MAP: Record<CampaignObjective, MetaObjective> = {
   awareness:       "OUTCOME_AWARENESS",
@@ -80,7 +80,7 @@ const STATUS_MAP: Record<CampaignStatus, MetaCampaignStatus> = {
   archived: "ARCHIVED",
 };
 
-// â”€â”€ http helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── http helpers ────────────────────────────────────────────────────────────
 
 async function getMetaCredentials(organizationId: string) {
   const [token, accountId] = await Promise.all([
@@ -101,9 +101,14 @@ async function metaFetch<T>(
 ): Promise<T> {
   const { token, ...rest } = options;
   const url = path.startsWith("http") ? path : `${BASE_URL}${path}`;
-  const separator = url.includes("?") ? "&" : "?";
 
-  const res = await fetch(`${url}${separator}access_token=${token}`, rest);
+  const res = await fetch(url, {
+    ...rest,
+    headers: {
+      ...(rest.headers as Record<string, string> | undefined),
+      Authorization: `Bearer ${token}`,
+    },
+  });
   const data = await res.json() as T & { error?: { message: string; code: number } };
 
   if (!res.ok || (data as { error?: { message: string } }).error) {
@@ -114,7 +119,7 @@ async function metaFetch<T>(
   return data;
 }
 
-// â”€â”€ public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── public API ──────────────────────────────────────────────────────────────
 
 /**
  * List all campaigns for the configured ad account.
@@ -122,8 +127,6 @@ async function metaFetch<T>(
 export async function listMetaCampaigns(
   organizationId: string,
   opts?: {
-    accessToken?: string;
-    adAccountId?: string;
     status?: MetaCampaignStatus[];
   }
 ): Promise<MetaCampaign[]> {
@@ -153,8 +156,7 @@ export async function createMetaCampaign(
     lifetimeBudget?: number | null;
     startDate: string; // YYYY-MM-DD
     endDate?: string | null;
-  },
-  opts?: { accessToken?: string; adAccountId?: string }
+  }
 ): Promise<string> {
   const { token, account } = await getMetaCredentials(organizationId);
 
@@ -198,8 +200,7 @@ export async function createMetaCampaign(
 export async function updateMetaCampaign(
   organizationId: string,
   externalId: string,
-  update: { status?: CampaignStatus; dailyBudget?: number },
-  opts?: { accessToken?: string }
+  update: { status?: CampaignStatus; dailyBudget?: number }
 ): Promise<void> {
   const { token } = await getMetaCredentials(organizationId);
 
@@ -231,7 +232,6 @@ export async function getMetaCampaignInsights(
     datePreset?: "today" | "last_7d" | "last_30d" | "last_month";
     since?: string; // YYYY-MM-DD
     until?: string;
-    accessToken?: string;
   } = {}
 ): Promise<MetaInsights[]> {
   const { token } = await getMetaCredentials(organizationId);
