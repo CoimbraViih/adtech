@@ -41,7 +41,7 @@ const mockEvent: PixelEvent = {
 
 describe("fanoutToPlatforms", () => {
   it("calls both adapters when pixel has both IDs configured", async () => {
-    await fanoutToPlatforms(mockEvent, mockPixel);
+    await fanoutToPlatforms(mockEvent, mockPixel, "");
     expect(sendMetaCapiEvent).toHaveBeenCalledWith("", mockEvent, mockPixel.meta_pixel_id);
     expect(sendGoogleEcEvent).toHaveBeenCalledWith("", mockEvent, mockPixel.google_tag_id);
   });
@@ -49,7 +49,7 @@ describe("fanoutToPlatforms", () => {
   it("skips Meta CAPI when meta_pixel_id is null", async () => {
     vi.clearAllMocks();
     const pixelNoMeta = { ...mockPixel, meta_pixel_id: null };
-    await fanoutToPlatforms(mockEvent, pixelNoMeta);
+    await fanoutToPlatforms(mockEvent, pixelNoMeta, "");
     expect(sendMetaCapiEvent).not.toHaveBeenCalled();
     expect(sendGoogleEcEvent).toHaveBeenCalled();
   });
@@ -57,7 +57,7 @@ describe("fanoutToPlatforms", () => {
   it("skips Google EC when google_tag_id is null", async () => {
     vi.clearAllMocks();
     const pixelNoGoogle = { ...mockPixel, google_tag_id: null };
-    await fanoutToPlatforms(mockEvent, pixelNoGoogle);
+    await fanoutToPlatforms(mockEvent, pixelNoGoogle, "");
     expect(sendMetaCapiEvent).toHaveBeenCalled();
     expect(sendGoogleEcEvent).not.toHaveBeenCalled();
   });
@@ -65,6 +65,6 @@ describe("fanoutToPlatforms", () => {
   it("resolves without throwing even if an adapter rejects", async () => {
     vi.clearAllMocks();
     (sendMetaCapiEvent as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("network error"));
-    await expect(fanoutToPlatforms(mockEvent, mockPixel)).resolves.not.toThrow();
+    await expect(fanoutToPlatforms(mockEvent, mockPixel, "")).resolves.not.toThrow();
   });
 });

@@ -33,9 +33,12 @@ export async function sendMetaCapiEvent(
     ],
   };
 
-  const res = await fetch(`${META_CAPI_URL}/${metaPixelId}/events?access_token=${accessToken}`, {
+  const res = await fetch(`${META_CAPI_URL}/${metaPixelId}/events`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: JSON.stringify(payload),
   });
 
