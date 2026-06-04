@@ -198,6 +198,64 @@ export async function updateLinkedInCampaign(
   }
 }
 
+// ── creative type ────────────────────────────────────────────────────────────
+
+export type LinkedInCreative = {
+  id: string;
+  status: string;
+  /** The creative reference URN (e.g. share, ugcPost, etc.) */
+  reference?: string;
+};
+
+/**
+ * List all creatives for a given campaign.
+ * LinkedIn has no ad-set level — creatives map directly to ads.
+ */
+export async function listLinkedInCreatives(
+  organizationId: string,
+  campaignId: string
+): Promise<LinkedInCreative[]> {
+  const { token } = await getLinkedInCredentials(organizationId);
+
+  const accumulated: Record<string, unknown>[] = [];
+  let start = 0;
+
+  while (true) {
+    const params = new URLSearchParams({
+      q: "search",
+      "search.campaign.values[0]": `urn:li:sponsoredCampaign:${campaignId}`,
+      start: String(start),
+      count: String(LINKEDIN_PAGE_COUNT),
+    });
+
+    const res = await fetchWithRetry(`${BASE_URL}/adCreatives?${params}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "LinkedIn-Version": LINKEDIN_API_VERSION,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`LinkedIn listCreatives error: ${res.status}`);
+    }
+
+    const json = (await res.json()) as LinkedInListResponse;
+    const elements = json.elements ?? [];
+    accumulated.push(...elements);
+
+    if (elements.length < LINKEDIN_PAGE_COUNT) break;
+    if (accumulated.length >= LINKEDIN_SAFETY_LIMIT) break;
+
+    start += LINKEDIN_PAGE_COUNT;
+  }
+
+  return accumulated.map((el) => ({
+    id: String((el.id as string).split(":").pop()),
+    status: String(el.status ?? ""),
+    reference: el.reference !== undefined ? String(el.reference) : undefined,
+  }));
+}
+
 /**
  * Fetch analytics for all campaigns under the account in a single API call.
  * Uses adAnalytics with pivot=CAMPAIGN but without filtering to a specific

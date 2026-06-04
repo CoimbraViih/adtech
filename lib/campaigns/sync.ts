@@ -11,10 +11,10 @@
  * platform sync attempt.
  */
 
-import { listMetaCampaigns, getMetaAccountInsights } from "@/lib/meta/client";
-import { listGoogleCampaigns, getGoogleAccountMetrics } from "@/lib/google/client";
-import { listTikTokCampaigns, getTikTokBatchInsights } from "@/lib/tiktok/client";
-import { listLinkedInCampaigns, getLinkedInAccountInsights } from "@/lib/linkedin/client";
+import { listMetaCampaigns, getMetaAccountInsights, listMetaAdSets, listMetaAds } from "@/lib/meta/client";
+import { listGoogleCampaigns, getGoogleAccountMetrics, listGoogleAdGroups, listGoogleAds } from "@/lib/google/client";
+import { listTikTokCampaigns, getTikTokBatchInsights, listTikTokAdGroups, listTikTokAds } from "@/lib/tiktok/client";
+import { listLinkedInCampaigns, getLinkedInAccountInsights, listLinkedInCreatives } from "@/lib/linkedin/client";
 import { getCredentialField } from "@/lib/integrations/credentials";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { CampaignStatus } from "@/types/database";
@@ -56,6 +56,29 @@ function linkedinStatusToLocal(status: string): CampaignStatus {
     case "DRAFT":    return "draft";
     default:         return "paused";
   }
+}
+
+// ── ad set / ad status helpers ─────────────────────────────────────────────
+
+type AdSetStatus = "active" | "paused" | "archived";
+type AdStatus = "active" | "paused" | "archived" | "in_review" | "rejected";
+
+function normalizeAdSetStatus(raw: string): AdSetStatus {
+  const upper = raw.toUpperCase();
+  if (upper === "ACTIVE" || upper === "ENABLE" || upper === "ENABLED") return "active";
+  if (upper === "PAUSED" || upper === "DISABLE" || upper === "DISABLED") return "paused";
+  if (upper === "DELETED" || upper === "REMOVED" || upper === "ARCHIVED") return "archived";
+  return "paused";
+}
+
+function normalizeAdStatus(raw: string): AdStatus {
+  const upper = raw.toUpperCase();
+  if (upper === "ACTIVE" || upper === "ENABLE" || upper === "ENABLED") return "active";
+  if (upper === "PAUSED" || upper === "DISABLE" || upper === "DISABLED") return "paused";
+  if (upper === "DELETED" || upper === "REMOVED" || upper === "ARCHIVED") return "archived";
+  if (upper === "IN_REVIEW" || upper === "PENDING_REVIEW") return "in_review";
+  if (upper === "DISAPPROVED" || upper === "REJECTED") return "rejected";
+  return "paused";
 }
 
 // ── credential guard ────────────────────────────────────────────────────────
@@ -153,6 +176,49 @@ export async function syncCampaignsFromPlatform(
         void _upsertData;
       }
 
+      // ── Meta ad sets & ads sync (opt-in, errors do not fail campaign sync) ──
+      for (const mc of metaCampaigns) {
+        const mcStatus = metaStatusToLocal(mc.status);
+        if (mcStatus !== "active" && mcStatus !== "paused") continue;
+        try {
+          const adSets = await listMetaAdSets(organizationId, mc.id);
+          for (const as_ of adSets) {
+            const _adSetData = {
+              workspace_id: workspaceId,
+              external_id: as_.id,
+              name: as_.name,
+              status: normalizeAdSetStatus(as_.status),
+              daily_budget: as_.daily_budget ? parseInt(as_.daily_budget, 10) / 100 : null,
+              targeting: as_.targeting ?? {},
+              updated_at: new Date().toISOString(),
+            };
+            // TODO(M-ADS-backend): wire real Supabase upsert
+            // await supabase.from("ad_sets").upsert(_adSetData, { onConflict: "workspace_id,external_id" });
+            void _adSetData;
+
+            try {
+              const ads = await listMetaAds(organizationId, as_.id);
+              for (const ad of ads) {
+                const _adData = {
+                  workspace_id: workspaceId,
+                  external_id: ad.id,
+                  name: ad.name,
+                  status: normalizeAdStatus(ad.status),
+                  updated_at: new Date().toISOString(),
+                };
+                // TODO(M-ADS-backend): wire real Supabase upsert
+                // await supabase.from("ads").upsert(_adData, { onConflict: "workspace_id,external_id" });
+                void _adData;
+              }
+            } catch (adErr) {
+              console.warn(`[sync/meta] ads sync error for adSet ${as_.id}:`, adErr);
+            }
+          }
+        } catch (asErr) {
+          console.warn(`[sync/meta] ad_sets sync error for campaign ${mc.id}:`, asErr);
+        }
+      }
+
       results.push({ platform: "meta", synced: metaCampaigns.length, error: null });
       await recordSyncRun(workspaceId, "meta", startedAt, {
         campaignsSynced: metaCampaigns.length,
@@ -206,6 +272,49 @@ export async function syncCampaignsFromPlatform(
         // TODO(M-ADS-backend): wire real Supabase upsert
         // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
         void _upsertData;
+      }
+
+      // ── Google ad groups & ads sync (opt-in, errors do not fail campaign sync) ─
+      for (const gc of googleCampaigns) {
+        const gcStatus = googleStatusToLocal(gc.status);
+        if (gcStatus !== "active" && gcStatus !== "paused") continue;
+        try {
+          const adGroups = await listGoogleAdGroups(organizationId, gc.id);
+          for (const ag of adGroups) {
+            const _adGroupData = {
+              workspace_id: workspaceId,
+              external_id: ag.id,
+              name: ag.name,
+              status: normalizeAdSetStatus(ag.status),
+              bid_amount: ag.cpcBidMicros ? parseInt(ag.cpcBidMicros, 10) / 1_000_000 : null,
+              targeting: {},
+              updated_at: new Date().toISOString(),
+            };
+            // TODO(M-ADS-backend): wire real Supabase upsert
+            // await supabase.from("ad_sets").upsert(_adGroupData, { onConflict: "workspace_id,external_id" });
+            void _adGroupData;
+
+            try {
+              const ads = await listGoogleAds(organizationId, ag.id);
+              for (const ad of ads) {
+                const _adData = {
+                  workspace_id: workspaceId,
+                  external_id: ad.id,
+                  name: ad.name ?? "",
+                  status: normalizeAdStatus(ad.status),
+                  updated_at: new Date().toISOString(),
+                };
+                // TODO(M-ADS-backend): wire real Supabase upsert
+                // await supabase.from("ads").upsert(_adData, { onConflict: "workspace_id,external_id" });
+                void _adData;
+              }
+            } catch (adErr) {
+              console.warn(`[sync/google] ads sync error for adGroup ${ag.id}:`, adErr);
+            }
+          }
+        } catch (agErr) {
+          console.warn(`[sync/google] ad_groups sync error for campaign ${gc.id}:`, agErr);
+        }
       }
 
       results.push({ platform: "google", synced: googleCampaigns.length, error: null });
@@ -270,6 +379,49 @@ export async function syncCampaignsFromPlatform(
         partialError = `${campaignsWithoutInsights} campanha(s) sem dados de insights`;
       }
 
+      // ── TikTok ad groups & ads sync (opt-in, errors do not fail campaign sync) ─
+      for (const tc of tiktokCampaigns) {
+        const tcStatus = tiktokStatusToLocal(tc.status);
+        if (tcStatus !== "active" && tcStatus !== "paused") continue;
+        try {
+          const adGroups = await listTikTokAdGroups(organizationId, tc.id);
+          for (const ag of adGroups) {
+            const _adGroupData = {
+              workspace_id: workspaceId,
+              external_id: ag.id,
+              name: ag.name,
+              status: normalizeAdSetStatus(ag.status),
+              daily_budget: ag.budget > 0 ? ag.budget : null,
+              targeting: {},
+              updated_at: new Date().toISOString(),
+            };
+            // TODO(M-ADS-backend): wire real Supabase upsert
+            // await supabase.from("ad_sets").upsert(_adGroupData, { onConflict: "workspace_id,external_id" });
+            void _adGroupData;
+
+            try {
+              const ads = await listTikTokAds(organizationId, ag.id);
+              for (const ad of ads) {
+                const _adData = {
+                  workspace_id: workspaceId,
+                  external_id: ad.id,
+                  name: ad.name,
+                  status: normalizeAdStatus(ad.status),
+                  updated_at: new Date().toISOString(),
+                };
+                // TODO(M-ADS-backend): wire real Supabase upsert
+                // await supabase.from("ads").upsert(_adData, { onConflict: "workspace_id,external_id" });
+                void _adData;
+              }
+            } catch (adErr) {
+              console.warn(`[sync/tiktok] ads sync error for adGroup ${ag.id}:`, adErr);
+            }
+          }
+        } catch (agErr) {
+          console.warn(`[sync/tiktok] ad_groups sync error for campaign ${tc.id}:`, agErr);
+        }
+      }
+
       const runStatus = partialError ? "partial" : "success";
       results.push({ platform: "tiktok", synced: syncedCount, error: partialError });
       await recordSyncRun(workspaceId, "tiktok", startedAt, {
@@ -331,6 +483,30 @@ export async function syncCampaignsFromPlatform(
       const campaignsWithoutInsights = linkedinCampaigns.filter((lc) => !insightsByid[lc.id]).length;
       if (campaignsWithoutInsights > 0 && linkedinCampaigns.length > 0) {
         partialError = `${campaignsWithoutInsights} campanha(s) sem dados de insights`;
+      }
+
+      // ── LinkedIn creatives sync (opt-in, errors do not fail campaign sync) ───
+      // LinkedIn has no ad-set level — creatives map directly to ads.
+      for (const lc of linkedinCampaigns) {
+        const lcStatus = linkedinStatusToLocal(lc.status);
+        if (lcStatus !== "active" && lcStatus !== "paused") continue;
+        try {
+          const creatives = await listLinkedInCreatives(organizationId, lc.id);
+          for (const creative of creatives) {
+            const _adData = {
+              workspace_id: workspaceId,
+              external_id: creative.id,
+              name: creative.reference ?? `Creative ${creative.id}`,
+              status: normalizeAdStatus(creative.status),
+              updated_at: new Date().toISOString(),
+            };
+            // TODO(M-ADS-backend): wire real Supabase upsert
+            // await supabase.from("ads").upsert(_adData, { onConflict: "workspace_id,external_id" });
+            void _adData;
+          }
+        } catch (creativeErr) {
+          console.warn(`[sync/linkedin] creatives sync error for campaign ${lc.id}:`, creativeErr);
+        }
       }
 
       const runStatus = partialError ? "partial" : "success";
