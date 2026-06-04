@@ -434,6 +434,7 @@ export type GoogleAd = {
   status: GoogleAdStatus;
 };
 
+// TODO(M-ADS-backend): verify Google REST API returns 'adGroup' (camelCase) not 'ad_group' (snake_case) for this resource key before wiring real upserts
 /**
  * List all ad groups for a given campaign via GAQL.
  */

@@ -19,6 +19,8 @@ import { getCredentialField } from "@/lib/integrations/credentials";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { CampaignStatus } from "@/types/database";
 
+// TODO(M-ADS-backend): extract per-platform ad set/ads sync into a shared helper before wiring real Supabase upserts — currently 4 near-identical blocks
+
 // ── status mapping ─────────────────────────────────────────────────────────
 
 function metaStatusToLocal(status: string): CampaignStatus {

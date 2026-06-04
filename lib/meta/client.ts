@@ -303,6 +303,7 @@ export async function getMetaAccountInsights(
 // ── ad sets & ads types ────────────────────────────────────────────────────
 
 type MetaAdSetStatus = "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED";
+type MetaAdStatus = "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED" | "DISAPPROVED" | "PENDING_REVIEW" | "WITH_ISSUES";
 
 export type MetaAdSet = {
   id: string;
@@ -316,7 +317,7 @@ export type MetaAdSet = {
 export type MetaAd = {
   id: string;
   name: string;
-  status: MetaAdSetStatus;
+  status: MetaAdStatus;
   creative?: { id: string; name?: string };
 };
 

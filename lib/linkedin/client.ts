@@ -108,12 +108,16 @@ export async function listLinkedInCampaigns(
     start += LINKEDIN_PAGE_COUNT;
   }
 
-  return accumulated.map((c) => ({
-    id: String((c.id as string).split(":").pop()),
-    name: String(c.name),
-    status: String(c.status),
-    budget: Number((c.dailyBudget as Record<string, unknown>)?.amount ?? 0),
-  }));
+  return accumulated.map((c) => {
+    const rawCId = typeof c.id === "string" ? c.id : String(c.id ?? "");
+    const cId = rawCId.includes(":") ? rawCId.split(":").pop() ?? rawCId : rawCId;
+    return {
+      id: cId,
+      name: String(c.name),
+      status: String(c.status),
+      budget: Number((c.dailyBudget as Record<string, unknown>)?.amount ?? 0),
+    };
+  });
 }
 
 export async function createLinkedInCampaign(
@@ -249,11 +253,15 @@ export async function listLinkedInCreatives(
     start += LINKEDIN_PAGE_COUNT;
   }
 
-  return accumulated.map((el) => ({
-    id: String((el.id as string).split(":").pop()),
-    status: String(el.status ?? ""),
-    reference: el.reference !== undefined ? String(el.reference) : undefined,
-  }));
+  return accumulated.map((el) => {
+    const rawId = typeof el.id === "string" ? el.id : String(el.id ?? "");
+    const id = rawId.includes(":") ? rawId.split(":").pop() ?? rawId : rawId;
+    return {
+      id,
+      status: String(el.status ?? ""),
+      reference: el.reference !== undefined ? String(el.reference) : undefined,
+    };
+  });
 }
 
 /**
