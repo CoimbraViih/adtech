@@ -175,27 +175,3 @@ describe("exchangeCode", () => {
       .rejects.toThrow("Unknown provider");
   });
 });
-
-// ── state validation logic (inline logic tests — kept for fast feedback) ───
-// NOTE: the real callback handler state validation is tested in
-// tests/unit/oauth-callback.test.ts which calls the actual route GET handler.
-
-describe("state validation", () => {
-  it("matches when state equals cookie value", () => {
-    const cookieState = "abc-123-def";
-    const queryState = "abc-123-def";
-    expect(cookieState === queryState).toBe(true);
-  });
-
-  it("rejects when state differs from cookie value", () => {
-    const cookieState = "abc-123-def";
-    const queryState = "tampered-value";
-    expect(cookieState === queryState).toBe(false);
-  });
-
-  it("rejects when cookie state is missing (undefined)", () => {
-    const cookieState: string | undefined = undefined;
-    const queryState = "abc-123-def";
-    expect(!!cookieState && cookieState === queryState).toBe(false);
-  });
-});

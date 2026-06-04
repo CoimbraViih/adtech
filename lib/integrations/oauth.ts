@@ -132,10 +132,11 @@ async function exchangeMeta(code: string, redirectUri: string): Promise<OAuthTok
     redirect_uri: redirectUri,
     code,
   });
-  const res = await fetch(
-    `https://graph.facebook.com/v25.0/oauth/access_token?${params.toString()}`,
-    { method: "GET" }
-  );
+  const res = await fetch("https://graph.facebook.com/v25.0/oauth/access_token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  });
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -230,6 +231,7 @@ async function exchangeLinkedIn(code: string, redirectUri: string): Promise<OAut
 }
 
 async function exchangeTikTok(code: string, _redirectUri: string): Promise<OAuthTokens> {
+  // TikTok token exchange does not require redirect_uri
   const appId = process.env.TIKTOK_CLIENT_KEY ?? "";
   const secret = process.env.TIKTOK_CLIENT_SECRET ?? "";
 
