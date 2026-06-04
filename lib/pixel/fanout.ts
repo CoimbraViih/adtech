@@ -2,10 +2,11 @@ import type { Pixel, PixelEvent } from "@/types/database";
 import { sendMetaCapiEvent } from "@/lib/pixel/meta-capi";
 import { sendGoogleEcEvent } from "@/lib/pixel/google-ec";
 
-export async function fanoutToPlatforms(event: PixelEvent, pixel: Pixel): Promise<void> {
-  // TODO(M4-backend): resolve organizationId from pixel.workspace_id lookup.
-  // For now pass "" so credentials fall back to environment variables.
-  const organizationId = "";
+export async function fanoutToPlatforms(
+  event: PixelEvent,
+  pixel: Pixel,
+  organizationId: string
+): Promise<void> {
 
   const tasks: Promise<void>[] = [];
 

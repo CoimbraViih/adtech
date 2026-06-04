@@ -8,9 +8,9 @@ export async function sendGoogleEcEvent(
   event: PixelEvent,
   googleTagId: string
 ): Promise<void> {
-  const apiSecret = await getCredentialField(organizationId, "google", "refresh_token", "GOOGLE_ADS_REFRESH_TOKEN");
+  const apiSecret = await getCredentialField(organizationId, "google", "ga4_api_secret", "GA4_API_SECRET");
   if (!apiSecret) {
-    console.warn("[google-ec] GOOGLE_ADS_REFRESH_TOKEN not set — skipping");
+    console.warn("[google-ec] GA4_API_SECRET not set — skipping");
     return;
   }
 

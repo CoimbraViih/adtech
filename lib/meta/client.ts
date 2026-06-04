@@ -300,6 +300,93 @@ export async function getMetaAccountInsights(
   return byId;
 }
 
+// ── ad sets & ads types ────────────────────────────────────────────────────
+
+type MetaAdSetStatus = "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED";
+type MetaAdStatus = "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED" | "DISAPPROVED" | "PENDING_REVIEW" | "WITH_ISSUES";
+
+export type MetaAdSet = {
+  id: string;
+  name: string;
+  status: MetaAdSetStatus;
+  daily_budget?: string; // Meta returns cents as string
+  targeting?: Record<string, unknown>;
+  created_time: string;
+};
+
+export type MetaAd = {
+  id: string;
+  name: string;
+  status: MetaAdStatus;
+  creative?: { id: string; name?: string };
+};
+
+type MetaAdSetListResponse = {
+  data: MetaAdSet[];
+  paging?: { next?: string };
+};
+
+type MetaAdListResponse = {
+  data: MetaAd[];
+  paging?: { next?: string };
+};
+
+/**
+ * List all ad sets for a given campaign (fully paginated).
+ */
+export async function listMetaAdSets(
+  orgId: string,
+  campaignId: string
+): Promise<MetaAdSet[]> {
+  const { token } = await getMetaCredentials(orgId);
+
+  const fields = "id,name,status,daily_budget,targeting,created_time";
+  const initialPath = `/${campaignId}/adsets?fields=${fields}&limit=200`;
+
+  const accumulated: MetaAdSet[] = [];
+  let nextPath: string | undefined = initialPath;
+
+  while (nextPath !== undefined) {
+    const response: MetaAdSetListResponse = await metaFetch<MetaAdSetListResponse>(nextPath, { token, method: "GET" });
+    accumulated.push(...response.data);
+
+    if (!response.paging?.next) break;
+    if (accumulated.length >= META_SAFETY_LIMIT) break;
+
+    nextPath = response.paging.next;
+  }
+
+  return accumulated;
+}
+
+/**
+ * List all ads for a given ad set (fully paginated).
+ */
+export async function listMetaAds(
+  orgId: string,
+  adSetId: string
+): Promise<MetaAd[]> {
+  const { token } = await getMetaCredentials(orgId);
+
+  const fields = "id,name,status,creative{id,name}";
+  const initialPath = `/${adSetId}/ads?fields=${fields}&limit=200`;
+
+  const accumulated: MetaAd[] = [];
+  let nextPath: string | undefined = initialPath;
+
+  while (nextPath !== undefined) {
+    const response: MetaAdListResponse = await metaFetch<MetaAdListResponse>(nextPath, { token, method: "GET" });
+    accumulated.push(...response.data);
+
+    if (!response.paging?.next) break;
+    if (accumulated.length >= META_SAFETY_LIMIT) break;
+
+    nextPath = response.paging.next;
+  }
+
+  return accumulated;
+}
+
 /**
  * Fetch campaign-level insights for a date range.
  */

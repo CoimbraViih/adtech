@@ -180,6 +180,112 @@ export async function updateTikTokCampaign(
   }
 }
 
+// ── ad group & ad types ────────────────────────────────────────────────────
+
+export type TikTokAdGroup = {
+  id: string;
+  name: string;
+  status: string;
+  budget: number;
+};
+
+export type TikTokAd = {
+  id: string;
+  name: string;
+  status: string;
+};
+
+/**
+ * List all ad groups for a given campaign.
+ */
+export async function listTikTokAdGroups(
+  organizationId: string,
+  campaignId: string
+): Promise<TikTokAdGroup[]> {
+  const { token, advertiserId } = await getTikTokCredentials(organizationId);
+
+  const accumulated: Record<string, unknown>[] = [];
+  let page = 1;
+
+  while (true) {
+    const params = new URLSearchParams({
+      advertiser_id: advertiserId,
+      campaign_ids: JSON.stringify([campaignId]),
+      page: String(page),
+      page_size: String(TIKTOK_PAGE_SIZE),
+    });
+
+    const res = await fetchWithRetry(`${BASE_URL}/adgroup/get/?${params}`, {
+      headers: { "Access-Token": token },
+    });
+
+    if (!res.ok) {
+      throw new Error(`TikTok listAdGroups error: ${res.status}`);
+    }
+
+    const json = (await res.json()) as TikTokListResponse;
+    const list = json.data?.list ?? [];
+    accumulated.push(...list);
+
+    if (!json.data?.page_info?.has_more) break;
+    if (accumulated.length >= TIKTOK_SAFETY_LIMIT) break;
+
+    page++;
+  }
+
+  return accumulated.map((ag) => ({
+    id: String(ag.adgroup_id),
+    name: String(ag.adgroup_name),
+    status: String(ag.status),
+    budget: Number(ag.budget ?? 0),
+  }));
+}
+
+/**
+ * List all ads for a given ad group.
+ */
+export async function listTikTokAds(
+  organizationId: string,
+  adGroupId: string
+): Promise<TikTokAd[]> {
+  const { token, advertiserId } = await getTikTokCredentials(organizationId);
+
+  const accumulated: Record<string, unknown>[] = [];
+  let page = 1;
+
+  while (true) {
+    const params = new URLSearchParams({
+      advertiser_id: advertiserId,
+      adgroup_ids: JSON.stringify([adGroupId]),
+      page: String(page),
+      page_size: String(TIKTOK_PAGE_SIZE),
+    });
+
+    const res = await fetchWithRetry(`${BASE_URL}/ad/get/?${params}`, {
+      headers: { "Access-Token": token },
+    });
+
+    if (!res.ok) {
+      throw new Error(`TikTok listAds error: ${res.status}`);
+    }
+
+    const json = (await res.json()) as TikTokListResponse;
+    const list = json.data?.list ?? [];
+    accumulated.push(...list);
+
+    if (!json.data?.page_info?.has_more) break;
+    if (accumulated.length >= TIKTOK_SAFETY_LIMIT) break;
+
+    page++;
+  }
+
+  return accumulated.map((ad) => ({
+    id: String(ad.ad_id),
+    name: String(ad.ad_name),
+    status: String(ad.status),
+  }));
+}
+
 /**
  * Fetch insights for multiple campaigns in a single API call.
  * TikTok's report endpoint supports filtering by a list of campaign IDs via

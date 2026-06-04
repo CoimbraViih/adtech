@@ -152,6 +152,68 @@ export async function markTested(
   if (error) console.error("[credentials] markTested failed for", provider, (error as { message?: string }).message);
 }
 
+export type OAuthConnectedInfo = {
+  accountId?: string;
+  expiresAt?: string;
+};
+
+/** Account ID field name per provider in the credentials blob */
+const ACCOUNT_ID_FIELD: Record<string, string> = {
+  meta: "account_id",
+  google: "customer_id",
+  linkedin: "account_id",
+  tiktok: "advertiser_id",
+};
+
+/**
+ * Returns a map of provider → OAuth connection info for providers that have
+ * been connected via OAuth (i.e. their credential blob contains
+ * oauth_connected: "true").
+ *
+ * The info object includes:
+ *   - accountId: the provider-specific account/advertiser ID (if stored)
+ *   - expiresAt: ISO timestamp when the access token expires (if stored)
+ *
+ * NOTE: Decrypts all credential blobs for the org. For MVP (< 15 providers per
+ * org) this is negligible. Post-MVP: add an `oauth_connected` boolean column.
+ */
+export async function getOAuthConnectedProviders(
+  organizationId: string
+): Promise<Map<string, OAuthConnectedInfo>> {
+  const supabase = createServiceClient();
+  const { data } = (await supabase
+    .from("org_api_credentials")
+    .select("provider, credentials, expires_at")
+    .eq("organization_id", organizationId)) as {
+    data: Array<{ provider: string; credentials: string; expires_at: string | null }> | null;
+  };
+
+  const result = new Map<string, OAuthConnectedInfo>();
+  if (!data) return result;
+
+  for (const row of data) {
+    try {
+      const parsed = JSON.parse(decrypt(row.credentials)) as Record<string, string>;
+      if (parsed.oauth_connected !== "true") continue;
+
+      const accountIdField = ACCOUNT_ID_FIELD[row.provider];
+      const info: OAuthConnectedInfo = {};
+
+      if (accountIdField && parsed[accountIdField]) {
+        info.accountId = parsed[accountIdField];
+      }
+      if (row.expires_at) {
+        info.expiresAt = row.expires_at;
+      }
+
+      result.set(row.provider, info);
+    } catch {
+      // skip rows that fail to decrypt — don't block the page
+    }
+  }
+  return result;
+}
+
 export async function listCredentialStatuses(
   organizationId: string
 ): Promise<IntegrationStatus[]> {

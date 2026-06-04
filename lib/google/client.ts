@@ -414,6 +414,81 @@ export async function updateGoogleCampaign(
   }
 }
 
+// ── ad group & ad types ────────────────────────────────────────────────────
+
+type GoogleAdGroupStatus = "ENABLED" | "PAUSED" | "REMOVED";
+type GoogleAdStatus = "ENABLED" | "PAUSED" | "REMOVED";
+
+export type GoogleAdGroup = {
+  resourceName: string;
+  id: string;
+  name: string;
+  status: GoogleAdGroupStatus;
+  cpcBidMicros?: string;
+};
+
+export type GoogleAd = {
+  resourceName: string;
+  id: string;
+  name?: string;
+  status: GoogleAdStatus;
+};
+
+// TODO(M-ADS-backend): verify Google REST API returns 'adGroup' (camelCase) not 'ad_group' (snake_case) for this resource key before wiring real upserts
+/**
+ * List all ad groups for a given campaign via GAQL.
+ */
+export async function listGoogleAdGroups(
+  organizationId: string,
+  campaignId: string
+): Promise<GoogleAdGroup[]> {
+  const creds = await getGoogleCredentials(organizationId);
+
+  const query = `
+    SELECT
+      ad_group.id,
+      ad_group.name,
+      ad_group.status,
+      ad_group.cpc_bid_micros
+    FROM ad_group
+    WHERE campaign.id = ${campaignId}
+      AND ad_group.status != 'REMOVED'
+  `;
+
+  type Row = { adGroup: GoogleAdGroup };
+  const rows = await googleQuery<Row>(query, organizationId, creds);
+  return rows.map((r) => r.adGroup);
+}
+
+/**
+ * List all ads for a given ad group via GAQL.
+ */
+export async function listGoogleAds(
+  organizationId: string,
+  adGroupId: string
+): Promise<GoogleAd[]> {
+  const creds = await getGoogleCredentials(organizationId);
+
+  const query = `
+    SELECT
+      ad_group_ad.ad.id,
+      ad_group_ad.ad.name,
+      ad_group_ad.status
+    FROM ad_group_ad
+    WHERE ad_group.id = ${adGroupId}
+      AND ad_group_ad.status != 'REMOVED'
+  `;
+
+  type Row = { adGroupAd: { ad: { id: string; name?: string }; status: GoogleAdStatus } };
+  const rows = await googleQuery<Row>(query, organizationId, creds);
+  return rows.map((r) => ({
+    resourceName: `customers/${creds.customerId}/adGroupAds/${adGroupId}~${r.adGroupAd.ad.id}`,
+    id: r.adGroupAd.ad.id,
+    name: r.adGroupAd.ad.name,
+    status: r.adGroupAd.status,
+  }));
+}
+
 /**
  * Fetch metrics for all campaigns in the account with a single GAQL query.
  * The query omits the `campaign.id = X` filter so Google returns one row per

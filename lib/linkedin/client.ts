@@ -108,12 +108,16 @@ export async function listLinkedInCampaigns(
     start += LINKEDIN_PAGE_COUNT;
   }
 
-  return accumulated.map((c) => ({
-    id: String((c.id as string).split(":").pop()),
-    name: String(c.name),
-    status: String(c.status),
-    budget: Number((c.dailyBudget as Record<string, unknown>)?.amount ?? 0),
-  }));
+  return accumulated.map((c) => {
+    const rawCId = typeof c.id === "string" ? c.id : String(c.id ?? "");
+    const cId = rawCId.includes(":") ? rawCId.split(":").pop() ?? rawCId : rawCId;
+    return {
+      id: cId,
+      name: String(c.name),
+      status: String(c.status),
+      budget: Number((c.dailyBudget as Record<string, unknown>)?.amount ?? 0),
+    };
+  });
 }
 
 export async function createLinkedInCampaign(
@@ -196,6 +200,68 @@ export async function updateLinkedInCampaign(
     const err = await res.text();
     throw new Error(`LinkedIn updateCampaign error: ${res.status} ${err}`);
   }
+}
+
+// ── creative type ────────────────────────────────────────────────────────────
+
+export type LinkedInCreative = {
+  id: string;
+  status: string;
+  /** The creative reference URN (e.g. share, ugcPost, etc.) */
+  reference?: string;
+};
+
+/**
+ * List all creatives for a given campaign.
+ * LinkedIn has no ad-set level — creatives map directly to ads.
+ */
+export async function listLinkedInCreatives(
+  organizationId: string,
+  campaignId: string
+): Promise<LinkedInCreative[]> {
+  const { token } = await getLinkedInCredentials(organizationId);
+
+  const accumulated: Record<string, unknown>[] = [];
+  let start = 0;
+
+  while (true) {
+    const params = new URLSearchParams({
+      q: "search",
+      "search.campaign.values[0]": `urn:li:sponsoredCampaign:${campaignId}`,
+      start: String(start),
+      count: String(LINKEDIN_PAGE_COUNT),
+    });
+
+    const res = await fetchWithRetry(`${BASE_URL}/adCreatives?${params}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "LinkedIn-Version": LINKEDIN_API_VERSION,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`LinkedIn listCreatives error: ${res.status}`);
+    }
+
+    const json = (await res.json()) as LinkedInListResponse;
+    const elements = json.elements ?? [];
+    accumulated.push(...elements);
+
+    if (elements.length < LINKEDIN_PAGE_COUNT) break;
+    if (accumulated.length >= LINKEDIN_SAFETY_LIMIT) break;
+
+    start += LINKEDIN_PAGE_COUNT;
+  }
+
+  return accumulated.map((el) => {
+    const rawId = typeof el.id === "string" ? el.id : String(el.id ?? "");
+    const id = rawId.includes(":") ? rawId.split(":").pop() ?? rawId : rawId;
+    return {
+      id,
+      status: String(el.status ?? ""),
+      reference: el.reference !== undefined ? String(el.reference) : undefined,
+    };
+  });
 }
 
 /**

@@ -108,6 +108,11 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
     insert: (row: unknown) => EventQueryChain;
     single: () => Promise<{ data: unknown; error: unknown }>;
   };
+  type WorkspaceQueryChain = {
+    select: (cols?: string) => WorkspaceQueryChain;
+    eq: (col: string, val: unknown) => WorkspaceQueryChain;
+    single: () => Promise<{ data: { organization_id: string | null } | null; error: unknown }>;
+  };
 
   const { data: pixel, error: pixelError } = await (supabase.from("pixels") as unknown as PixelQueryChain)
     .select("id, workspace_id, name, meta_pixel_id, google_tag_id, domain, created_at, updated_at")
@@ -150,7 +155,18 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
     return NextResponse.json({ error: "Failed to record event." }, { status: 500 });
   }
 
-  fanoutToPlatforms(savedEvent as Parameters<typeof fanoutToPlatforms>[0], pixel).catch(
+  // Best-effort: look up organizationId from workspace; fall back to "" on failure
+  const { data: workspace, error: workspaceError } = await (supabase.from("workspaces") as unknown as WorkspaceQueryChain)
+    .select("organization_id")
+    .eq("id", pixel.workspace_id)
+    .single();
+
+  if (workspaceError) {
+    console.warn("[pixel/ingest] workspace lookup failed for", pixel.workspace_id, (workspaceError as { message?: string })?.message);
+  }
+  const organizationId = workspace?.organization_id ?? "";
+
+  fanoutToPlatforms(savedEvent as Parameters<typeof fanoutToPlatforms>[0], pixel, organizationId).catch(
     (err) => console.error("[pixel/ingest] fanout error:", (err as Error).message)
   );
 
