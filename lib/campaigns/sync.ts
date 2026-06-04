@@ -17,6 +17,7 @@ import { listTikTokCampaigns, getTikTokBatchInsights, listTikTokAdGroups, listTi
 import { listLinkedInCampaigns, getLinkedInAccountInsights, listLinkedInCreatives } from "@/lib/linkedin/client";
 import { getCredentialField } from "@/lib/integrations/credentials";
 import { createServiceClient } from "@/lib/supabase/service";
+import { normalizeCampaignMetrics, upsertDailyMetrics } from "@/lib/analytics/cross-platform";
 import type { CampaignStatus } from "@/types/database";
 
 // TODO(M-ADS-backend): extract per-platform ad set/ads sync into a shared helper before wiring real Supabase upserts — currently 4 near-identical blocks
@@ -81,6 +82,10 @@ function normalizeAdStatus(raw: string): AdStatus {
   if (upper === "IN_REVIEW" || upper === "PENDING_REVIEW") return "in_review";
   if (upper === "DISAPPROVED" || upper === "REJECTED") return "rejected";
   return "paused";
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 // ── credential guard ────────────────────────────────────────────────────────
@@ -221,6 +226,24 @@ export async function syncCampaignsFromPlatform(
         }
       }
 
+      // Upsert daily metrics snapshot — errors must not fail the campaign sync.
+      if (metaCampaigns.length > 0) try {
+        const metricsInput = metaCampaigns.map((mc) => {
+          const ins = insightsByid[mc.id];
+          const spend = ins ? parseFloat(ins.spend) : 0;
+          const impressions = ins ? parseInt(ins.impressions, 10) : 0;
+          const clicks = ins ? parseInt(ins.clicks, 10) : 0;
+          const purchases = ins?.actions?.find((a: { action_type: string }) => a.action_type === "purchase");
+          const conversions = purchases ? parseInt(purchases.value, 10) : 0;
+          const roasEntry = ins?.purchase_roas?.[0];
+          const revenue = roasEntry ? parseFloat(roasEntry.value) * spend : 0;
+          return { externalId: mc.id, spend, impressions, clicks, conversions, revenue };
+        });
+        await upsertDailyMetrics(normalizeCampaignMetrics(workspaceId, "meta", todayIso(), metricsInput));
+      } catch (metricsErr) {
+        console.warn("[sync/meta] upsertDailyMetrics failed (non-fatal):", metricsErr);
+      }
+
       results.push({ platform: "meta", synced: metaCampaigns.length, error: null });
       await recordSyncRun(workspaceId, "meta", startedAt, {
         campaignsSynced: metaCampaigns.length,
@@ -317,6 +340,23 @@ export async function syncCampaignsFromPlatform(
         } catch (agErr) {
           console.warn(`[sync/google] ad_groups sync error for campaign ${gc.id}:`, agErr);
         }
+      }
+
+      // Upsert daily metrics snapshot — errors must not fail the campaign sync.
+      if (googleCampaigns.length > 0) try {
+        const metricsInput = googleCampaigns.map((gc) => {
+          const row = metricsByid[gc.id];
+          const m = row?.metrics;
+          const spend = m ? parseInt(m.costMicros, 10) / 1_000_000 : 0;
+          const impressions = m ? parseInt(m.impressions, 10) : 0;
+          const clicks = m ? parseInt(m.clicks, 10) : 0;
+          const conversions = m ? parseInt(m.conversions, 10) : 0;
+          const revenue = m ? parseFloat(m.conversionsValue) : 0;
+          return { externalId: gc.id, spend, impressions, clicks, conversions, revenue };
+        });
+        await upsertDailyMetrics(normalizeCampaignMetrics(workspaceId, "google", todayIso(), metricsInput));
+      } catch (metricsErr) {
+        console.warn("[sync/google] upsertDailyMetrics failed (non-fatal):", metricsErr);
       }
 
       results.push({ platform: "google", synced: googleCampaigns.length, error: null });
@@ -424,6 +464,17 @@ export async function syncCampaignsFromPlatform(
         }
       }
 
+      // Upsert daily metrics snapshot — errors must not fail the campaign sync.
+      if (tiktokCampaigns.length > 0) try {
+        const metricsInput = tiktokCampaigns.map((tc) => {
+          const ins = insightsByid[tc.id] ?? { spend: 0, impressions: 0, clicks: 0, conversions: 0 };
+          return { externalId: tc.id, spend: ins.spend, impressions: ins.impressions, clicks: ins.clicks, conversions: ins.conversions, revenue: 0 };
+        });
+        await upsertDailyMetrics(normalizeCampaignMetrics(workspaceId, "tiktok", todayIso(), metricsInput));
+      } catch (metricsErr) {
+        console.warn("[sync/tiktok] upsertDailyMetrics failed (non-fatal):", metricsErr);
+      }
+
       const runStatus = partialError ? "partial" : "success";
       results.push({ platform: "tiktok", synced: syncedCount, error: partialError });
       await recordSyncRun(workspaceId, "tiktok", startedAt, {
@@ -509,6 +560,17 @@ export async function syncCampaignsFromPlatform(
         } catch (creativeErr) {
           console.warn(`[sync/linkedin] creatives sync error for campaign ${lc.id}:`, creativeErr);
         }
+      }
+
+      // Upsert daily metrics snapshot — errors must not fail the campaign sync.
+      if (linkedinCampaigns.length > 0) try {
+        const metricsInput = linkedinCampaigns.map((lc) => {
+          const ins = insightsByid[lc.id] ?? { spend: 0, impressions: 0, clicks: 0, conversions: 0 };
+          return { externalId: lc.id, spend: ins.spend, impressions: ins.impressions, clicks: ins.clicks, conversions: ins.conversions, revenue: 0 };
+        });
+        await upsertDailyMetrics(normalizeCampaignMetrics(workspaceId, "linkedin", todayIso(), metricsInput));
+      } catch (metricsErr) {
+        console.warn("[sync/linkedin] upsertDailyMetrics failed (non-fatal):", metricsErr);
       }
 
       const runStatus = partialError ? "partial" : "success";
