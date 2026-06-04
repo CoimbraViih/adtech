@@ -33,6 +33,10 @@ type IntegrationCardProps = {
   fields: Field[];
   configured: boolean;
   oauthConnected: boolean;
+  /** Provider account/advertiser ID returned after OAuth (if stored) */
+  oauthAccountId: string | null;
+  /** ISO timestamp when the OAuth access token expires (if stored) */
+  oauthExpiresAt: string | null;
   lastTestedAt: string | null;
   /** Most-recent sync run for this platform; null if never synced or not a sync platform */
   syncRun: SyncRun | null;
@@ -49,6 +53,8 @@ export function IntegrationCard({
   fields,
   configured,
   oauthConnected,
+  oauthAccountId,
+  oauthExpiresAt,
   lastTestedAt,
   syncRun,
   workspaceId,
@@ -75,6 +81,10 @@ export function IntegrationCard({
     ? new Date(lastTestedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
     : null;
 
+  const expiryDate = oauthExpiresAt
+    ? new Date(oauthExpiresAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
+    : null;
+
   const isSyncable = SYNC_PLATFORMS.has(providerKey);
 
   return (
@@ -99,6 +109,21 @@ export function IntegrationCard({
             </span>
           )}
         </div>
+
+        {oauthConnected && (oauthAccountId ?? expiryDate) && (
+          <div className="flex flex-col gap-0.5">
+            {oauthAccountId && (
+              <p className="text-[10px] text-[color:var(--adflow-fg-muted)]">
+                ID: {oauthAccountId}
+              </p>
+            )}
+            {expiryDate && (
+              <p className="text-[10px] text-[color:var(--adflow-fg-muted)]">
+                Expira em {expiryDate}
+              </p>
+            )}
+          </div>
+        )}
 
         {testedDate && (
           <p className="text-[10px] text-[color:var(--adflow-fg-muted)]">

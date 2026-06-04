@@ -176,7 +176,9 @@ describe("exchangeCode", () => {
   });
 });
 
-// ── state validation logic ─────────────────────────────────────────────────
+// ── state validation logic (inline logic tests — kept for fast feedback) ───
+// NOTE: the real callback handler state validation is tested in
+// tests/unit/oauth-callback.test.ts which calls the actual route GET handler.
 
 describe("state validation", () => {
   it("matches when state equals cookie value", () => {

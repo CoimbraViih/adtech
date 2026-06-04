@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireServerSession } from "@/lib/supabase/server";
-import { listCredentialStatuses } from "@/lib/integrations/credentials";
+import { listCredentialStatuses, getOAuthConnectedProviders, type OAuthConnectedInfo } from "@/lib/integrations/credentials";
 import { PROVIDERS, PROVIDER_CATEGORIES } from "@/lib/integrations/providers";
 import type { IntegrationStatus } from "@/types/database";
 
@@ -14,7 +14,11 @@ export async function GET() {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
-  const configured = await listCredentialStatuses(session.organization.id);
+  const [configured, oauthProviders] = await Promise.all([
+    listCredentialStatuses(session.organization.id),
+    getOAuthConnectedProviders(session.organization.id),
+  ]);
+
   const configuredMap = new Map<string, IntegrationStatus>(
     configured.map((s) => [s.provider, s])
   );
@@ -26,6 +30,7 @@ export async function GET() {
       .filter((p) => p.category === cat.key)
       .map((p) => {
         const status = configuredMap.get(p.key);
+        const oauthInfo: OAuthConnectedInfo | undefined = oauthProviders.get(p.key);
         return {
           key: p.key,
           label: p.label,
@@ -40,6 +45,9 @@ export async function GET() {
           })),
           configured: !!status,
           last_tested_at: status?.last_tested_at ?? null,
+          oauthConnected: oauthInfo !== undefined,
+          oauthAccountId: oauthInfo?.accountId ?? null,
+          oauthExpiresAt: oauthInfo?.expiresAt ?? null,
         };
       }),
   }));

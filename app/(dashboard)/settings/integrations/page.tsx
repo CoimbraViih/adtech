@@ -1,6 +1,6 @@
 import { IntegrationsGrid } from "@/components/settings/integrations-grid";
 import { requireServerSession } from "@/lib/supabase/server";
-import { listCredentialStatuses, getOAuthConnectedProviders } from "@/lib/integrations/credentials";
+import { listCredentialStatuses, getOAuthConnectedProviders, type OAuthConnectedInfo } from "@/lib/integrations/credentials";
 import { PROVIDERS, PROVIDER_CATEGORIES } from "@/lib/integrations/providers";
 import { createServiceClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
@@ -69,6 +69,7 @@ export default async function IntegrationsPage() {
       .map((p) => {
         const status = configuredMap.get(p.key);
         const syncRun = SYNC_PLATFORMS.has(p.key) ? (syncRunsMap.get(p.key) ?? null) : null;
+        const oauthInfo: OAuthConnectedInfo | undefined = oauthProviders.get(p.key);
         return {
           key: p.key,
           label: p.label,
@@ -84,7 +85,9 @@ export default async function IntegrationsPage() {
           configured: !!status,
           last_tested_at: status?.last_tested_at ?? null,
           syncRun,
-          oauthConnected: oauthProviders.has(p.key),
+          oauthConnected: oauthInfo !== undefined,
+          oauthAccountId: oauthInfo?.accountId ?? null,
+          oauthExpiresAt: oauthInfo?.expiresAt ?? null,
         };
       }),
   }));
