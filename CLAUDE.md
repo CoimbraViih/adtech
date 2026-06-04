@@ -300,21 +300,23 @@ See `.env.local.example` for the full list.
 | M9 | Monetização & Stripe | ✅ Done | — |
 | MS | Security & Hardening | ✅ Done | — |
 | M11 | AI Traffic Manager (Campaign Diagnostics) | ✅ Done | `docs/superpowers/plans/2026-05-29-m10-ai-traffic-manager.md` |
-| M-ADS | Ads Integrations Improvement (Meta/Google/TikTok/LinkedIn) | 🔧 In Progress | `docs/superpowers/plans/2026-06-02-ads-integrations-improvement-plan.md` |
+| M-ADS | Ads Integrations Improvement (Meta/Google/TikTok/LinkedIn) | ✅ Done (Fases 1–3) | `docs/superpowers/plans/2026-06-02-ads-integrations-improvement-plan.md` |
 | M10 | Deploy & Production | Planned | — |
 | M8-DMP | DMP Completion (real audience rule evaluation) | Planned | — |
 | M12 | PMP & Deal Enforcement | Planned | — |
 | M15 | Creative Asset Uploads (images) | Planned | — |
 
-**Recommended execution order:** M-ADS Fase 1–2 → M10 (deploy) → M8-DMP → M12 / M15
+**Recommended execution order:** M-ADS Fase 4 (atribuição) → M10 (deploy) → M8-DMP → M12 / M15
 
-### M-ADS — Integrations Architecture (current state)
+### M-ADS — Integrations Architecture (current state, post Fase 3)
 
 Four ad platform clients exist in `lib/meta/`, `lib/google/`, `lib/tiktok/`, `lib/linkedin/`. Multi-tenant credential storage is in `lib/integrations/` (AES-256-GCM, table `org_api_credentials`). Key function: `getCredentialField(orgId, provider, field, envFallback)`.
 
-**Known issues being fixed in M-ADS:**
-- Google client has a module-level `cachedToken` (multi-tenant bug) and reads `process.env` directly in `getAccessToken()` / `getCredentials()`
-- `lib/campaigns/sync.ts` guards each platform with `if (process.env.META_ACCESS_TOKEN...)` — sync never runs for real tenants
-- LinkedIn API uses deprecated `/v2/adCampaignsV2` endpoint + `LinkedIn-Version: 202401` (sunset risk)
-- TikTok/LinkedIn clients have redundant `getAccessToken(override?)` helpers that bypass DB credentials
+**Completed (Fases 1–3):**
+- Multi-tenant credential lookup via `getCredentialField` — no more `process.env` gates in sync
+- LinkedIn migrated to `/rest/adCampaigns` + `Linkedin-Version: 202506`
+- `fetchWithRetry` with exponential backoff, token refresh for Meta/LinkedIn/TikTok, pagination on all list calls
+- OAuth onboarding: `/api/integrations/[provider]/oauth/start` + `/callback` for all 4 providers
+- Ad sets and ads synced in `sync.ts` for all 4 platforms
+- Pixel fanout wired with `organizationId` — Meta CAPI token in `Authorization: Bearer` header
 - No retry/backoff, no token refresh for Meta/LinkedIn/TikTok, no pagination on list calls
