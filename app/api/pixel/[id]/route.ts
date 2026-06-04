@@ -111,7 +111,7 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
   type WorkspaceQueryChain = {
     select: (cols?: string) => WorkspaceQueryChain;
     eq: (col: string, val: unknown) => WorkspaceQueryChain;
-    single: () => Promise<{ data: { organization_id: string } | null; error: unknown }>;
+    single: () => Promise<{ data: { organization_id: string | null } | null; error: unknown }>;
   };
 
   const { data: pixel, error: pixelError } = await (supabase.from("pixels") as unknown as PixelQueryChain)
@@ -156,11 +156,14 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
   }
 
   // Best-effort: look up organizationId from workspace; fall back to "" on failure
-  const { data: workspace } = await (supabase.from("workspaces") as unknown as WorkspaceQueryChain)
+  const { data: workspace, error: workspaceError } = await (supabase.from("workspaces") as unknown as WorkspaceQueryChain)
     .select("organization_id")
     .eq("id", pixel.workspace_id)
     .single();
 
+  if (workspaceError) {
+    console.warn("[pixel/ingest] workspace lookup failed for", pixel.workspace_id, (workspaceError as { message?: string })?.message);
+  }
   const organizationId = workspace?.organization_id ?? "";
 
   fanoutToPlatforms(savedEvent as Parameters<typeof fanoutToPlatforms>[0], pixel, organizationId).catch(
