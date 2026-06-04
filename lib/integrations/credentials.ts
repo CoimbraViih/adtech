@@ -152,6 +152,38 @@ export async function markTested(
   if (error) console.error("[credentials] markTested failed for", provider, (error as { message?: string }).message);
 }
 
+/**
+ * Returns the set of providers that have been connected via OAuth
+ * (i.e. their credential blob contains oauth_connected: "true").
+ *
+ * NOTE: Decrypts all credential blobs for the org. For MVP (< 15 providers per
+ * org) this is negligible. Post-MVP: add an `oauth_connected` boolean column.
+ */
+export async function getOAuthConnectedProviders(
+  organizationId: string
+): Promise<Set<string>> {
+  const supabase = createServiceClient();
+  const { data } = (await supabase
+    .from("org_api_credentials")
+    .select("provider, credentials")
+    .eq("organization_id", organizationId)) as {
+    data: Array<{ provider: string; credentials: string }> | null;
+  };
+
+  const result = new Set<string>();
+  if (!data) return result;
+
+  for (const row of data) {
+    try {
+      const parsed = JSON.parse(decrypt(row.credentials)) as Record<string, string>;
+      if (parsed.oauth_connected === "true") result.add(row.provider);
+    } catch {
+      // skip rows that fail to decrypt — don't block the page
+    }
+  }
+  return result;
+}
+
 export async function listCredentialStatuses(
   organizationId: string
 ): Promise<IntegrationStatus[]> {

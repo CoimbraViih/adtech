@@ -1,6 +1,6 @@
 import { IntegrationsGrid } from "@/components/settings/integrations-grid";
 import { requireServerSession } from "@/lib/supabase/server";
-import { listCredentialStatuses } from "@/lib/integrations/credentials";
+import { listCredentialStatuses, getOAuthConnectedProviders } from "@/lib/integrations/credentials";
 import { PROVIDERS, PROVIDER_CATEGORIES } from "@/lib/integrations/providers";
 import { createServiceClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
@@ -51,9 +51,10 @@ export default async function IntegrationsPage() {
     redirect("/login");
   }
 
-  const [configured, syncRunsMap] = await Promise.all([
+  const [configured, syncRunsMap, oauthProviders] = await Promise.all([
     listCredentialStatuses(session.organization.id),
     fetchLatestSyncRuns(session.workspace.id),
+    getOAuthConnectedProviders(session.organization.id),
   ]);
 
   const configuredMap = new Map<string, IntegrationStatus>(
@@ -83,6 +84,7 @@ export default async function IntegrationsPage() {
           configured: !!status,
           last_tested_at: status?.last_tested_at ?? null,
           syncRun,
+          oauthConnected: oauthProviders.has(p.key),
         };
       }),
   }));

@@ -19,6 +19,7 @@ type ProviderStatus = {
   docsUrl: string;
   fields: Field[];
   configured: boolean;
+  oauthConnected: boolean;
   last_tested_at: string | null;
   syncRun: SyncRun | null;
 };
@@ -97,6 +98,7 @@ export function IntegrationsGrid({ initialCategories, workspaceId }: Integration
               docsUrl={provider.docsUrl}
               fields={provider.fields}
               configured={provider.configured}
+              oauthConnected={provider.oauthConnected}
               lastTestedAt={provider.last_tested_at}
               syncRun={provider.syncRun}
               workspaceId={workspaceId}
