@@ -51,8 +51,14 @@ CREATE POLICY "cmd: workspace members can read"
   );
 
 DROP POLICY IF EXISTS "cmd: service role can write" ON campaign_metrics_daily;
-CREATE POLICY "cmd: service role can write"
-  ON campaign_metrics_daily FOR ALL
+CREATE POLICY "cmd: service role can insert"
+  ON campaign_metrics_daily FOR INSERT
+  WITH CHECK (auth.role() = 'service_role');
+
+DROP POLICY IF EXISTS "cmd: service role can update" ON campaign_metrics_daily;
+CREATE POLICY "cmd: service role can update"
+  ON campaign_metrics_daily FOR UPDATE
+  USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
 
 DROP POLICY IF EXISTS "cmd: owners and admins can delete" ON campaign_metrics_daily;

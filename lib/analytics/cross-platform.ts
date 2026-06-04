@@ -1,11 +1,12 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import type { CampaignPlatform } from "@/types/database";
 
 // ── Input/output types ────────────────────────────────────────────────────────
 
 export type NormalizedCampaignMetrics = {
   workspaceId: string;
   campaignExternalId: string;
-  platform: string;
+  platform: CampaignPlatform;
   date: string; // YYYY-MM-DD
   spend: number;
   impressions: number;
@@ -31,7 +32,7 @@ export type ReconciliationRow = {
 
 export function normalizeCampaignMetrics(
   workspaceId: string,
-  platform: string,
+  platform: CampaignPlatform,
   date: string,
   campaigns: Array<{
     externalId: string;
@@ -94,7 +95,6 @@ export async function upsertDailyMetrics(rows: NormalizedCampaignMetrics[]): Pro
     roas: r.roas,
     cpa: r.cpa,
     pixel_conversions: r.pixelConversions,
-    updated_at: new Date().toISOString(),
   }));
   const { error } = await db
     .from("campaign_metrics_daily")

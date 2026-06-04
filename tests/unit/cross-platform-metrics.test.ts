@@ -60,6 +60,11 @@ describe("normalizeCampaignMetrics", () => {
     expect(rows[0].platform).toBe("linkedin");
     expect(rows[0].date).toBe("2026-01-15");
   });
+
+  it("retorna array vazio quando campaigns é vazio", () => {
+    const rows = normalizeCampaignMetrics("ws", "meta", "2026-06-04", []);
+    expect(rows).toHaveLength(0);
+  });
 });
 
 describe("reconcileWithPixel", () => {
@@ -100,5 +105,12 @@ describe("reconcileWithPixel", () => {
     ]);
     expect(rows[0].divergencePct).toBeCloseTo(0.8);
     expect(rows[1].divergencePct).toBeNull();
+  });
+
+  it("divergencePct é negativo quando pixel supera plataforma", () => {
+    const [r] = reconcileWithPixel([
+      { campaignExternalId: "c1", platform: "meta", spend: 100, platformConversions: 5, pixelConversions: 8 },
+    ]);
+    expect(r.divergencePct).toBeCloseTo(-0.6); // (5 - 8) / 5
   });
 });
