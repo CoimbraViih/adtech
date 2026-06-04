@@ -450,7 +450,7 @@ export async function listGoogleAdGroups(
       ad_group.status,
       ad_group.cpc_bid_micros
     FROM ad_group
-    WHERE campaign.id = '${campaignId}'
+    WHERE campaign.id = ${campaignId}
       AND ad_group.status != 'REMOVED'
   `;
 
@@ -474,7 +474,7 @@ export async function listGoogleAds(
       ad_group_ad.ad.name,
       ad_group_ad.status
     FROM ad_group_ad
-    WHERE ad_group.id = '${adGroupId}'
+    WHERE ad_group.id = ${adGroupId}
       AND ad_group_ad.status != 'REMOVED'
   `;
 
