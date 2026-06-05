@@ -679,3 +679,21 @@ export type AiDiagnostic = {
   created_at: string;
   updated_at: string;
 };
+
+// M15 — Creative Asset Uploads
+export type CreativeAsset = {
+  id: string;
+  workspace_id: string;
+  creative_id: string | null;
+  campaign_id: string | null;
+  rtb_campaign_id: string | null;
+  storage_path: string;
+  public_url: string;
+  filename: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  width_px: number | null;
+  height_px: number | null;
+  alt_text: string | null;
+  created_at: string;
+};
