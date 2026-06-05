@@ -87,7 +87,7 @@ export default async function ReconciliationPage() {
                     : "var(--color-success)";
                 return (
                   <tr
-                    key={i}
+                    key={`${row.campaignExternalId}-${row.platform}`}
                     className="border-b last:border-0"
                     style={{ borderColor: "var(--color-border)" }}
                   >

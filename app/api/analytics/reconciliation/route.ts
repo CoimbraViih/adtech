@@ -17,6 +17,14 @@ export async function GET(req: NextRequest) {
     searchParams.get("from") ??
     new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
 
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  if (!ISO_DATE.test(dateFrom) || !ISO_DATE.test(dateTo)) {
+    return NextResponse.json({ error: "Parâmetros de data inválidos." }, { status: 400 });
+  }
+  if (dateFrom > dateTo) {
+    return NextResponse.json({ error: "Parâmetro 'from' deve ser anterior a 'to'." }, { status: 400 });
+  }
+
   try {
     const rows = await getReconciliationRows(session.workspace.id, dateFrom, dateTo);
     return NextResponse.json(rows);
