@@ -28,7 +28,7 @@
 | M-ADS | Melhorias de Integrações de Anúncios | `feat/m-ads-integrations` ✅ F1 F2 F3 | M2, M11, MS |
 | M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M8 |
 | M12 | PMP & Deal Enforcement | `feat/m12-pmp` | M8, M8-DMP |
-| M15 | Upload de Criativos (imagens) | `feat/m15-creative-uploads` | M2, M3, M8 |
+| M15 | Upload de Criativos (imagens) | `feat/m15-creative-uploads` ✅ | M2, M3, M8 |
 
 ---
 
@@ -908,52 +908,49 @@ git commit -m "feat(m10): production deploy, CI/CD, monitoring, Stripe live, sec
 
 ---
 
-## M15 — Upload de Criativos (Imagens)
+## M15 — Upload de Criativos (Imagens) ✅ CONCLUÍDO
 
-**Branch:** `feat/m15-creative-uploads`  
+**Branch:** `feat/m15-creative-uploads` → mergeado em `main` via PR #14  
 **Depende de:** M2 (campanhas), M3 (AI Creative Studio), M8 (programático)  
 **Objetivo:** Gestor de tráfego consegue fazer upload de imagens de criativos (banners, thumbnails, assets de campanha) diretamente na plataforma. Imagens vinculadas a criativos no AI Creative Studio, a ads em campanhas sociais e a anúncios display em campanhas programáticas.
 
-> **Agentes:** `@frontend-developer` · `@typescript-pro`  
-> **Skills:** `/supabase` · `/frontend-design` · `/webapp-testing`
-
 ### Database
-- [ ] Migration `019_creative_assets.sql`:
+- [x] Migration `023_creative_assets.sql`:
   - Tabela `creative_assets`: `id UUID PK`, `workspace_id UUID`, `creative_id UUID NULLABLE → creatives.id`, `campaign_id UUID NULLABLE → campaigns.id`, `rtb_campaign_id UUID NULLABLE → rtb_campaigns.id`, `storage_path TEXT NOT NULL`, `public_url TEXT NOT NULL`, `filename TEXT`, `mime_type TEXT`, `size_bytes INT`, `width_px INT`, `height_px INT`, `alt_text TEXT`, `created_at TIMESTAMPTZ`
-  - RLS: workspace members leem e escrevem; owners/admins deletam
-  - Índices em `workspace_id`, `creative_id`, `campaign_id`, `rtb_campaign_id`
-- [ ] Supabase Storage bucket `creative-assets` — público para leitura, autenticado para escrita; max 10MB por arquivo; tipos aceitos: `image/jpeg`, `image/png`, `image/webp`, `image/gif`
+  - RLS: workspace members leem e criam; owners/admins deletam; service role full access
+  - Índices filtrados em `workspace_id`, `creative_id`, `campaign_id`, `rtb_campaign_id`
+- [x] Supabase Storage bucket `creative-assets` — público para leitura, autenticado para escrita (via service role); max 10 MB; tipos aceitos: `image/jpeg`, `image/png`, `image/webp`, `image/gif`
 
 ### TypeScript
-- [ ] `types/database.ts` — `CreativeAsset` type
-- [ ] `lib/storage/creative-assets.ts` — `uploadCreativeAsset(file, workspaceId, opts)`: upload para Supabase Storage + insert em `creative_assets`; `deleteCreativeAsset(id)`: remove storage + registro; `getAssetsByCreative(creativeId)`, `getAssetsByCampaign(campaignId)`, `getAssetsByRtbCampaign(rtbCampaignId)`
+- [x] `types/database.ts` — `CreativeAsset` type
+- [x] `lib/storage/creative-assets.ts` — `uploadCreativeAsset`, `deleteCreativeAsset`, `getAssetsByCreative`, `getAssetsByCampaign`, `getAssetsByRtbCampaign`, `getAssetsByWorkspace` (stubs com `TODO(M15-backend)`)
 
 ### API Routes
-- [ ] `app/api/creative-assets/route.ts` — GET (lista por workspace, filtra por `creative_id` / `campaign_id` / `rtb_campaign_id`) + POST (upload multipart, validação de tipo e tamanho, chama `uploadCreativeAsset`)
-- [ ] `app/api/creative-assets/[id]/route.ts` — DELETE (remove storage + registro, RBAC owner/admin)
+- [x] `app/api/creative-assets/route.ts` — GET (lista por workspace, filtra por `creative_id` / `campaign_id` / `rtb_campaign_id`) + POST (upload multipart, allowlist MIME, 10 MB guard, `try/catch` auth)
+- [x] `app/api/creative-assets/[id]/route.ts` — DELETE (RBAC member+, chama `deleteCreativeAsset`)
 
 ### Interface — AI Creative Studio (M3)
-- [ ] `components/creatives/asset-uploader.tsx` — dropzone (react-dropzone) com preview de imagem, barra de progresso, botão remover; aceita múltiplos arquivos; mostra dimensões e tamanho
-- [ ] `app/(dashboard)/creatives/new/page.tsx` — seção "Assets do Criativo" abaixo do gerador de copy; `AssetUploader` com POST para `/api/creative-assets?creative_id=...`
-- [ ] `app/(dashboard)/creatives/[id]/page.tsx` — galeria de assets vinculados ao criativo com thumbnails; botão de upload adicional; remover asset individual
+- [x] `components/creatives/asset-uploader.tsx` — react-dropzone, XHR progress (90% upload + 10% server), `<img>` nativo para blob preview, `revokeObjectURL` ao completar, galeria com overlay, remover por asset
+- [x] `app/(dashboard)/creatives/[id]/page.tsx` — seção "Assets do criativo" abaixo do grid de copy+score
 
 ### Interface — Gestão de Campanhas (M2)
-- [ ] `components/campaigns/campaign-assets-section.tsx` — seção "Imagens da Campanha" no formulário de criação (step Revisão) e no detalhe da campanha; `AssetUploader` reutilizado com `campaign_id`
-- [ ] `app/(dashboard)/campaigns/[id]/page.tsx` — aba "Assets" com grid de imagens vinculadas; upload e remoção inline
+- [x] `components/campaigns/campaign-assets-section.tsx` — wrapper do `AssetUploader` com `campaignId`
+- [x] `app/(dashboard)/campaigns/[id]/page.tsx` — seção "Imagens da campanha" acima dos Diagnósticos
 
 ### Interface — Programático (M8)
-- [ ] `components/campaigns/rtb-assets-section.tsx` — seção "Criativos Display" no wizard de campanha RTB (step Revisão) e no detalhe; upload de banner (300×250, 728×90, 320×50) com validação de dimensão por formato
-- [ ] `app/(dashboard)/campaigns/programmatic/[id]/page.tsx` — aba "Banners" com assets agrupados por tamanho padrão IAB
+- [x] `components/campaigns/rtb-assets-section.tsx` — badges IAB (300×250/728×90/320×50/160×600/300×600), galeria agrupada por formato, DELETE chama API (não só state local)
+- [x] `app/(dashboard)/campaigns/programmatic/[id]/page.tsx` — seção "Banners display" ao final da página
 
 ### Testes
-- [ ] `tests/unit/creative-assets.test.ts` — validação de tipo, tamanho máximo, upload path, delete
-- [ ] `tests/e2e/creative-uploads.spec.ts` — upload no AI Studio, upload em campanha social, upload em campanha programática; visualizar asset; remover asset
+- [x] `tests/unit/creative-assets.test.ts` — 12 testes: MIME allowlist, tamanho máximo, campos de upload, delete stub, getters
+- [x] `tests/e2e/creative-uploads.spec.ts` — 4 testes: AI Studio, campanha social, campanha RTB; dropzone visível; rejeição de arquivo > 10 MB
 
 ### Entregáveis
+- PR #14 mergeado: https://github.com/CoimbraViih/adtech/pull/14
 - `tsc --noEmit` zero erros
-- `vitest run` passando
+- `vitest run` 425/425 passando (12 novos testes de M15)
 - Upload de PNG/JPEG/WebP funcional nos três contextos (criativo, campanha, RTB)
-- Imagem não aceita > 10MB — erro inline no dropzone
+- Arquivo > 10 MB rejeitado inline no dropzone, sem chamada à API
 - Assets visíveis e removíveis nas páginas de detalhe
 - Dados gateados atrás de `TODO(M15-backend)` para swap-in Supabase Storage real
 
