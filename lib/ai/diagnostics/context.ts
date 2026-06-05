@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { resolveBenchmarks } from "./benchmarks";
 import type { CampaignContext } from "./types";
-import type { Campaign } from "@/types/database";
+import type { Campaign, CampaignMetricsDaily } from "@/types/database";
 
 export async function buildCampaignContexts(
   workspaceId: string,
@@ -29,28 +29,22 @@ export async function buildCampaignContexts(
 
   // ── Fetch pixel conversions from campaign_metrics_daily (last 30 days) ───────
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
-  type MetricsRow = {
-    campaign_external_id: string;
-    platform: string;
-    pixel_conversions: number;
-    conversions: number;
-  };
+  type MetricsRow = Pick<CampaignMetricsDaily, "campaign_external_id" | "platform" | "pixel_conversions" | "conversions">;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const metricsDb = supabase.from("campaign_metrics_daily") as any;
-  const { data: metricsData } = (await metricsDb
+  const { data: metricsRaw, error: metricsError } = (await metricsDb
     .select("campaign_external_id, platform, pixel_conversions, conversions")
     .eq("workspace_id", workspaceId)
-    .gte("date", thirtyDaysAgo)) as { data: MetricsRow[] | null; error: unknown };
+    .gte("date", thirtyDaysAgo)) as { data: unknown[] | null; error: unknown };
+  if (metricsError) {
+    console.error("[buildCampaignContexts] failed to fetch campaign_metrics_daily:", metricsError);
+  }
+  const metricsData = (metricsRaw ?? []) as MetricsRow[];
 
   // Aggregate pixel_conversions and platform conversions per (external_id, platform).
   type AggMetrics = { pixelConversions: number; platformConversions: number };
   const pixelByKey = new Map<string, AggMetrics>();
-  for (const row of (metricsData ?? []) as Array<{
-    campaign_external_id: string;
-    platform: string;
-    pixel_conversions: number;
-    conversions: number;
-  }>) {
+  for (const row of metricsData) {
     const key = `${row.campaign_external_id}:${row.platform}`;
     const cur = pixelByKey.get(key) ?? { pixelConversions: 0, platformConversions: 0 };
     pixelByKey.set(key, {
