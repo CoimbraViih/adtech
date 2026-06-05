@@ -811,22 +811,22 @@ git commit -m "feat(m10): production deploy, CI/CD, monitoring, Stripe live, sec
 ### Fase 4 — Loop de otimização
 
 #### Backend — Modelo de atribuição unificado
-- [ ] `lib/analytics/cross-platform.ts` — `normalizeCampaignMetrics(campaigns[])`: converte métricas das 4 plataformas + pixel próprio para schema comum `{spend, impressions, clicks, conversions, revenue, roas, cpa}` por `(workspace_id, campaign_id, date)`
-- [ ] `lib/analytics/cross-platform.ts` — `reconcileWithPixel(campaignMetrics, pixelEvents)`: compara conversões reportadas pela plataforma com as capturadas pelo pixel server-side; retorna `{reported, measured, divergence_pct}` por campanha
-- [ ] Migration `022_campaign_metrics_daily.sql` — tabela `campaign_metrics_daily`: `workspace_id`, `campaign_id`, `platform`, `date DATE`, métricas numéricas, `pixel_conversions INT` (do pixel próprio); índice único em `(campaign_id, date)`; populated pelo sync
+- [x] `lib/analytics/cross-platform.ts` — `normalizeCampaignMetrics(campaigns[])`: converte métricas das 4 plataformas + pixel próprio para schema comum `{spend, impressions, clicks, conversions, revenue, roas, cpa}` por `(workspace_id, campaign_id, date)`
+- [x] `lib/analytics/cross-platform.ts` — `reconcileWithPixel(campaignMetrics, pixelEvents)`: compara conversões reportadas pela plataforma com as capturadas pelo pixel server-side; retorna `{reported, measured, divergence_pct}` por campanha
+- [x] Migration `022_campaign_metrics_daily.sql` — tabela `campaign_metrics_daily`: `workspace_id`, `campaign_id`, `platform`, `date DATE`, métricas numéricas, `pixel_conversions INT` (do pixel próprio); índice único em `(campaign_id, date)`; populated pelo sync
 
 #### Backend — Realimentação do AI Traffic Manager
-- [ ] `lib/ai/diagnostics/context.ts` — estender `CampaignContext` com `crossPlatformMetrics` e `pixelReconciliation`: diagnósticos passam a considerar a divergência pixel×plataforma como sinal de rastreamento quebrado
-- [ ] `lib/ai/diagnostics/skills/tracking-divergence.ts` — nova skill: `pixel_conversions < platform_conversions * 0.5` + gasto > threshold → severidade `warning`; rationale = "pixel server-side registrando menos da metade das conversões reportadas pela plataforma"
+- [x] `lib/ai/diagnostics/context.ts` — estender `CampaignContext` com `pixelConversions` e `divergencePct`: diagnósticos passam a considerar a divergência pixel×plataforma como sinal de rastreamento quebrado
+- [x] `lib/ai/diagnostics/skills/tracking-divergence.ts` — nova skill: `pixel_conversions < platform_conversions * 0.5` + gasto > threshold → severidade `warning`; rationale = "pixel server-side registrando menos da metade das conversões reportadas pela plataforma"
 
 #### Interface — Dashboard de reconciliação
-- [ ] `app/(dashboard)/analytics/reconciliation/page.tsx` — tabela por campanha: spend, conversões plataforma, conversões pixel, divergência %; alerta visual quando divergência > 30%
-- [ ] Sidebar: link "Reconciliação" sob Analytics
+- [x] `app/(dashboard)/analytics/reconciliation/page.tsx` — tabela por campanha: spend, conversões plataforma, conversões pixel, divergência %; alerta visual quando divergência > 30%
+- [x] Sidebar: link "Reconciliação" sob Analytics
 
 #### Testes
-- [ ] `tests/unit/cross-platform-metrics.test.ts` — normalização e reconciliação com dados de fixture
-- [ ] `tests/unit/diagnostics-tracking-divergence.test.ts` — trigger e não-trigger da nova skill
-- [ ] `tests/e2e/analytics-reconciliation.spec.ts` — página de reconciliação renderiza
+- [x] `tests/unit/cross-platform-metrics.test.ts` — normalização e reconciliação com dados de fixture
+- [x] `tests/unit/diagnostics-tracking-divergence.test.ts` — trigger e não-trigger da nova skill
+- [x] `tests/e2e/analytics-reconciliation.spec.ts` — página de reconciliação renderiza
 
 ---
 
@@ -837,7 +837,7 @@ git commit -m "feat(m10): production deploy, CI/CD, monitoring, Stripe live, sec
 | 1 | `syncCampaignsFromPlatform` dispara para tenants reais; Google multi-tenant sem cache global; LinkedIn na API `/rest/`; Meta v25.0 com `Authorization: Bearer`; bug `hasCredentials` Google corrigido | ✅ PR #10 mergeado (`be2b90a`) — 299/299 testes |
 | 2 | `fetchWithRetry` cobrindo os 4 clients; LinkedIn/Meta com refresh automático; sync registra `sync_runs`; UI mostra status por plataforma | ✅ PR #11 mergeado (`d5d3395`) — 342/342 testes |
 | 3 | Botão OAuth conecta Meta, Google, LinkedIn; ad sets e ads sincronizados; pixel fan-out usa credenciais por org | ✅ PR #12 mergeado (`7c62ca2`) — 387/387 testes |
-| 4 | `campaign_metrics_daily` populado; skill `tracking-divergence` ativa no AI Traffic Manager; página de reconciliação visível | Planejado |
+| 4 | `campaign_metrics_daily` populado; skill `tracking-divergence` ativa no AI Traffic Manager; página de reconciliação visível | ✅ mergeado — 413/413 testes |
 
 `tsc --noEmit` zero erros e `vitest run` passando após cada fase.
 

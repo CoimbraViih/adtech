@@ -5,6 +5,7 @@ import { creativeFatigue } from "./creative-fatigue";
 import { spendNoConversion } from "./spend-no-conversion";
 import { clickNoConvert } from "./click-no-convert";
 import { learningPhase } from "./learning-phase";
+import { trackingDivergence } from "./tracking-divergence";
 
 export const SKILLS: Skill[] = [
   spendNoConversion,
@@ -13,4 +14,5 @@ export const SKILLS: Skill[] = [
   lowCtr,
   clickNoConvert,
   learningPhase,
+  trackingDivergence,
 ];
