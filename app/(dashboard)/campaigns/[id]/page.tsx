@@ -9,6 +9,8 @@ import { AdSetsTable } from "@/components/campaigns/ad-sets-table";
 import { DiagnosticCard } from "@/components/diagnostics/diagnostic-card";
 import { SeveritySummary } from "@/components/diagnostics/severity-summary";
 import { RunDiagnosticsButton } from "@/components/diagnostics/run-diagnostics-button";
+import { CampaignAssetsSection } from "@/components/campaigns/campaign-assets-section";
+import { getAssetsByCampaign } from "@/lib/storage/creative-assets";
 
 function fmt(n: number, dec = 0) {
   return n.toLocaleString("pt-BR", {
@@ -33,6 +35,7 @@ export default async function CampaignDetailPage({
   // TODO(M2-backend): replace with Supabase query on ai_diagnostics
   const workspaceId = "ws_demo";
   const diagnostics = getMockDiagnostics(id);
+  const campaignAssets = await getAssetsByCampaign(id);
 
   const adSets = MOCK_AD_SETS.filter((a) => a.campaign_id === id);
   const snapshots = getMockMetricSnapshots(id);
@@ -134,6 +137,13 @@ export default async function CampaignDetailPage({
           <AdSetsTable adSets={adSets} />
         </div>
       )}
+
+      {/* Assets */}
+      <CampaignAssetsSection
+        workspaceId={workspaceId}
+        campaignId={id}
+        initialAssets={campaignAssets}
+      />
 
       {/* Diagnostics */}
       <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4 space-y-4">

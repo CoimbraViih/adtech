@@ -5,6 +5,8 @@ import { ChevronLeft, Activity, Target, TrendingUp, DollarSign, BarChart2 } from
 import { MOCK_RTB_CAMPAIGNS, MOCK_BID_LOG } from "@/lib/rtb/mock-data";
 import { StatusBadge } from "@/components/campaigns/status-badge";
 import { RtbPerformance } from "@/components/campaigns/rtb-performance";
+import { RtbAssetsSection } from "@/components/campaigns/rtb-assets-section";
+import { getAssetsByRtbCampaign } from "@/lib/storage/creative-assets";
 import { cn } from "@/lib/utils";
 import type { BidOutcome } from "@/types/database";
 
@@ -68,6 +70,10 @@ export default async function ProgrammaticDetailPage({ params }: PageProps) {
 
   const campaign = MOCK_RTB_CAMPAIGNS.find((c) => c.id === id);
   if (!campaign) notFound();
+
+  // TODO(M15-backend): replace with real session.workspace.id
+  const workspaceId = "ws_demo";
+  const rtbAssets = await getAssetsByRtbCampaign(id);
 
   const bidLog = MOCK_BID_LOG.filter(
     (b) => b.rtb_campaign_id === campaign.id
@@ -228,6 +234,13 @@ export default async function ProgrammaticDetailPage({ params }: PageProps) {
           />
         </div>
       </div>
+
+      {/* Banners */}
+      <RtbAssetsSection
+        workspaceId={workspaceId}
+        rtbCampaignId={id}
+        initialAssets={rtbAssets}
+      />
     </div>
   );
 }
