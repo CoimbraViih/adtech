@@ -53,6 +53,20 @@ export async function buildCampaignContexts(
     });
   }
 
+  // Warn when metrics data exists but no key matched any campaign — indicates
+  // a mismatch between campaigns.external_id and campaign_metrics_daily.campaign_external_id.
+  if (pixelByKey.size > 0 && campaigns.length > 0) {
+    const matchedCount = campaigns.filter(
+      (c) => c.external_id && pixelByKey.has(`${c.external_id}:${c.platform}`)
+    ).length;
+    if (matchedCount === 0) {
+      console.warn(
+        `[buildCampaignContexts] ${pixelByKey.size} metrics rows found for workspace ${workspaceId} ` +
+          `but none matched any campaign external_id. Check campaigns.external_id values.`
+      );
+    }
+  }
+
   // ── Pre-resolve benchmarks ───────────────────────────────────────────────────
   const uniqueKeys = [...new Set(campaigns.map((r) => `${r.platform}:${r.objective}`))];
   const benchmarkCache: Record<string, Record<string, { target: number; comparator: "gte" | "lte" }>> = {};

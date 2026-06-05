@@ -15,7 +15,9 @@ export type NormalizedCampaignMetrics = {
   revenue: number;
   roas: number | null;
   cpa: number | null;
-  pixelConversions: number; // always 0 at sync time; updated by pixel fanout
+  /** Always 0 at construction time. NOT written to the DB by upsertDailyMetrics —
+   *  pixel_conversions is owned by the pixel fanout adapter and preserved on upsert. */
+  pixelConversions: number;
 };
 
 export type ReconciliationRow = {
@@ -53,7 +55,7 @@ export function normalizeCampaignMetrics(
     clicks: c.clicks,
     conversions: c.conversions,
     revenue: c.revenue,
-    roas: c.spend > 0 && c.revenue > 0 ? c.revenue / c.spend : null,
+    roas: c.spend > 0 ? c.revenue / c.spend : null,
     cpa: c.conversions > 0 ? c.spend / c.conversions : null,
     pixelConversions: 0,
   }));
@@ -94,7 +96,7 @@ export async function upsertDailyMetrics(rows: NormalizedCampaignMetrics[]): Pro
     revenue: r.revenue,
     roas: r.roas,
     cpa: r.cpa,
-    pixel_conversions: r.pixelConversions,
+    // pixel_conversions intentionally omitted — written by pixel fanout, not sync
   }));
   const { error } = await db
     .from("campaign_metrics_daily")

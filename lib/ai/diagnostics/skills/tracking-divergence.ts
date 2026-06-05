@@ -6,12 +6,17 @@ const COVERAGE_THRESHOLD = 0.5; // pixel must capture at least 50% of platform c
 export const trackingDivergence: Skill = {
   id: "tracking-divergence",
   label: "Divergência de rastreamento",
-  requiredMetrics: ["conversions", "pixelConversions", "spend"],
+  requiredMetrics: ["conversions", "pixelConversions", "divergencePct", "spend"],
   shouldTrigger(ctx) {
     if (ctx.pixelConversions == null) return null;
     if (ctx.conversions === 0) return null;
     if (ctx.spend < SPEND_THRESHOLD) return null;
-    const coverage = ctx.pixelConversions / ctx.conversions;
+    // Prefer the pre-aggregated divergencePct from campaign_metrics_daily (30-day window).
+    // Fall back to the campaign snapshot when divergencePct is unavailable.
+    const coverage =
+      ctx.divergencePct !== null
+        ? 1 - ctx.divergencePct
+        : ctx.pixelConversions / ctx.conversions;
     if (coverage >= COVERAGE_THRESHOLD) return null;
     return {
       severity: "warning",

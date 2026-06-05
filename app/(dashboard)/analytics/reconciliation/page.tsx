@@ -80,9 +80,9 @@ export default async function ReconciliationPage() {
                 const pctColor =
                   pct == null
                     ? "var(--color-muted)"
-                    : pct > 0.3
+                    : pct > 0.5
                     ? "var(--color-danger)"
-                    : pct > 0.1
+                    : pct > 0.2
                     ? "var(--color-warning)"
                     : "var(--color-success)";
                 return (

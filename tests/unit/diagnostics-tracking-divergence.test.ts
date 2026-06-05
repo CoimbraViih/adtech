@@ -50,15 +50,15 @@ describe("trackingDivergence skill", () => {
   });
 
   it("não dispara quando cobertura do pixel >= 50% (5 de 10)", () => {
-    expect(trackingDivergence.shouldTrigger(makeCtx({ pixelConversions: 5 }))).toBeNull();
+    expect(trackingDivergence.shouldTrigger(makeCtx({ pixelConversions: 5, divergencePct: 0.5 }))).toBeNull();
   });
 
   it("não dispara quando cobertura do pixel é exatamente 50%", () => {
-    expect(trackingDivergence.shouldTrigger(makeCtx({ pixelConversions: 5, conversions: 10 }))).toBeNull();
+    expect(trackingDivergence.shouldTrigger(makeCtx({ pixelConversions: 5, conversions: 10, divergencePct: 0.5 }))).toBeNull();
   });
 
   it("dispara quando spend está exatamente no threshold (R$100)", () => {
-    const finding = trackingDivergence.shouldTrigger(makeCtx({ spend: 100, conversions: 10, pixelConversions: 3 }));
+    const finding = trackingDivergence.shouldTrigger(makeCtx({ spend: 100, conversions: 10, pixelConversions: 3, divergencePct: 0.7 }));
     expect(finding).not.toBeNull();
   });
 
@@ -72,7 +72,7 @@ describe("trackingDivergence skill", () => {
   });
 
   it("evidence menciona a cobertura em porcentagem", () => {
-    const finding = trackingDivergence.shouldTrigger(makeCtx({ conversions: 10, pixelConversions: 2 }));
-    expect(finding?.evidence).toContain("20%"); // 2/10 = 20%
+    const finding = trackingDivergence.shouldTrigger(makeCtx({ conversions: 10, pixelConversions: 2, divergencePct: 0.8 }));
+    expect(finding?.evidence).toContain("20%"); // 1 - 0.8 = 20%
   });
 });

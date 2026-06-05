@@ -31,11 +31,11 @@ describe("normalizeCampaignMetrics", () => {
     expect(r.roas).toBeNull();
   });
 
-  it("define roas como null quando revenue é 0", () => {
+  it("define roas como 0 quando revenue é 0 (sem retorno sobre o gasto)", () => {
     const [r] = normalizeCampaignMetrics("ws", "google", "2026-06-04", [
       { externalId: "x", spend: 100, impressions: 0, clicks: 0, conversions: 5, revenue: 0 },
     ]);
-    expect(r.roas).toBeNull();
+    expect(r.roas).toBe(0);
   });
 
   it("calcula cpa quando conversions > 0", () => {
