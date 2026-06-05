@@ -10,6 +10,7 @@ import {
   Settings,
   Layers,
   Users,
+  GitCompareArrows,
 } from "lucide-react";
 
 export type NavItem = {
@@ -27,6 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Audiências",    href: "/audiences",               icon: Users },
   { label: "Criativos",     href: "/creatives",               icon: Sparkles },
   { label: "Analytics",     href: "/analytics",               icon: BarChart3 },
+  { label: "Reconciliação", href: "/analytics/reconciliation", icon: GitCompareArrows },
   { label: "Pixel",         href: "/pixel",                   icon: Radio },
   { label: "Landing Pages", href: "/landing-pages",           icon: FileText },
   { label: "Automação",     href: "/automation",              icon: Zap },
