@@ -625,6 +625,26 @@ export type SyncRun = {
   created_at: string
 }
 
+// ── Campaign Metrics Daily (M-ADS Fase 4) ─────────────────────────────────────
+
+export type CampaignMetricsDaily = {
+  id: string;
+  workspace_id: string;
+  campaign_external_id: string;
+  platform: CampaignPlatform;
+  date: string; // YYYY-MM-DD
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  roas: number | null;
+  cpa: number | null;
+  pixel_conversions: number;
+  created_at: string;
+  updated_at: string;
+};
+
 // ─── M11: AI Traffic Manager ──────────────────────────────────────────────────
 
 export type DiagnosticSeverity = "info" | "warning" | "critical";

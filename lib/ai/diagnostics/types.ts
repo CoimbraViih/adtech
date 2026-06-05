@@ -21,6 +21,12 @@ export type CampaignContext = {
   cvr: number | null;
   ctrDelta7d: number | null;
   benchmarks: Record<string, { target: number; comparator: "gte" | "lte" }>;
+  /** Conversions captured by the AdFlow server-side pixel (last 30 days, from campaign_metrics_daily).
+   *  null when no metrics rows exist yet. */
+  pixelConversions: number | null;
+  /** (platformConversions - pixelConversions) / platformConversions.
+   *  null when platformConversions === 0 or pixelConversions is null. */
+  divergencePct: number | null;
 };
 
 export type SkillFinding = {

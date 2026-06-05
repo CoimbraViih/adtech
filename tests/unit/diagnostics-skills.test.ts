@@ -148,8 +148,8 @@ describe("learning-phase skill", () => {
 });
 
 describe("SKILLS registry", () => {
-  it("contains all 6 skills", () => {
-    expect(SKILLS).toHaveLength(6);
+  it("contains all 7 skills", () => {
+    expect(SKILLS).toHaveLength(7);
   });
 
   it("has no duplicate skill IDs", () => {
