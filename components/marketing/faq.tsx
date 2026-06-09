@@ -1,102 +1,156 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useRef } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
 
-const FAQ_ITEMS = [
+gsap.registerPlugin(ScrollTrigger);
+
+const FAQS = [
   {
-    question: "O AdHunter funciona com Meta Ads e Google Ads ao mesmo tempo?",
-    answer: "Sim. Integração nativa com Meta Marketing API e Google Ads API v18. Você cria, pausa e monitora campanhas nos dois canais num único painel com sincronização automática.",
+    q: "Como funciona o período gratuito?",
+    a: "O plano Free não tem limite de tempo — fica ativo enquanto você quiser. Para ativar recursos avançados como pixel server-side e IA de criativos, faça upgrade para Pro ou Agency.",
   },
   {
-    question: "Como funciona o pixel server-side? Preciso mudar meu site?",
-    answer: "Adicione uma linha de JavaScript. O adflow.js envia eventos ao nosso servidor, que repassa para Meta CAPI e Google Enhanced Conversions — contornando bloqueadores de anúncio sem expor dados PII no navegador.",
+    q: "O pixel server-side substitui o pixel do navegador?",
+    a: "Sim. O pixel da AdHunter roda no servidor, então iOS 17, Safari ITP e bloqueadores de anúncio não conseguem interceptá-lo. Você recupera em média 28% das conversões que estava perdendo.",
   },
   {
-    question: "O AI Creative Studio substitui meu redator?",
-    answer: "Não — acelera. O GPT-4o gera variações de headline, descrição e CTA a partir do seu briefing. Cada variação recebe score 0–100 com checagem automática de política. Seu redator faz curadoria, não trabalho braçal.",
+    q: "Quanto tempo leva para integrar Meta e Google?",
+    a: "A conexão OAuth leva menos de 2 minutos por plataforma. O sync histórico (últimos 90 dias) é concluído em até 30 minutos. Não há código para instalar.",
   },
   {
-    question: "Qual a diferença entre Pro e Agency?",
-    answer: "Pro cobre a maioria das agências: campanhas ilimitadas, analytics multi-touch, alertas automáticos. Agency adiciona compra programática RTB, DMP proprietário, workspaces ilimitados e suporte dedicado.",
+    q: "Os criativos gerados por IA precisam de revisão?",
+    a: "Recomendamos sempre revisar antes de publicar. A IA usa seus dados de performance para gerar variações otimizadas, mas o controle final é sempre seu.",
   },
   {
-    question: "Posso cancelar quando quiser?",
-    answer: "Sim. Sem fidelidade. Cancele pelo painel de billing a qualquer momento. Você mantém acesso até o fim do período pago.",
+    q: "Posso cancelar a qualquer momento?",
+    a: "Sim. Sem multa, sem aviso prévio de 30 dias. Cancele pelo painel e o acesso continua até o fim do período já pago.",
   },
   {
-    question: "Como fica a segurança dos dados dos meus clientes?",
-    answer: "Arquitetura multi-tenant com Row Level Security (RLS) no banco. Cada cliente fica num workspace isolado — nenhum usuário acessa dados de outro workspace. LGPD: IPs mascarados nos logs, opt-out disponível no DMP.",
+    q: "Funciona com qualquer nicho ou tipo de negócio?",
+    a: "A plataforma é agnóstica de segmento. Agências, e-commerces, SaaS e negócios locais já usam. Desde que você rode campanhas pagas, a AdHunter é útil.",
   },
 ];
 
-function FaqItem({ question, answer }: { question: string; answer: string }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div style={{ borderBottom: "1px solid #1E1E2E" }}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-4 text-left gap-4"
-        aria-expanded={open}
-      >
-        <span
-          className="text-sm font-medium"
-          style={{
-            color: open ? "#F1F5F9" : "#94A3B8",
-            fontFamily: "var(--font-manrope),sans-serif",
-          }}
-        >
-          {question}
-        </span>
-        <ChevronDown
-          className="w-4 h-4 shrink-0"
-          style={{
-            color: open ? "#E8390E" : "#334155",
-            transform: open ? "rotate(180deg)" : "none",
-            transition: "transform 0.2s",
-          }}
-        />
-      </button>
-      {open && (
-        <p
-          className="pb-4 text-sm leading-relaxed pr-8"
-          style={{ color: "#475569", fontFamily: "var(--font-manrope),sans-serif" }}
-        >
-          {answer}
-        </p>
-      )}
-    </div>
-  );
-}
-
 export function Faq() {
-  return (
-    <section id="faq" className="border-b" style={{ borderColor: "#1E1E2E" }}>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
-        {/* Header */}
-        <div className="flex items-baseline justify-between mb-8 pb-4" style={{ borderBottom: "1px solid #1E1E2E" }}>
-          <div>
-            <p
-              className="text-[10px] uppercase tracking-widest mb-1"
-              style={{ color: "#E8390E", fontFamily: "var(--font-manrope),sans-serif" }}
-            >
-              05 — FAQ
-            </p>
-            <h2
-              className="text-2xl md:text-3xl font-bold"
-              style={{ fontFamily: "var(--font-space-grotesk),sans-serif", color: "#F1F5F9" }}
-            >
-              Perguntas frequentes
-            </h2>
-          </div>
-        </div>
+  const [open, setOpen] = useState<number | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
 
-        <div className="max-w-2xl">
-          {FAQ_ITEMS.map((item) => (
-            <FaqItem key={item.question} question={item.question} answer={item.answer} />
-          ))}
+  useGSAP(() => {
+    gsap.set(".faq-item", { opacity: 0, x: -20 });
+
+    ScrollTrigger.create({
+      trigger: sectionRef.current,
+      start: "top 75%",
+      onEnter: () => {
+        gsap.to(".faq-item", {
+          opacity: 1, x: 0,
+          duration: 0.5, ease: "power2.out",
+          stagger: 0.06,
+        });
+      },
+    });
+
+    return () => ScrollTrigger.getAll().forEach((t) => t.kill());
+  }, { scope: sectionRef });
+
+  return (
+    <section
+      ref={sectionRef}
+      style={{
+        position: "relative",
+        zIndex: 2,
+        padding: "80px 24px 120px",
+        maxWidth: 860,
+        margin: "0 auto",
+      }}
+    >
+      <div style={{ textAlign: "center", marginBottom: 56 }}>
+        <div style={{
+          fontFamily: "var(--font-jetbrains, monospace)",
+          fontSize: 10, color: "#475569",
+          letterSpacing: "0.25em", marginBottom: 12,
+        }}>
+          // PERGUNTAS FREQUENTES
         </div>
+        <h2 style={{
+          fontFamily: "var(--font-space-grotesk, sans-serif)",
+          fontSize: "clamp(1.6rem, 3vw, 2.2rem)",
+          fontWeight: 700, color: "#ffffff", letterSpacing: "-0.02em",
+        }}>
+          Dúvidas antes de mirar?
+        </h2>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        {FAQS.map((faq, i) => (
+          <div
+            key={i}
+            className="faq-item"
+            style={{
+              background: open === i ? "rgba(0,212,255,0.03)" : "rgba(13,13,26,0.6)",
+              border: `1px solid ${open === i ? "rgba(0,212,255,0.15)" : "rgba(255,255,255,0.04)"}`,
+              borderRadius: 4,
+              overflow: "hidden",
+              transition: "background 0.2s, border-color 0.2s",
+            }}
+          >
+            <button
+              onClick={() => setOpen(open === i ? null : i)}
+              style={{
+                width: "100%",
+                padding: "18px 20px",
+                textAlign: "left",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 16,
+              }}
+            >
+              <span style={{
+                fontFamily: "var(--font-space-grotesk, sans-serif)",
+                fontSize: 15, fontWeight: 600,
+                color: open === i ? "#e2e8f0" : "#94a3b8",
+                transition: "color 0.2s",
+              }}>
+                {faq.q}
+              </span>
+              <span style={{
+                fontFamily: "var(--font-jetbrains, monospace)",
+                fontSize: 14,
+                color: open === i ? "#00d4ff" : "#334155",
+                transition: "color 0.2s, transform 0.3s",
+                transform: open === i ? "rotate(45deg)" : "rotate(0deg)",
+                flexShrink: 0,
+                display: "inline-block",
+              }}>
+                +
+              </span>
+            </button>
+
+            <div style={{
+              maxHeight: open === i ? 300 : 0,
+              overflow: "hidden",
+              transition: "max-height 0.35s ease",
+            }}>
+              <p style={{
+                padding: "0 20px 18px",
+                fontFamily: "var(--font-manrope, sans-serif)",
+                fontSize: 14, color: "#64748b",
+                lineHeight: 1.7,
+                borderTop: "1px solid rgba(255,255,255,0.04)",
+                paddingTop: 16,
+              }}>
+                {faq.a}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );

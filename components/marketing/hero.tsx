@@ -1,221 +1,434 @@
-// Hero — brand-compliant: compact, data-forward, no decorative empty space.
-// Ref: AdHunter Brand Book §07 "Sem hero gigante vazio"
+"use client";
 
-const METRICS = [
-  { value: "4.8×", label: "ROAS médio", color: "#10B981" },
-  { value: "R$42", label: "CPA médio", color: "#F1F5F9" },
-  { value: "−28%", label: "CPC vs. antes", color: "#10B981" },
-  { value: "R$2M+", label: "verba gerenciada", color: "#94A3B8" },
+import { useRef, useEffect, useState } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
+import Link from "next/link";
+
+gsap.registerPlugin(ScrollTrigger);
+
+function HudCorner({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
+  const style: React.CSSProperties = {
+    position: "absolute",
+    width: 20,
+    height: 20,
+    ...(pos === "tl" && { top: 0, left: 0, borderTop: "1px solid #00d4ff", borderLeft: "1px solid #00d4ff" }),
+    ...(pos === "tr" && { top: 0, right: 0, borderTop: "1px solid #00d4ff", borderRight: "1px solid #00d4ff" }),
+    ...(pos === "bl" && { bottom: 0, left: 0, borderBottom: "1px solid #00d4ff", borderLeft: "1px solid #00d4ff" }),
+    ...(pos === "br" && { bottom: 0, right: 0, borderBottom: "1px solid #00d4ff", borderRight: "1px solid #00d4ff" }),
+  };
+  return <span style={style} />;
+}
+
+function ScanLine() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        inset: 0,
+        overflow: "hidden",
+        pointerEvents: "none",
+        zIndex: 1,
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          height: 2,
+          background: "linear-gradient(90deg, transparent 0%, rgba(0,212,255,0.4) 50%, transparent 100%)",
+          animation: "hud-scan 4s linear infinite",
+        }}
+      />
+    </div>
+  );
+}
+
+const STATS = [
+  { value: "−34%", label: "CPA médio", color: "#10B981" },
+  { value: "4.2×", label: "ROAS médio", color: "#00d4ff" },
+  { value: "10h", label: "economizadas/sem", color: "#ffffff" },
+  { value: "R$2.1M", label: "verba gerenciada", color: "#7b2fff" },
 ];
 
 export function Hero() {
+  const containerRef = useRef<HTMLElement>(null);
+  const preloaderRef = useRef<HTMLDivElement>(null);
+  const headlineRef = useRef<HTMLHeadingElement>(null);
+  const subRef = useRef<HTMLParagraphElement>(null);
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const statsRef = useRef<HTMLDivElement>(null);
+  const mockupRef = useRef<HTMLDivElement>(null);
+  const hudRef = useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const tl = gsap.timeline({ onComplete: () => setLoaded(true) });
+
+    gsap.set(preloaderRef.current, { opacity: 1 });
+
+    tl.to(".preloader-bar", {
+      width: "100%",
+      duration: 1.4,
+      ease: "power2.inOut",
+    })
+      .to(".preloader-pct", {
+        textContent: "100",
+        duration: 1.4,
+        snap: { textContent: 1 },
+        ease: "power2.inOut",
+      }, "<")
+      .to(preloaderRef.current, { opacity: 0, duration: 0.5, ease: "power2.in" })
+      .set(preloaderRef.current, { display: "none" });
+  }, []);
+
+  useGSAP(() => {
+    if (!loaded) return;
+
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+    gsap.set([headlineRef.current, subRef.current, ctaRef.current, statsRef.current, mockupRef.current, hudRef.current], {
+      opacity: 0,
+      y: 40,
+      filter: "blur(8px)",
+    });
+
+    tl.to(hudRef.current, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.6 })
+      .to(headlineRef.current, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.8 }, "-=0.2")
+      .to(subRef.current, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.6 }, "-=0.4")
+      .to(ctaRef.current, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.6 }, "-=0.3")
+      .to(statsRef.current, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.6 }, "-=0.3")
+      .to(mockupRef.current, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.8 }, "-=0.4");
+
+    gsap.to(mockupRef.current, {
+      y: -80,
+      ease: "none",
+      scrollTrigger: {
+        trigger: containerRef.current,
+        start: "top top",
+        end: "bottom top",
+        scrub: 1.5,
+      },
+    });
+
+    return () => ScrollTrigger.getAll().forEach((t) => t.kill());
+  }, { scope: containerRef, dependencies: [loaded] });
+
   return (
-    <section className="border-b" style={{ borderColor: "#1E1E2E" }}>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 md:py-20">
-        {/* Eyebrow */}
-        <p
-          className="text-xs font-semibold uppercase tracking-widest mb-4"
-          style={{ color: "#E8390E", fontFamily: "var(--font-manrope),sans-serif" }}
-        >
-          ADTECH · LOOP FECHADO DE OTIMIZAÇÃO
-        </p>
-
-        {/* Headline */}
-        <h1
-          className="text-4xl md:text-6xl font-bold leading-[1.05] tracking-tight mb-5"
-          style={{
-            fontFamily: "var(--font-space-grotesk),sans-serif",
-            color: "#F1F5F9",
-            maxWidth: 720,
-          }}
-        >
-          Mire melhor.{" "}
-          <span style={{ color: "#E8390E" }}>Gaste menos.</span>
-        </h1>
-
-        {/* Subheadline */}
-        <p
-          className="text-base md:text-lg mb-8 leading-relaxed"
-          style={{ color: "#64748B", maxWidth: 560, fontFamily: "var(--font-manrope),sans-serif" }}
-        >
-          15–30% da verba some em anúncios ruins. A AdHunter encontra cada centavo perdido
-          e redireciona ao que converte — automaticamente.
-        </p>
-
-        {/* CTAs */}
-        <div className="flex flex-wrap items-center gap-3 mb-12">
-          <a
-            href="#waitlist"
-            className="px-5 py-2.5 rounded text-sm font-semibold text-white"
-            style={{ background: "#E8390E" }}
-          >
-            Entrar na lista de espera
-          </a>
-          <a
-            href="#features"
-            className="px-5 py-2.5 rounded text-sm font-semibold"
-            style={{ color: "#94A3B8", border: "1px solid #1E1E2E" }}
-          >
-            Ver como funciona →
-          </a>
+    <>
+      {/* Preloader */}
+      <div
+        ref={preloaderRef}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9999,
+          background: "#000000",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 24,
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            fontFamily: "var(--font-space-grotesk, monospace)",
+            fontSize: "clamp(1.2rem, 3vw, 2rem)",
+            fontWeight: 700,
+            letterSpacing: "0.3em",
+            color: "#ffffff",
+            textTransform: "uppercase",
+            marginBottom: 8,
+          }}>
+            <span style={{ color: "#E8390E" }}>AD</span>HUNTER
+          </div>
+          <div style={{
+            fontFamily: "var(--font-jetbrains, monospace)",
+            fontSize: 11,
+            color: "#334155",
+            letterSpacing: "0.2em",
+          }}>
+            INITIALIZING SYSTEM
+          </div>
         </div>
 
-        {/* Metrics strip */}
+        <div style={{ width: 200, position: "relative" }}>
+          <div style={{ height: 1, background: "#1E1E2E", width: "100%" }} />
+          <div
+            className="preloader-bar"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              height: 1,
+              width: 0,
+              background: "linear-gradient(90deg, #E8390E, #00d4ff)",
+              boxShadow: "0 0 8px #00d4ff",
+            }}
+          />
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span
+            className="preloader-pct"
+            style={{ fontFamily: "var(--font-jetbrains, monospace)", fontSize: 11, color: "#00d4ff" }}
+          >0</span>
+          <span style={{ fontFamily: "var(--font-jetbrains, monospace)", fontSize: 11, color: "#334155" }}>%</span>
+        </div>
+      </div>
+
+      {/* Hero */}
+      <section
+        ref={containerRef}
+        style={{
+          position: "relative",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          overflow: "hidden",
+          paddingTop: 80,
+        }}
+      >
+        {/* HUD frame overlay */}
         <div
-          className="grid grid-cols-2 md:grid-cols-4 gap-px"
-          style={{ background: "#1E1E2E", border: "1px solid #1E1E2E", borderRadius: 8 }}
+          ref={hudRef}
+          aria-hidden
+          style={{ position: "absolute", inset: "60px 20px 20px", pointerEvents: "none", zIndex: 2 }}
         >
-          {METRICS.map((m) => (
-            <div
-              key={m.label}
-              className="px-5 py-4"
-              style={{ background: "#0D0D1A" }}
+          <HudCorner pos="tl" />
+          <HudCorner pos="tr" />
+          <HudCorner pos="bl" />
+          <HudCorner pos="br" />
+          <ScanLine />
+          <div style={{
+            position: "absolute", top: 12, left: 12,
+            fontFamily: "var(--font-jetbrains, monospace)", fontSize: 9,
+            color: "#00d4ff", letterSpacing: "0.15em", opacity: 0.7,
+          }}>
+            SYS.ADHUNTER.v2.0 // TARGETING_ACTIVE
+          </div>
+          <div style={{
+            position: "absolute", top: 12, right: 12,
+            fontFamily: "var(--font-jetbrains, monospace)", fontSize: 9,
+            color: "#E8390E", letterSpacing: "0.15em", opacity: 0.7,
+          }}>
+            LAT: -23.5 // LON: -46.6 // BR
+          </div>
+        </div>
+
+        <div style={{
+          position: "relative",
+          zIndex: 3,
+          width: "100%",
+          maxWidth: 1280,
+          margin: "0 auto",
+          padding: "0 24px 120px",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 64,
+          alignItems: "center",
+        }}>
+          {/* Left copy */}
+          <div>
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "4px 12px",
+              border: "1px solid rgba(0,212,255,0.3)",
+              borderRadius: 2,
+              marginBottom: 24,
+              background: "rgba(0,212,255,0.05)",
+            }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: "50%", background: "#10B981",
+                animation: "hud-blink 1.2s ease-in-out infinite", display: "inline-block",
+              }} />
+              <span style={{
+                fontFamily: "var(--font-jetbrains, monospace)", fontSize: 10,
+                color: "#00d4ff", letterSpacing: "0.2em",
+              }}>
+                ACESSO ANTECIPADO ABERTO
+              </span>
+            </div>
+
+            <h1
+              ref={headlineRef}
+              style={{
+                fontFamily: "var(--font-space-grotesk, sans-serif)",
+                fontSize: "clamp(2.4rem, 5vw, 4rem)",
+                fontWeight: 700,
+                lineHeight: 1.05,
+                color: "#ffffff",
+                marginBottom: 24,
+                letterSpacing: "-0.02em",
+              }}
             >
-              <div
-                className="text-2xl font-bold mb-0.5"
-                style={{
-                  fontFamily: "var(--font-jetbrains),monospace",
-                  color: m.color,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                {m.value}
-              </div>
-              <div
-                className="text-[10px] uppercase tracking-widest"
-                style={{ color: "#334155", fontFamily: "var(--font-manrope),sans-serif" }}
-              >
-                {m.label}
-              </div>
+              Mire melhor.{" "}
+              <span style={{
+                background: "linear-gradient(135deg, #E8390E 0%, #ff6b35 50%, #E8390E 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}>
+                Gaste menos.
+              </span>
+            </h1>
+
+            <p
+              ref={subRef}
+              style={{
+                fontFamily: "var(--font-manrope, sans-serif)",
+                fontSize: "clamp(0.95rem, 1.5vw, 1.1rem)",
+                color: "#94a3b8",
+                lineHeight: 1.7,
+                marginBottom: 36,
+                maxWidth: 460,
+              }}
+            >
+              IA que gera criativos, otimiza campanhas em tempo real e fecha o loop entre
+              verba gasta e receita gerada — tudo numa plataforma só.
+            </p>
+
+            <div ref={ctaRef} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Link href="/signup" style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "12px 28px",
+                background: "#E8390E",
+                color: "#ffffff",
+                fontFamily: "var(--font-manrope, sans-serif)",
+                fontWeight: 700, fontSize: 14, borderRadius: 3,
+                textDecoration: "none", letterSpacing: "0.02em",
+                boxShadow: "0 0 24px rgba(232,57,14,0.4), 0 0 48px rgba(232,57,14,0.15)",
+              }}>
+                Começar agora <span style={{ fontSize: 16 }}>→</span>
+              </Link>
+              <Link href="#features" style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "12px 28px",
+                background: "transparent",
+                color: "#94a3b8",
+                fontFamily: "var(--font-manrope, sans-serif)",
+                fontWeight: 600, fontSize: 14, borderRadius: 3,
+                textDecoration: "none",
+                border: "1px solid rgba(148,163,184,0.2)",
+              }}>
+                Ver demo
+              </Link>
+            </div>
+          </div>
+
+          {/* Right: Dashboard mockup */}
+          <div
+            ref={mockupRef}
+            style={{
+              position: "relative",
+              background: "rgba(13,13,26,0.85)",
+              border: "1px solid rgba(0,212,255,0.15)",
+              borderRadius: 8,
+              padding: 20,
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 0 60px rgba(0,212,255,0.08), 0 40px 80px rgba(0,0,0,0.6)",
+            }}
+          >
+            <div aria-hidden style={{
+              position: "absolute", top: -1, left: "20%", right: "20%", height: 1,
+              background: "linear-gradient(90deg, transparent, rgba(0,212,255,0.6), transparent)",
+            }} />
+
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid #1E1E2E" }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444" }} />
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} />
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
+              <span style={{ marginLeft: 8, fontFamily: "var(--font-jetbrains, monospace)", fontSize: 9, color: "#334155" }}>
+                adhunter.io/dashboard
+              </span>
+            </div>
+
+            <div style={{
+              background: "rgba(239,68,68,0.06)",
+              border: "1px solid rgba(239,68,68,0.2)",
+              borderLeft: "3px solid #EF4444",
+              borderRadius: 4, padding: "8px 12px", marginBottom: 12,
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+            }}>
+              <span style={{ fontFamily: "var(--font-jetbrains, monospace)", fontSize: 10, color: "#EF4444" }}>
+                ⚠ ANOMALIA — CPA +68% acima do baseline
+              </span>
+              <span style={{ fontFamily: "var(--font-jetbrains, monospace)", fontSize: 9, color: "#334155" }}>agora</span>
+            </div>
+
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+              <thead>
+                <tr>
+                  {["CAMPANHA", "SPEND", "ROAS", "CPA", "STATUS"].map((h) => (
+                    <th key={h} style={{
+                      padding: "4px 8px",
+                      fontFamily: "var(--font-jetbrains, monospace)",
+                      color: "#334155", fontWeight: 500, letterSpacing: "0.1em",
+                      textAlign: "left", borderBottom: "1px solid #1E1E2E",
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { name: "Black Friday — Meta", spend: "R$4.2k", roas: "4.8×", cpa: "R$31", status: "active", sc: "#10B981" },
+                  { name: "Google Search — Brand", spend: "R$1.8k", roas: "6.1×", cpa: "R$18", status: "active", sc: "#10B981" },
+                  { name: "Remarketing — Meta", spend: "R$2.1k", roas: "1.9×", cpa: "R$87", status: "paused", sc: "#F59E0B" },
+                  { name: "Display — GDN", spend: "R$890", roas: "0.8×", cpa: "R$210", status: "alert", sc: "#EF4444" },
+                ].map((row) => (
+                  <tr key={row.name} style={{ borderBottom: "1px solid rgba(30,30,46,0.5)" }}>
+                    <td style={{ padding: "6px 8px", fontFamily: "var(--font-jetbrains, monospace)", color: "#cbd5e1", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</td>
+                    <td style={{ padding: "6px 8px", fontFamily: "var(--font-jetbrains, monospace)", color: "#94a3b8" }}>{row.spend}</td>
+                    <td style={{ padding: "6px 8px", fontFamily: "var(--font-jetbrains, monospace)", color: "#10B981" }}>{row.roas}</td>
+                    <td style={{ padding: "6px 8px", fontFamily: "var(--font-jetbrains, monospace)", color: "#94a3b8" }}>{row.cpa}</td>
+                    <td style={{ padding: "6px 8px" }}>
+                      <span style={{
+                        fontFamily: "var(--font-jetbrains, monospace)", fontSize: 9,
+                        color: row.sc, background: `${row.sc}15`,
+                        padding: "2px 6px", borderRadius: 2, border: `1px solid ${row.sc}30`,
+                      }}>{row.status.toUpperCase()}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Stats strip */}
+        <div ref={statsRef} style={{
+          position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 3,
+          display: "flex", justifyContent: "center",
+          borderTop: "1px solid rgba(30,30,46,0.8)",
+          background: "rgba(0,0,5,0.6)",
+          backdropFilter: "blur(12px)",
+        }}>
+          {STATS.map((s, i) => (
+            <div key={s.label} style={{
+              flex: 1, maxWidth: 200,
+              padding: "16px 24px", textAlign: "center",
+              borderRight: i < STATS.length - 1 ? "1px solid #1E1E2E" : "none",
+            }}>
+              <div style={{
+                fontFamily: "var(--font-jetbrains, monospace)",
+                fontSize: "clamp(1.2rem, 2.5vw, 1.6rem)",
+                fontWeight: 700, color: s.color, lineHeight: 1,
+                marginBottom: 4, textShadow: `0 0 12px ${s.color}60`,
+              }}>{s.value}</div>
+              <div style={{
+                fontFamily: "var(--font-manrope, sans-serif)",
+                fontSize: 10, color: "#475569", letterSpacing: "0.05em",
+              }}>{s.label}</div>
             </div>
           ))}
         </div>
-
-        {/* Product preview — anomaly alert card from brand book */}
-        <div className="mt-8 rounded-lg overflow-hidden" style={{ border: "1px solid #1E1E2E" }}>
-          {/* Fake window chrome */}
-          <div
-            className="flex items-center justify-between px-4 py-2.5 border-b"
-            style={{ background: "#13131F", borderColor: "#1E1E2E" }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#EF444440" }} />
-              <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#F59E0B40" }} />
-              <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#10B98140" }} />
-            </div>
-            <span
-              className="text-[10px] uppercase tracking-widest"
-              style={{ color: "#334155", fontFamily: "var(--font-jetbrains),monospace" }}
-            >
-              adhunter.io/campanhas
-            </span>
-            <div />
-          </div>
-
-          {/* Dashboard content */}
-          <div style={{ background: "#0D0D1A" }}>
-            {/* Alert card */}
-            <div
-              className="mx-4 my-4 p-4 rounded-lg"
-              style={{ border: "1px solid #E8390E30", background: "#13131F" }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span
-                  className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded"
-                  style={{
-                    color: "#E8390E",
-                    border: "1px solid #E8390E40",
-                    background: "#E8390E0A",
-                    fontFamily: "var(--font-manrope),sans-serif",
-                  }}
-                >
-                  AdHunter · Campanhas
-                </span>
-                <span className="text-[10px]" style={{ color: "#334155" }}>agora mesmo</span>
-              </div>
-              <p
-                className="text-sm font-semibold mb-1"
-                style={{ color: "#F1F5F9", fontFamily: "var(--font-space-grotesk),sans-serif" }}
-              >
-                Anomalia detectada
-              </p>
-              <p className="text-xs mb-3" style={{ color: "#64748B" }}>
-                CPA subiu 64% nas últimas 6h na campanha "Black Friday — Retargeting".
-              </p>
-              <div className="flex items-center gap-4">
-                <button
-                  className="px-4 py-1.5 rounded text-xs font-semibold text-white"
-                  style={{ background: "#E8390E" }}
-                >
-                  Otimizar agora
-                </button>
-                <button className="text-xs" style={{ color: "#64748B" }}>
-                  Ver detalhes
-                </button>
-              </div>
-              <div
-                className="flex items-center gap-5 mt-3 pt-3"
-                style={{ borderTop: "1px solid #1E1E2E" }}
-              >
-                {[
-                  { label: "CPA", value: "R$41,20", color: "#EF4444", arrow: "▲" },
-                  { label: "ROAS", value: "2.8×", color: "#F59E0B", arrow: "▼" },
-                  { label: "Spend", value: "R$8.940", color: "#94A3B8", arrow: "" },
-                ].map((s) => (
-                  <span
-                    key={s.label}
-                    className="text-[11px]"
-                    style={{ fontFamily: "var(--font-jetbrains),monospace", color: s.color }}
-                  >
-                    {s.arrow && `${s.arrow} `}{s.label} {s.value}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Campaign table preview */}
-            <div className="px-4 pb-4">
-              <table className="w-full text-[11px]" style={{ fontFamily: "var(--font-jetbrains),monospace" }}>
-                <thead>
-                  <tr style={{ color: "#334155" }}>
-                    {["Campanha", "Status", "ROAS", "CPA", "Spend"].map((h) => (
-                      <th key={h} className="text-left pb-2 font-medium uppercase tracking-wider text-[9px]">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { name: "BF — Prospecting", status: "ativo", roas: "5.2×", cpa: "R$31", spend: "R$4.2k", roasColor: "#10B981", cpaColor: "#10B981" },
-                    { name: "BF — Retargeting", status: "anomalia", roas: "2.8×", cpa: "R$41", spend: "R$8.9k", roasColor: "#F59E0B", cpaColor: "#EF4444" },
-                    { name: "Sempre Ativo — TOFU", status: "ativo", roas: "4.1×", cpa: "R$38", spend: "R$1.8k", roasColor: "#10B981", cpaColor: "#94A3B8" },
-                  ].map((row) => (
-                    <tr key={row.name} style={{ borderTop: "1px solid #1E1E2E" }}>
-                      <td className="py-2" style={{ color: "#94A3B8" }}>{row.name}</td>
-                      <td className="py-2">
-                        <span
-                          className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider"
-                          style={{
-                            color: row.status === "anomalia" ? "#E8390E" : "#10B981",
-                            background: row.status === "anomalia" ? "#E8390E0A" : "#10B9810A",
-                            border: `1px solid ${row.status === "anomalia" ? "#E8390E30" : "#10B98130"}`,
-                          }}
-                        >
-                          {row.status}
-                        </span>
-                      </td>
-                      <td className="py-2 font-medium" style={{ color: row.roasColor }}>{row.roas}</td>
-                      <td className="py-2" style={{ color: row.cpaColor }}>{row.cpa}</td>
-                      <td className="py-2" style={{ color: "#64748B" }}>{row.spend}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }

@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
+import { ParticleUniverse } from "@/components/marketing/particle-universe";
 
 export const metadata: Metadata = {
   title: "AdHunter — Mire melhor. Gaste menos.",
   description:
-    "15–30% da verba some em anúncios ruins. A AdHunter encontra cada centavo perdido e redireciona ao que converte. Loop fechado de otimização com IA.",
+    "IA que gera criativos, otimiza campanhas em tempo real e fecha o loop entre verba gasta e receita gerada.",
   openGraph: {
     title: "AdHunter — Mire melhor. Gaste menos.",
     description:
-      "Plataforma AdTech de performance para gestores de tráfego e agências brasileiras.",
+      "Pixel server-side, atribuição multi-touch e IA de criativos numa plataforma só.",
     url: "https://adhunter.io",
     siteName: "AdHunter",
     locale: "pt_BR",
@@ -18,21 +19,24 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "AdHunter — Mire melhor. Gaste menos.",
-    description: "Loop fechado de otimização: IA cria, pixel mede, analytics aprende, IA melhora.",
+    description:
+      "Pixel server-side, atribuição multi-touch e IA de criativos numa plataforma só.",
   },
 };
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="flex flex-col min-h-screen"
       style={{
+        position: "relative",
+        minHeight: "100vh",
+        background: "#000000",
         fontFamily: "var(--font-manrope), var(--font-inter), sans-serif",
-        background: "#0D0D1A",
       }}
     >
+      <ParticleUniverse />
       <MarketingHeader />
-      <main className="flex-1">{children}</main>
+      <main style={{ position: "relative", zIndex: 2 }}>{children}</main>
       <MarketingFooter />
     </div>
   );
