@@ -271,47 +271,49 @@
 
 ---
 
-## M6 — Landing Page AdFlow ✅ CONCLUÍDO
+## M6 — Landing Page AdHunter ✅ CONCLUÍDO
 
-**Branch:** `feat/m6-landing` → mergeado em `main` via PR #7  
-**Objetivo:** Landing page pública de marketing da AdFlow — apresenta o produto, converte visitantes em leads/trial e transmite credibilidade para agências e anunciantes brasileiros.
+**Branch:** `feat/m6-landing-v2` → mergeado em `main` via PR #16  
+**Objetivo:** Landing page pública de marketing da AdHunter — design sci-fi cinematográfico com Three.js WebGL, GSAP ScrollTrigger e glassmorphism. Converte visitantes em leads com waitlist capture e formulário server-side seguro.
 
-### Interface
-- [x] `app/(marketing)/layout.tsx` — header sticky com logo + nav (Features, Preços, FAQ, Login) + footer
-- [x] `app/(marketing)/page.tsx` — landing page completa montada com todas as seções
-- [x] `components/marketing/hero.tsx` — headline, sub-headline, CTA "Começar grátis" + "Ver demo", stats strip (campanhas, criativos, eventos), mockup do dashboard
-- [x] `components/marketing/features.tsx` — 6 pilares: Campanhas Unificadas, AI Creative Studio, Pixel Server-Side, Analytics Multi-Touch, Programático RTB, Automação de Alertas
-- [x] `components/marketing/social-proof.tsx` — logos placeholder, depoimentos, métricas de confiança
-- [x] `components/marketing/pricing.tsx` — Free / Pro (R$500/mês) / Agency (R$3.000/mês) com feature list e CTAs
-- [x] `components/marketing/faq.tsx` — acordeão com perguntas frequentes de agências brasileiras
-- [x] `components/marketing/cta-banner.tsx` — seção final de conversão com fundo accent
-- [x] `components/marketing/waitlist-form.tsx` — captura nome + e-mail + tamanho da agência, validação inline, toast de sucesso/erro
+### Interface (redesign sci-fi — PR #16)
+- [x] `components/marketing/particle-universe.tsx` — Three.js WebGL: 1800 partículas neon (ember/cyan/violet/magenta/green) + 3000 estrelas, mouse parallax, nebulae pulsando — background fixo em toda a landing
+- [x] `components/marketing/hero.tsx` — preloader GSAP (barra gradiente + contador 0→100%), HUD frame com cantos cyan + scan line animada + labels de coordenadas, entrada com `blur(8px)→0`, mockup dashboard com parallax no scroll
+- [x] `components/marketing/features.tsx` — grid `gap-px` com GSAP staggered ScrollTrigger, neon hover glow por card, ícones simbólicos por feature
+- [x] `components/marketing/social-proof.tsx` — cards com `rotateX` 3D na entrada, metric hero com text-shadow neon
+- [x] `components/marketing/pricing.tsx` — `scale(0.95)→1` na entrada, hover `translateY(-6px)` + box-shadow colorido por plano
+- [x] `components/marketing/faq.tsx` — slide-in from left via GSAP, `+` gira 45° em cyan ao abrir
+- [x] `components/marketing/cta-banner.tsx` — layout horizontal, box-shadow ember pulsante no botão, glassmorphism container
+- [x] `components/marketing/waitlist-form.tsx` — sci-fi inline style, focus border cyan, estado de sucesso com SVG checkmark verde
+- [x] `components/marketing/header.tsx` — transparente → frosted glass (`blur(16px)`) no scroll, scan line animada embaixo, CrosshairLogo SVG
+- [x] `components/marketing/footer.tsx` — minimal, JetBrains Mono, status `SYS.ADHUNTER.v2.0 // ONLINE`
+- [x] `app/(marketing)/layout.tsx` — `ParticleUniverse` como background fixo, Manrope body font, metadata AdHunter
+- [x] `app/(marketing)/page.tsx` — waitlist section 2-column com social signal "247 agências na fila · 53 vagas restantes"
+- [x] `app/layout.tsx` — Space Grotesk + Manrope adicionados via `next/font/google`
+- [x] `app/globals.css` — keyframes: `hud-scan`, `hud-blink`, `neon-pulse`, `ember-pulse` + variáveis `--font-display`/`--font-marketing`
 
-### Backend / SEO
-- [x] Migration `010_leads.sql`: tabela `leads` (email, name, agency_size, source, created_at) com índice único em email
-- [x] `app/api/leads/route.ts` — POST: Zod validation, rate limiting in-memory (10 req/hora por IP), upsert mock com TODO(M6-backend)
+### Dependências adicionadas
+- [x] `gsap@^3.15.0` + `@gsap/react@^2.1.2` — animações ScrollTrigger
+- [x] `three@^0.184.0` + `@types/three@^0.184.1` — WebGL particle universe
+- [x] `lenis@^1.3.23` — smooth scroll
+
+### Backend / SEO (mantido de PR #7)
+- [x] Migration `010_leads.sql`: tabela `leads` com índice único em email e RLS service_role
+- [x] `app/api/leads/route.ts` — POST: Zod v4, rate limiting in-memory (10 req/hora por IP), payload limit 5KB
 - [x] `lib/leads/schema.ts` — schema Zod compartilhado entre client e server
-- [x] `app/sitemap.ts` — sitemap dinâmico para SEO
-- [x] `app/robots.ts` — robots.txt
-- [x] Meta tags OpenGraph + Twitter Card no layout de marketing
-- [x] `middleware.ts` — `/` e `/api/leads` adicionados a `PUBLIC_PATHS`
-
-### M2 Addon — TikTok Ads + LinkedIn Ads (incluído nesta branch)
-- [x] `CampaignPlatform`: `+ "tiktok" | "linkedin"`
-- [x] Ícones SVG inline (TikTok preto duplo ciano/vermelho, LinkedIn azul #0A66C2)
-- [x] Mock data: 2 campanhas TikTok + 1 LinkedIn (ROAS 13.7x)
-- [x] `lib/tiktok/client.ts` — TikTok Ads API v1.3 (list, create, update, insights)
-- [x] `lib/linkedin/client.ts` — LinkedIn Marketing API v2 (list, create, analytics)
-- [x] Formulário, tabela, Zod schemas e sync atualizados para 4 plataformas
+- [x] `app/sitemap.ts` + `app/robots.ts` — SEO
+- [x] `middleware.ts` — `/` e `/api/leads` em `PUBLIC_PATHS`
 
 ### Testes
 - [x] `tests/unit/lead-schema.test.ts` — 8 testes: validação Zod (payloads válidos e inválidos)
-- [x] `tests/e2e/landing.spec.ts` — E2E: landing page e fluxo de waitlist
+- [x] `vitest run` — 425/425 passando após merge com main
 
 ### Entregáveis
-- PR #7 mergeado: https://github.com/CoimbraViih/adtech/pull/7
-- `tsc --noEmit` zero erros
-- Dados gateados atrás de `TODO(M6-backend)` para swap-in Supabase
+- PR #16 mergeado: https://github.com/CoimbraViih/adtech/pull/16
+- `tsc --noEmit` zero erros em `components/marketing/` e `app/(marketing)/`
+- `vitest run` 425/425 passando
+- Design: sci-fi cinematográfico com Three.js WebGL + GSAP ScrollTrigger
+- Brand: AdHunter — crosshair SVG, Space Grotesk + Manrope, tagline "Mire melhor. Gaste menos."
 
 ---
 
