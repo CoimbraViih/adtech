@@ -1,9 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, Clock, Link2 } from "lucide-react";
-import { MOCK_CREATIVES } from "@/lib/creatives/mock-data";
-import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { CreativeTypeBadge } from "@/components/creatives/creative-type-badge";
 import { CreativeScore } from "@/components/creatives/creative-score";
 import { PolicyChecker } from "@/components/creatives/policy-checker";
@@ -19,17 +18,36 @@ export default async function CreativeDetailPage({
 }) {
   const { id } = await params;
 
-  // TODO(M3-backend): replace with Supabase query
-  const creative = MOCK_CREATIVES.find((c) => c.id === id);
-  if (!creative) notFound();
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
 
-  // TODO(M15-backend): replace with real session.workspace.id
-  const workspaceId = "ws_demo";
-  const initialAssets = await getAssetsByCreative(id);
+  const supabase = await createServerSupabaseClient();
+  const [creativeRes, initialAssets] = await Promise.all([
+    supabase
+      .from("creatives")
+      .select("*")
+      .eq("id", id)
+      .eq("workspace_id", session.workspace.id)
+      .single(),
+    getAssetsByCreative(id),
+  ]);
 
-  const campaign = creative.campaign_id
-    ? MOCK_CAMPAIGNS.find((c) => c.id === creative.campaign_id)
-    : null;
+  if (!creativeRes.data) notFound();
+  const creative = creativeRes.data;
+
+  let campaign: { id: string; name: string } | null = null;
+  if (creative.campaign_id) {
+    const { data } = await supabase
+      .from("campaigns")
+      .select("id, name")
+      .eq("id", creative.campaign_id)
+      .single();
+    campaign = data;
+  }
 
   return (
     <div className="space-y-6">
@@ -249,7 +267,7 @@ export default async function CreativeDetailPage({
           Assets do criativo
         </h2>
         <AssetUploader
-          workspaceId={workspaceId}
+          workspaceId={session.workspace.id}
           creativeId={id}
           initialAssets={initialAssets}
         />

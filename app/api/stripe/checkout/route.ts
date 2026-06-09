@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { cookies } from "next/headers";
-import { getSessionFromCookies } from "@/lib/auth/session";
+import { requireServerSession } from "@/lib/supabase/server";
 import { canAccessBilling } from "@/lib/auth/roles";
 import { PLANS } from "@/lib/stripe/plans";
 
@@ -15,14 +14,10 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
-  const session = await getSessionFromCookies(cookieHeader);
-
-  if (!session) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
+  try {
+    session = await requireServerSession();
+  } catch {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 

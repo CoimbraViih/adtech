@@ -12,7 +12,6 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { getMockBidLandscape, getMockWinRateTimeSeries } from "@/lib/rtb/mock-data";
 
 const COLORS = {
   data: "var(--adflow-data)",
@@ -46,27 +45,55 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   );
 }
 
-type RtbPerformanceProps = {
-  campaignId: string;
+type BidLogEntry = {
+  bid_cpm: number | null;
+  outcome: string;
+  created_at: string;
 };
 
-export function RtbPerformance({ campaignId }: RtbPerformanceProps) {
-  const landscape = getMockBidLandscape(campaignId);
-  const timeSeries = getMockWinRateTimeSeries(campaignId);
+type RtbPerformanceProps = {
+  bidLog: BidLogEntry[];
+};
 
-  const landscapeData = landscape.map((b) => ({
-    cpm: `R$${b.cpm}–${b.cpm + 4}`,
-    bids: b.count,
-  }));
+function buildLandscape(bidLog: BidLogEntry[]) {
+  const buckets = [2, 6, 10, 14, 18, 22, 26, 30, 34, 38];
+  const counts = new Map<number, number>(buckets.map((b) => [b, 0]));
+  for (const entry of bidLog) {
+    if (entry.bid_cpm === null) continue;
+    const bucket = buckets.reduce((prev, curr) =>
+      Math.abs(curr - entry.bid_cpm!) < Math.abs(prev - entry.bid_cpm!) ? curr : prev
+    );
+    counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
+  }
+  return buckets.map((b) => ({ cpm: `R$${b}–${b + 4}`, bids: counts.get(b) ?? 0 }));
+}
 
-  const timeSeriesData = timeSeries.map((p) => {
-    const d = new Date(p.date + "T00:00:00");
-    return {
-      date: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-      "Win Rate (%)": +(p.winRate * 100).toFixed(1),
-      Bids: p.bids,
-    };
-  });
+function buildTimeSeries(bidLog: BidLogEntry[]) {
+  const byDate = new Map<string, { wins: number; total: number }>();
+  for (const entry of bidLog) {
+    const date = entry.created_at.slice(0, 10);
+    const existing = byDate.get(date) ?? { wins: 0, total: 0 };
+    byDate.set(date, {
+      wins: existing.wins + (entry.outcome === "win" ? 1 : 0),
+      total: existing.total + 1,
+    });
+  }
+  return Array.from(byDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, { wins, total }]) => {
+      const d = new Date(date + "T00:00:00");
+      return {
+        date: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+        "Win Rate (%)": total > 0 ? +((wins / total) * 100).toFixed(1) : 0,
+        Bids: total,
+      };
+    });
+}
+
+export function RtbPerformance({ bidLog }: RtbPerformanceProps) {
+  const landscapeData = buildLandscape(bidLog);
+
+  const timeSeriesData = buildTimeSeries(bidLog);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

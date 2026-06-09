@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,7 +14,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { PlanBadge } from "@/components/billing/plan-badge";
-import { FAKE_SESSION } from "@/lib/auth/session";
+import { logout } from "@/lib/auth/actions";
+import type { OrgPlan } from "@/types/database";
 
 function AdFlowLogo({ collapsed }: { collapsed: boolean }) {
   return (
@@ -35,8 +36,15 @@ function AdFlowLogo({ collapsed }: { collapsed: boolean }) {
 }
 
 /* ── Desktop sidebar (md+) ── */
-function DesktopSidebar() {
+function DesktopSidebar({ plan }: { plan: OrgPlan }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  function handleLogout() {
+    startTransition(async () => {
+      await logout();
+    });
+  }
 
   return (
     <TooltipProvider delay={0}>
@@ -58,11 +66,26 @@ function DesktopSidebar() {
             className="flex items-center justify-between px-3 py-2 mx-2 mb-1 rounded-md hover:bg-[color:var(--adflow-border)] transition-colors"
           >
             <span className="text-xs text-[color:var(--adflow-fg-muted)]">Plano atual</span>
-            <PlanBadge plan={FAKE_SESSION.organization.plan} />
+            <PlanBadge plan={plan} />
           </Link>
         )}
 
-        <div className="shrink-0 p-2 border-t border-[color:var(--adflow-border)]">
+        <div className="shrink-0 p-2 border-t border-[color:var(--adflow-border)] flex flex-col gap-1">
+          {/* Logout button */}
+          <button
+            onClick={handleLogout}
+            disabled={isPending}
+            aria-label="Sair"
+            className={cn(
+              "flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-danger)] hover:bg-[color:var(--adflow-danger)]/10 transition-colors disabled:opacity-50",
+              collapsed ? "justify-center" : ""
+            )}
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            {!collapsed && <span>{isPending ? "Saindo…" : "Sair"}</span>}
+          </button>
+
+          {/* Collapse toggle */}
           <button
             onClick={() => setCollapsed((c) => !c)}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -119,6 +142,6 @@ export function MobileSidebarTrigger() {
 }
 
 /* ── Default export: desktop sidebar ── */
-export function Sidebar() {
-  return <DesktopSidebar />;
+export function Sidebar({ plan }: { plan: OrgPlan }) {
+  return <DesktopSidebar plan={plan} />;
 }

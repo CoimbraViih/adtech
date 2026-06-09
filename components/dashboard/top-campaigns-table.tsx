@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { TopCampaign } from "@/lib/dashboard/mock-data";
+import type { TopCampaign } from "@/types/dashboard";
 
 const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const NUM = new Intl.NumberFormat("pt-BR");

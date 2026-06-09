@@ -1,44 +1,41 @@
-import { requireServerSession } from "@/lib/supabase/server";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { EventLogTable } from "@/components/pixel/event-log-table";
 import { PixelSnippet } from "@/components/pixel/pixel-snippet";
-import type { Pixel, PixelEvent } from "@/types/database";
-
-const MOCK_PIXEL: Pixel = {
-  id: "px_demo_001",
-  workspace_id: "ws_demo",
-  name: "Site Principal",
-  meta_pixel_id: "123456789012345",
-  google_tag_id: "G-XXXXXXXXXX",
-  domain: null,
-  created_at: new Date("2026-05-20").toISOString(),
-  updated_at: new Date("2026-05-20").toISOString(),
-};
-
-const MOCK_EVENTS: PixelEvent[] = [
-  { id: "ev_1", pixel_id: "px_demo_001", event_type: "page_view", event_name: null, url: "https://example.com/", referrer: "https://google.com", ip: "1.2.3.4", user_agent: "Mozilla/5.0", session_id: "s_abc123", value: null, currency: null, properties: null, received_at: new Date("2026-05-22T10:00:00").toISOString() },
-  { id: "ev_2", pixel_id: "px_demo_001", event_type: "purchase", event_name: null, url: "https://example.com/checkout/success", referrer: null, ip: "1.2.3.4", user_agent: "Mozilla/5.0", session_id: "s_abc123", value: 299.9, currency: "BRL", properties: { order_id: "ord_42" }, received_at: new Date("2026-05-22T10:05:00").toISOString() },
-  { id: "ev_3", pixel_id: "px_demo_001", event_type: "lead", event_name: null, url: "https://example.com/contato", referrer: null, ip: "5.6.7.8", user_agent: "Chrome/120", session_id: "s_xyz456", value: null, currency: null, properties: null, received_at: new Date("2026-05-22T11:00:00").toISOString() },
-];
+import type { PixelEvent } from "@/types/database";
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function PixelDetailPage({ params }: Props) {
-  let session;
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
     session = await requireServerSession();
   } catch {
     redirect("/login");
   }
-  void session;
 
   const { id } = await params;
+  const supabase = await createServerSupabaseClient();
 
-  // TODO(M4-backend): replace with Supabase queries
-  const pixel = MOCK_PIXEL.id === id ? MOCK_PIXEL : null;
-  if (!pixel) notFound();
+  const [pixelRes, eventsRes] = await Promise.all([
+    supabase
+      .from("pixels")
+      .select("*")
+      .eq("id", id)
+      .eq("workspace_id", session.workspace.id)
+      .single(),
+    supabase
+      .from("pixel_events")
+      .select("*")
+      .eq("pixel_id", id)
+      .order("received_at", { ascending: false })
+      .limit(100),
+  ]);
 
-  const events = MOCK_EVENTS.filter((e) => e.pixel_id === id);
+  if (!pixelRes.data) notFound();
+
+  const pixel = pixelRes.data;
+  const events: PixelEvent[] = eventsRes.data ?? [];
   const totalEvents = events.length;
   const purchases = events.filter((e) => e.event_type === "purchase");
   const revenue = purchases.reduce((sum, e) => sum + (e.value ?? 0), 0);

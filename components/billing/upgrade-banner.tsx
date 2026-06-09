@@ -3,17 +3,16 @@
 import { useState } from "react";
 import { Lock } from "lucide-react";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
-import { FAKE_SESSION } from "@/lib/auth/session";
 import type { OrgPlan } from "@/types/database";
 
 type UpgradeBannerProps = {
   feature: string;
   requiredPlan: OrgPlan;
+  currentPlan?: OrgPlan;
 };
 
-export function UpgradeBanner({ feature, requiredPlan }: UpgradeBannerProps) {
+export function UpgradeBanner({ feature, requiredPlan, currentPlan = "free" }: UpgradeBannerProps) {
   const [open, setOpen] = useState(false);
-  const currentPlan = FAKE_SESSION.organization.plan;
   const planLabel = requiredPlan === "agency" ? "Agency" : "Pro";
 
   return (

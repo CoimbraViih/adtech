@@ -246,11 +246,13 @@ function StepOrg({
 
 function StepWorkspace({
   orgName,
+  hideOrgConfirm,
   onSubmit,
   isPending,
   serverError,
 }: {
   orgName: string;
+  hideOrgConfirm?: boolean;
   onSubmit: (data: WorkspaceData) => void;
   isPending: boolean;
   serverError: string | null;
@@ -273,14 +275,16 @@ function StepWorkspace({
         </div>
       )}
 
-      <div className="rounded-md border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] px-3 py-2.5">
-        <p className="text-[11px] text-[color:var(--adflow-fg-muted)]">
-          Organização criada com sucesso
-        </p>
-        <p className="mt-0.5 text-xs font-medium text-[color:var(--adflow-fg)]">
-          {orgName}
-        </p>
-      </div>
+      {!hideOrgConfirm && (
+        <div className="rounded-md border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] px-3 py-2.5">
+          <p className="text-[11px] text-[color:var(--adflow-fg-muted)]">
+            Organização criada com sucesso
+          </p>
+          <p className="mt-0.5 text-xs font-medium text-[color:var(--adflow-fg)]">
+            {orgName}
+          </p>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-[color:var(--adflow-fg-muted)]">
@@ -343,9 +347,11 @@ function StepWorkspace({
 
 // ── Wizard ────────────────────────────────────────────────────────────────────
 
-export function OnboardingWizard() {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [orgData, setOrgData] = useState<OrgData | null>(null);
+export function OnboardingWizard({ existingOrgId }: { existingOrgId?: string | null }) {
+  const [step, setStep] = useState<1 | 2>(existingOrgId ? 2 : 1);
+  const [orgData, setOrgData] = useState<OrgData | null>(
+    existingOrgId ? { orgName: "", orgType: "agency" } : null
+  );
   const [serverError, setServerError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -355,14 +361,14 @@ export function OnboardingWizard() {
   }
 
   function handleWorkspaceSubmit(data: WorkspaceData) {
-    if (!orgData) return;
     setServerError(null);
     startTransition(async () => {
       const result = await completeOnboarding({
-        orgName: orgData.orgName,
-        orgType: orgData.orgType,
+        orgName: orgData?.orgName ?? "",
+        orgType: orgData?.orgType ?? "agency",
         workspaceName: data.workspaceName,
         workspaceDescription: data.workspaceDescription,
+        existingOrgId: existingOrgId ?? undefined,
       });
       if (result && "error" in result) {
         setServerError(result.error);
@@ -390,7 +396,7 @@ export function OnboardingWizard() {
           </div>
         )}
 
-        {step === 2 && orgData && (
+        {step === 2 && (orgData || existingOrgId) && (
           <div>
             <h2 className="text-sm font-semibold text-[color:var(--adflow-fg)]">
               Crie seu primeiro workspace
@@ -400,7 +406,8 @@ export function OnboardingWizard() {
             </p>
             <div className="mt-4">
               <StepWorkspace
-                orgName={orgData.orgName}
+                orgName={orgData?.orgName ?? ""}
+                hideOrgConfirm={!!existingOrgId}
                 onSubmit={handleWorkspaceSubmit}
                 isPending={isPending}
                 serverError={serverError}

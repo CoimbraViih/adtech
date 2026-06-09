@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CreditCard, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
-import { FAKE_SESSION } from "@/lib/auth/session";
+import type { OrgPlan } from "@/types/database";
 import {
   PLANS,
   campaignLimit,
@@ -15,13 +15,10 @@ import { PlanBadge } from "@/components/billing/plan-badge";
 import { UsageMeter } from "@/components/billing/usage-meter";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
 
-// Mock usage — TODO(M9-backend): fetch from Supabase
-const MOCK_USAGE = { campaigns: 2, creatives: 7, pixels: 1 };
+type Usage = { campaigns: number; creatives: number; pixels: number };
 
-export function BillingPageClient() {
+export function BillingPageClient({ plan, usage }: { plan: OrgPlan; usage: Usage }) {
   const params = useSearchParams();
-  const session = FAKE_SESSION;
-  const plan = session.organization.plan;
   const planConfig = PLANS[plan];
 
   const checkoutStatus = params.get("checkout");
@@ -113,17 +110,17 @@ export function BillingPageClient() {
           </p>
           <UsageMeter
             label="Campanhas"
-            current={MOCK_USAGE.campaigns}
+            current={usage.campaigns}
             limit={campaignLimit(plan)}
           />
           <UsageMeter
             label="Criativos"
-            current={MOCK_USAGE.creatives}
+            current={usage.creatives}
             limit={creativeLimit(plan)}
           />
           <UsageMeter
             label="Pixels"
-            current={MOCK_USAGE.pixels}
+            current={usage.pixels}
             limit={pixelLimit(plan)}
           />
         </div>

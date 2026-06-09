@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { canManageCreatives } from "@/lib/auth/roles";
-import { MOCK_CREATIVES } from "@/lib/creatives/mock-data";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -40,19 +39,24 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status");
   const campaignId = searchParams.get("campaign_id");
 
-  // TODO(M3-backend): replace with Supabase query
-  // const { data } = await supabase.from("creatives").select("*")
-  //   .eq("workspace_id", session.workspace.id)
-  //   .order("created_at", { ascending: false });
+  const supabase = await createServerSupabaseClient();
+  let query = supabase
+    .from("creatives")
+    .select("*")
+    .eq("workspace_id", session.workspace.id);
 
-  void session;
+  if (type) query = query.eq("type", type);
+  if (status) query = query.eq("status", status);
+  if (campaignId) query = query.eq("campaign_id", campaignId);
 
-  let creatives = MOCK_CREATIVES.filter((c) => c.workspace_id === "ws_demo");
-  if (type) creatives = creatives.filter((c) => c.type === type);
-  if (status) creatives = creatives.filter((c) => c.status === status);
-  if (campaignId) creatives = creatives.filter((c) => c.campaign_id === campaignId);
+  const { data: creatives, error } = await query.order("created_at", { ascending: false });
 
-  return NextResponse.json(creatives);
+  if (error) {
+    console.error("[creatives/list]", error.message);
+    return NextResponse.json({ error: "Erro ao buscar criativos." }, { status: 500 });
+  }
+
+  return NextResponse.json(creatives ?? []);
 }
 
 // POST /api/creatives — save a creative
@@ -84,35 +88,36 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // TODO(M3-backend): insert into Supabase
-  // const { data, error } = await supabase.from("creatives").insert({
-  //   workspace_id: session.workspace.id,
-  //   ...parsed.data,
-  // }).select().single();
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("creatives")
+    .insert({
+      workspace_id: session.workspace.id,
+      status: "draft",
+      version: 1,
+      parent_id: null,
+      ...parsed.data,
+      campaign_id: parsed.data.campaign_id ?? null,
+      headline: parsed.data.headline ?? null,
+      description: parsed.data.description ?? null,
+      cta: parsed.data.cta ?? null,
+      asset_url: parsed.data.asset_url ?? null,
+      thumbnail_url: parsed.data.thumbnail_url ?? null,
+      format: parsed.data.format ?? null,
+      prompt: parsed.data.prompt ?? null,
+      model_used: parsed.data.model_used ?? null,
+      score: parsed.data.score ?? null,
+      score_breakdown: parsed.data.score_breakdown ?? null,
+      policy_items: parsed.data.policy_items ?? null,
+      policy_passed: parsed.data.policy_passed ?? null,
+    })
+    .select()
+    .single();
 
-  const newCreative = {
-    id: `cre_${Date.now()}`,
-    workspace_id: session.workspace.id,
-    status: "draft" as const,
-    version: 1,
-    parent_id: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    ...parsed.data,
-    campaign_id: parsed.data.campaign_id ?? null,
-    headline: parsed.data.headline ?? null,
-    description: parsed.data.description ?? null,
-    cta: parsed.data.cta ?? null,
-    asset_url: parsed.data.asset_url ?? null,
-    thumbnail_url: parsed.data.thumbnail_url ?? null,
-    format: parsed.data.format ?? null,
-    prompt: parsed.data.prompt ?? null,
-    model_used: parsed.data.model_used ?? null,
-    score: parsed.data.score ?? null,
-    score_breakdown: parsed.data.score_breakdown ?? null,
-    policy_items: parsed.data.policy_items ?? null,
-    policy_passed: parsed.data.policy_passed ?? null,
-  };
+  if (error) {
+    console.error("[creatives/create]", error.message);
+    return NextResponse.json({ error: "Erro ao criar criativo." }, { status: 500 });
+  }
 
-  return NextResponse.json(newCreative, { status: 201 });
+  return NextResponse.json(data, { status: 201 });
 }

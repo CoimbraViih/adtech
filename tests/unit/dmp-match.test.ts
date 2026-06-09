@@ -1,32 +1,30 @@
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { vi, describe, it, expect } from "vitest";
 
-vi.mock("@/lib/rtb/mock-data", () => ({
-  MOCK_AUDIENCES: [
-    {
-      id: "aud_1",
-      workspace_id: "ws_1",
-      name: "Audience 1",
-      type: "behavioral",
-      description: null,
-      rules: [{ event_type: "page_view", operator: "gte", value: 1, lookback_days: 30 }],
-      lookalike_source_id: null,
-      size_estimate: 5000,
-      created_at: "2026-05-01T00:00:00Z",
-      updated_at: "2026-05-01T00:00:00Z",
-    },
-    {
-      id: "aud_2",
-      workspace_id: "ws_1",
-      name: "Audience 2",
-      type: "lookalike",
-      description: null,
-      rules: [],
-      lookalike_source_id: null,
-      size_estimate: 3000,
-      created_at: "2026-05-01T00:00:00Z",
-      updated_at: "2026-05-01T00:00:00Z",
-    },
-  ],
+const FAKE_AUDIENCES = [
+  { id: "aud_1" },
+  { id: "aud_2" },
+];
+
+vi.mock("@/lib/supabase/service", () => ({
+  createServiceClient: vi.fn(() => ({
+    from: vi.fn((table: string) => {
+      if (table === "dmp_optouts") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+            })),
+          })),
+        };
+      }
+      // audiences table
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(async () => ({ data: FAKE_AUDIENCES, error: null })),
+        })),
+      };
+    }),
+  })),
 }));
 
 import { matchUserToSegments, evaluateAudienceRules, hashUserId } from "@/lib/rtb/dmp";

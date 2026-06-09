@@ -1,13 +1,20 @@
+import { redirect } from "next/navigation";
+import { requireServerSession } from "@/lib/supabase/server";
 import { fetchAllRules } from "@/lib/automation/rules";
 import { AlertRulesTable } from "@/components/automation/alert-rules-table";
 import type { AlertRule } from "@/types/database";
 
-const MOCK_WORKSPACE_ID = "00000000-0000-0000-0000-000000000001";
-
 export default async function AutomationPage() {
+  let session;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
+
   let rules: AlertRule[] = [];
   try {
-    rules = await fetchAllRules(MOCK_WORKSPACE_ID);
+    rules = await fetchAllRules(session.workspace.id);
   } catch {
     // No rules yet or DB not connected
   }
@@ -25,7 +32,7 @@ export default async function AutomationPage() {
         </div>
       </div>
 
-      <AlertRulesTable initialRules={rules} workspaceId={MOCK_WORKSPACE_ID} />
+      <AlertRulesTable initialRules={rules} workspaceId={session.workspace.id} />
     </div>
   );
 }

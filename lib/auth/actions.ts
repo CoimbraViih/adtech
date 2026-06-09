@@ -1,183 +1,137 @@
 "use server";
 
-/**
- * Server Actions for auth flows.
- *
- * These run server-side and manage the session cookie directly.
- * Forms call these via useTransition / router.refresh — no API route needed.
- *
- * TODO(M1-backend) markers show exactly what to replace for real Supabase.
- */
-
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  FAKE_SESSION,
-  buildSessionCookie,
-  clearSessionCookie,
-  encodeSession,
-} from "@/lib/auth/session";
-import type { SessionContext, OrgRole } from "@/types/database";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
-// ── Login (magic link) ────────────────────────────────────────────────────────
-
-/**
- * Called by LoginForm after the user submits their e-mail.
- * In fake mode: always "succeeds" — returns the sentinel that triggers the
- * success state on the client.  No cookie is set yet; the real cookie is set
- * after the user clicks the link.
- *
- * TODO(M1-backend):
- *   const supabase = await createServerClientFromCookies();
- *   const { error } = await supabase.auth.signInWithOtp({
- *     email,
- *     options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback` },
- *   });
- *   if (error) return { error: error.message };
- *   return { ok: true };
- */
 export async function sendMagicLink(
   email: string
 ): Promise<{ ok: true } | { error: string }> {
-  // Simulate network latency
-  await delay(500);
+  const supabase = await createServerSupabaseClient();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-  if (!email.includes("@")) {
-    return { error: "E-mail inválido." };
-  }
-
-  console.info("[fake-auth] magic link sent to:", email);
-  return { ok: true };
-}
-
-// ── Login (fake instant — for dev convenience) ────────────────────────────────
-
-/**
- * Dev-only action: set a fake session cookie immediately, skipping the e-mail
- * flow. Accessible via GET /api/auth/dev-login (see route below).
- * Removed in production builds automatically via NODE_ENV check in the route.
- */
-export async function devLogin(nextPath = "/dashboard") {
-  if (
-    process.env.NODE_ENV === "production" ||
-    process.env.ENABLE_DEV_LOGIN !== "true"
-  ) {
-    throw new Error("devLogin is not available in this environment");
-  }
-  const cookieStore = await cookies();
-  cookieStore.set({
-    name: "adflow_session",
-    value: encodeSession(FAKE_SESSION),
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 604800,
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: `${appUrl}/callback` },
   });
-  redirect(nextPath);
-}
 
-// ── Signup ────────────────────────────────────────────────────────────────────
-
-/**
- * TODO(M1-backend):
- *   const supabase = await createServerClientFromCookies();
- *   const { error } = await supabase.auth.signInWithOtp({
- *     email,
- *     options: {
- *       data: { display_name: name },
- *       emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?onboarding=1`,
- *     },
- *   });
- */
-export async function signUp(
-  name: string,
-  email: string
-): Promise<{ ok: true } | { error: string }> {
-  await delay(600);
-  console.info("[fake-auth] signup:", { name, email });
+  if (error) return { error: translateAuthError(error.message) };
   return { ok: true };
 }
 
-// ── Onboarding (create org + workspace) ──────────────────────────────────────
+function translateAuthError(message: string): string {
+  if (message.includes("rate limit") || message.includes("over_email_send_rate_limit"))
+    return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+  if (message.includes("already registered") || message.includes("User already registered"))
+    return "Este e-mail já está cadastrado. Tente fazer login.";
+  if (message.includes("invalid email") || message.includes("Invalid email"))
+    return "E-mail inválido.";
+  if (message.includes("Password should be"))
+    return "A senha deve ter no mínimo 6 caracteres.";
+  if (message.includes("Email not confirmed"))
+    return "E-mail não confirmado. Verifique sua caixa de entrada.";
+  return "Erro ao criar conta. Tente novamente.";
+}
+
+export async function signUpWithPassword(
+  name: string,
+  email: string,
+  password: string
+): Promise<{ ok: true; needsConfirmation: boolean } | { error: string }> {
+  const supabase = await createServerSupabaseClient();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { display_name: name },
+      emailRedirectTo: `${appUrl}/callback?onboarding=1`,
+    },
+  });
+
+  if (error) return { error: translateAuthError(error.message) };
+
+  // session is non-null when email confirmation is disabled (auto-confirmed)
+  const needsConfirmation = !data.session;
+  return { ok: true, needsConfirmation };
+}
 
 type OnboardingInput = {
   orgName: string;
   orgType: "agency" | "advertiser" | "freelancer";
   workspaceName: string;
   workspaceDescription?: string;
+  existingOrgId?: string;
 };
 
-/**
- * Creates the org + workspace and sets the session cookie.
- * Redirects to /dashboard on success.
- *
- * TODO(M1-backend):
- *   1. supabase.from("organizations").insert({ name, plan: "free" }) → org
- *   2. supabase.from("organization_members").insert({ org_id, user_id, role: "owner" })
- *   3. supabase.from("workspaces").insert({ org_id, name, description }) → ws
- *   4. supabase.from("workspace_members").insert({ ws_id, user_id, role: "owner" })
- *   5. Session is refreshed automatically via Supabase cookie.
- */
 export async function completeOnboarding(
   input: OnboardingInput
 ): Promise<{ ok: true } | { error: string }> {
-  await delay(800);
+  // Verify user identity via the user-scoped client
+  const authClient = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await authClient.auth.getUser();
 
-  const session: SessionContext = {
-    ...FAKE_SESSION,
-    organization: {
-      ...FAKE_SESSION.organization,
-      name: input.orgName,
-    },
-    workspace: {
-      ...FAKE_SESSION.workspace,
+  if (!user) return { error: "Não autenticado." };
+
+  // Use service role for DB operations to avoid the RLS bootstrap chicken-and-egg:
+  // org_select requires org membership, but we can't add membership until org exists.
+  const db = createServiceClient();
+
+  let orgId: string;
+
+  if (input.existingOrgId) {
+    orgId = input.existingOrgId;
+  } else {
+    // 1. Criar organização
+    const { data: org, error: orgError } = await db
+      .from("organizations")
+      .insert({ name: input.orgName, plan: "free" })
+      .select("id")
+      .single();
+
+    if (orgError || !org) return { error: "Erro ao criar organização." };
+    orgId = org.id as string;
+
+    // 2. Adicionar usuário como owner da org
+    const { error: omError } = await db.from("organization_members").insert({
+      organization_id: orgId,
+      user_id: user.id,
+      role: "owner",
+    });
+
+    if (omError) return { error: "Erro ao configurar organização." };
+  }
+
+  // 3. Criar workspace
+  const { data: ws, error: wsError } = await db
+    .from("workspaces")
+    .insert({
+      organization_id: orgId,
       name: input.workspaceName,
       description: input.workspaceDescription ?? null,
-    },
-    role: "owner" as OrgRole,
-  };
+    })
+    .select("id")
+    .single();
 
-  const cookieStore = await cookies();
-  cookieStore.set({
-    name: "adflow_session",
-    value: encodeSession(session),
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 604800,
+  if (wsError || !ws) return { error: "Erro ao criar workspace." };
+
+  // 4. Adicionar usuário como owner do workspace
+  const { error: wmError } = await db.from("workspace_members").insert({
+    workspace_id: ws.id,
+    user_id: user.id,
+    role: "owner",
   });
 
-  console.info("[fake-auth] onboarding complete:", { org: input.orgName, ws: input.workspaceName });
+  if (wmError) return { error: "Erro ao configurar workspace." };
+
   redirect("/dashboard");
 }
 
-// ── Logout ────────────────────────────────────────────────────────────────────
-
-/**
- * TODO(M1-backend):
- *   const supabase = await createServerClientFromCookies();
- *   await supabase.auth.signOut();
- *   // @supabase/ssr clears the cookie automatically
- */
 export async function logout() {
-  const cookieStore = await cookies();
-  cookieStore.set({
-    name: "adflow_session",
-    value: "",
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 0,
-  });
+  const supabase = await createServerSupabaseClient();
+  await supabase.auth.signOut();
   redirect("/login");
 }
-
-// ── Utils ─────────────────────────────────────────────────────────────────────
-
-function delay(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-// Keep import happy — used in buildSessionCookie JSDoc
-void clearSessionCookie;
-void buildSessionCookie;

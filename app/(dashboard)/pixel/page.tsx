@@ -1,33 +1,9 @@
 import { Suspense } from "react";
-import { requireServerSession } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { PixelListClient } from "@/components/pixel/pixel-list-client";
 import { CreatePixelDialog } from "@/components/pixel/create-pixel-dialog";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
-import type { Pixel } from "@/types/database";
-
-const MOCK_PIXELS: Pixel[] = [
-  {
-    id: "px_demo_001",
-    workspace_id: "ws_demo",
-    name: "Site Principal",
-    meta_pixel_id: "123456789012345",
-    google_tag_id: "G-XXXXXXXXXX",
-    domain: null,
-    created_at: new Date("2026-05-20").toISOString(),
-    updated_at: new Date("2026-05-20").toISOString(),
-  },
-  {
-    id: "px_demo_002",
-    workspace_id: "ws_demo",
-    name: "Landing Page Oferta",
-    meta_pixel_id: null,
-    google_tag_id: null,
-    domain: null,
-    created_at: new Date("2026-05-21").toISOString(),
-    updated_at: new Date("2026-05-21").toISOString(),
-  },
-];
 
 export default async function PixelPage({
   searchParams,
@@ -40,7 +16,6 @@ export default async function PixelPage({
   } catch {
     redirect("/login");
   }
-  void session;
 
   const sp = await searchParams;
   const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
@@ -49,8 +24,14 @@ export default async function PixelPage({
     ? (sp.compare as CompareMode)
     : "prev_period";
 
-  // TODO(M4-backend): replace with Supabase query
-  const pixels = MOCK_PIXELS;
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase
+    .from("pixels")
+    .select("*")
+    .eq("workspace_id", session.workspace.id)
+    .order("created_at", { ascending: false });
+
+  const pixels = data ?? [];
 
   return (
     <div className="p-6 space-y-6">

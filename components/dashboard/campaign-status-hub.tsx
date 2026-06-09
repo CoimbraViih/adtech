@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Play, Pause, FileText, Archive } from "lucide-react";
-import type { CampaignStatusCounts } from "@/lib/dashboard/mock-data";
+import type { CampaignStatusCounts } from "@/types/dashboard";
 
 type Props = { counts: CampaignStatusCounts };
 

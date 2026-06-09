@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
-import { MOCK_RTB_CAMPAIGNS } from "@/lib/rtb/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
 const patchSchema = z.object({
@@ -13,32 +12,34 @@ const patchSchema = z.object({
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-// GET /api/rtb/campaigns/[id]
 export async function GET(_req: NextRequest, ctx: RouteContext) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
   const { id } = await ctx.params;
+  const supabase = await createServerSupabaseClient();
+  const { data: campaign, error } = await supabase
+    .from("rtb_campaigns")
+    .select("*")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
 
-  // TODO(M8-backend): replace with Supabase query
-  const campaign = MOCK_RTB_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
-    return NextResponse.json(
-      { error: "Campanha RTB não encontrada." },
-      { status: 404 }
-    );
+  if (error || !campaign) {
+    return NextResponse.json({ error: "Campanha RTB não encontrada." }, { status: 404 });
   }
 
   return NextResponse.json({ data: campaign });
 }
 
-// PATCH /api/rtb/campaigns/[id] — update status, budget, etc.
 export async function PATCH(req: NextRequest, ctx: RouteContext) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
@@ -61,41 +62,63 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     );
   }
 
-  // TODO(M8-backend): update in Supabase
-  const campaign = MOCK_RTB_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
-    return NextResponse.json(
-      { error: "Campanha RTB não encontrada." },
-      { status: 404 }
-    );
+  const supabase = await createServerSupabaseClient();
+  const { data: existing } = await supabase
+    .from("rtb_campaigns")
+    .select("id")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
+
+  if (!existing) {
+    return NextResponse.json({ error: "Campanha RTB não encontrada." }, { status: 404 });
   }
 
-  const updated = {
-    ...campaign,
-    ...parsed.data,
-    updated_at: new Date().toISOString(),
-  };
+  const { data: updated, error: updateError } = await supabase
+    .from("rtb_campaigns")
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .select()
+    .single();
+
+  if (updateError || !updated) {
+    return NextResponse.json({ error: "Erro ao atualizar campanha RTB." }, { status: 500 });
+  }
 
   return NextResponse.json({ data: updated });
 }
 
-// DELETE /api/rtb/campaigns/[id]
 export async function DELETE(_req: NextRequest, ctx: RouteContext) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
   const { id } = await ctx.params;
+  const supabase = await createServerSupabaseClient();
 
-  // TODO(M8-backend): soft-delete (status = 'archived') in Supabase
-  const campaign = MOCK_RTB_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
-    return NextResponse.json(
-      { error: "Campanha RTB não encontrada." },
-      { status: 404 }
-    );
+  const { data: existing } = await supabase
+    .from("rtb_campaigns")
+    .select("id")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
+
+  if (!existing) {
+    return NextResponse.json({ error: "Campanha RTB não encontrada." }, { status: 404 });
+  }
+
+  const { error: archiveError } = await supabase
+    .from("rtb_campaigns")
+    .update({ status: "archived", updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id);
+
+  if (archiveError) {
+    return NextResponse.json({ error: "Erro ao arquivar campanha RTB." }, { status: 500 });
   }
 
   return new Response(null, { status: 204 });
