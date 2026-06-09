@@ -1,3 +1,5 @@
+import { getCredentialField } from "@/lib/integrations/credentials";
+
 type SendAlertEmailParams = {
   to: string;
   alertTitle: string;
@@ -5,13 +7,16 @@ type SendAlertEmailParams = {
   workspaceName: string;
 };
 
-export async function sendAlertEmail({
-  to,
-  alertTitle,
-  alertBody,
-  workspaceName,
-}: SendAlertEmailParams): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
+export async function sendAlertEmail(
+  organizationId: string,
+  {
+    to,
+    alertTitle,
+    alertBody,
+    workspaceName,
+  }: SendAlertEmailParams
+): Promise<void> {
+  const apiKey = await getCredentialField(organizationId, "resend", "api_key", "RESEND_API_KEY");
   if (!apiKey) {
     console.warn("[automation] RESEND_API_KEY not set — skipping email");
     return;
@@ -44,7 +49,8 @@ export async function sendAlertEmail({
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    console.error("[automation] Resend error:", res.status, text);
+    console.error("[email] send failed:", res.status);
+    return;
   }
+  console.info("[email] alert email queued");
 }

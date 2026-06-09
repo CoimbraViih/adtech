@@ -75,8 +75,9 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
   return (
     <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
       {NAV_ITEMS.map((item) => {
-        const active =
-          pathname === item.href || pathname.startsWith(item.href + "/");
+        const active = item.matchPrefix
+          ? pathname.startsWith(item.href)
+          : pathname === item.href || pathname.startsWith(item.href + "/");
         return (
           <NavLink
             key={item.href}

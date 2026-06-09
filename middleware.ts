@@ -16,16 +16,17 @@ import type { NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { SESSION_COOKIE, decodeSession } from "@/lib/auth/session";
 
-// Routes that are always public (no auth required)
+// Routes that are always public (no auth required).
+// Note: /login and /signup are intentionally absent here — they are handled by
+// AUTH_ONLY_PATHS below, which redirects logged-in users to /dashboard.
 const PUBLIC_PATHS = [
   "/",                   // M6 — marketing landing page
-  "/login",
-  "/signup",
   "/onboarding",
   "/callback",
   "/api/health",
   "/api/pixel",          // M4 — public ingestion endpoint
   "/api/leads",          // M6 — public waitlist endpoint
+  "/api/audiences/optout", // LGPD — DMP opt-out endpoint (no auth required)
   "/api/auth/dev-login", // dev-only shortcut — blocked in prod by route handler
 ];
 
@@ -71,8 +72,12 @@ export async function middleware(request: NextRequest) {
   // 6. Dashboard + all other protected routes: must be authenticated
   if (!isAuthenticated) {
     const loginUrl = new URL("/login", request.url);
-    // Preserve the intended destination so login can redirect back
-    loginUrl.searchParams.set("next", pathname);
+    // Sanitize against open-redirect: only allow same-origin relative paths
+    const safeNext =
+      pathname.startsWith("/") && !pathname.startsWith("//")
+        ? pathname
+        : "/dashboard";
+    loginUrl.searchParams.set("next", safeNext);
     return NextResponse.redirect(loginUrl);
   }
 

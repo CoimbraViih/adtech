@@ -2,6 +2,8 @@ import { z } from "zod";
 import { MOCK_RTB_CAMPAIGNS } from "@/lib/rtb/mock-data";
 import { selectBid, buildBidResponse } from "@/lib/rtb/bidder";
 import { matchUserToSegments } from "@/lib/rtb/dmp";
+import { maskIp } from "@/lib/security/ip";
+import { createRateLimiter } from "@/lib/security/rate-limit";
 
 const BidRequestSchema = z.object({
   id: z.string().min(1),
@@ -23,21 +25,33 @@ const BidRequestSchema = z.object({
   tmax: z.number().optional(),
 });
 
+const RTB_PAYLOAD_LIMIT = 50 * 1024; // 50 KB per OpenRTB spec recommendation
+
+// 500 bid requests/min per IP (generous for SSP partners)
+const rtbIpLimiter = createRateLimiter("rtb-ip", 500, 60_000);
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-// OPTIONS — CORS preflight
 export async function OPTIONS(): Promise<Response> {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
-// POST /api/rtb/bid — OpenRTB 2.6 bid endpoint
 export async function POST(request: Request): Promise<Response> {
-  // Bearer token auth (if RTB_SSP_TOKEN is configured)
   const sspToken = process.env.RTB_SSP_TOKEN;
+
+  // In production, SSP token is mandatory. In dev, it's optional.
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd && !sspToken) {
+    return new Response(JSON.stringify({ error: "SSP token not configured." }), {
+      status: 503,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
+  }
+
   if (sspToken) {
     const authHeader = request.headers.get("Authorization");
     if (!authHeader || authHeader !== `Bearer ${sspToken}`) {
@@ -48,11 +62,42 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
+  // Payload size cap (50 KB — read raw body text)
+  let bodyText: string;
+  try {
+    bodyText = await (request as Request).text();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid request body." }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
+  }
+
+  if (bodyText.length > RTB_PAYLOAD_LIMIT) {
+    return new Response(JSON.stringify({ error: "Payload too large." }), {
+      status: 413,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
+  }
+
+  // IP rate limit
+  const rawIp =
+    (request.headers as Headers).get("x-forwarded-for")?.split(",")[0].trim() ??
+    (request.headers as Headers).get("x-real-ip") ??
+    "unknown";
+
+  if (rtbIpLimiter(rawIp)) {
+    return new Response(JSON.stringify({ error: "Too many requests." }), {
+      status: 429,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
+  }
+
   const startTime = Date.now();
 
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(bodyText);
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON body." }), {
       status: 400,
@@ -62,23 +107,17 @@ export async function POST(request: Request): Promise<Response> {
 
   const parsed = BidRequestSchema.safeParse(body);
   if (!parsed.success) {
-    console.error("[rtb/bid] validation error:", parsed.error.issues);
-    return new Response(
-      JSON.stringify({ error: "Invalid bid request." }),
-      {
-        status: 400,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ error: "Invalid bid request." }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
   }
 
   try {
     const bidRequest = parsed.data;
 
-    // Match user to DMP segments (side-effect: audience enrichment)
     await matchUserToSegments(bidRequest.user?.id ?? "", "demo");
 
-    // TODO(M8-backend): replace mock data with real DB query + log bid to bid_requests_log
     const campaigns = MOCK_RTB_CAMPAIGNS.filter((c) => c.status === "active");
 
     const bid = selectBid(campaigns, bidRequest, {
@@ -86,15 +125,13 @@ export async function POST(request: Request): Promise<Response> {
       impressionCounts: new Map(),
     });
 
-    const response = buildBidResponse(
-      bidRequest.id,
-      bidRequest.imp[0].id,
-      bid
-    );
-
+    const response = buildBidResponse(bidRequest.id, bidRequest.imp[0].id, bid);
     const elapsed = Date.now() - startTime;
 
-    // No eligible bid — return HTTP 204 (no content)
+    // Log anonymised IP only (LGPD)
+    const anonIp = maskIp(rawIp === "unknown" ? null : rawIp);
+    console.info("[rtb/bid] ip:", anonIp, "elapsed:", elapsed, "ms");
+
     if (!response.seatbid || response.seatbid.length === 0) {
       return new Response(null, {
         status: 204,
@@ -111,7 +148,7 @@ export async function POST(request: Request): Promise<Response> {
       },
     });
   } catch (err) {
-    console.error("[rtb/bid] unexpected error:", err);
+    console.error("[rtb/bid] unexpected error:", (err as Error).message);
     return new Response(
       JSON.stringify({ error: "Erro interno. Tente novamente mais tarde." }),
       {

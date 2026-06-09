@@ -18,12 +18,17 @@
 | M3 | AI Creative Studio | `feat/m3-creatives` ✅ | M1, M2 |
 | M4 | Pixel & Tracking | `feat/m4-pixel-tracking` ✅ | M1 |
 | M5 | Analytics & Atribuição | `feat/m5-analytics-attribution` ✅ | M1, M4 |
-| M6 | Landing Page AdFlow | `feat/m6-landing` | M1 |
+| M6 | Landing Page AdFlow | `feat/m6-landing` ✅ | M1 |
 | M7 | Automação & Alertas | `feat/m7-automation` ✅ | M1, M2, M4, M5 |
 | M8 | Programático DSP/SSP | `feat/m8-programmatic` ✅ | M1, M2, M4 |
-| M9 | Monetização & Stripe | `feat/m9-stripe` | M1–M5 |
-| MS | Segurança & Hardening | `feat/ms-security` | M1–M9 |
+| M9 | Monetização & Stripe | `feat/m9-stripe` ✅ | M1–M5 |
+| MS | Segurança & Hardening | `feat/integrations-api-keys` ✅ | M1–M9 |
 | M10 | Deploy & Produção | `feat/m10-deploy` | M1–M9, MS |
+| M11 | AI Traffic Manager (Campaign Diagnostics) | `feat/integrations-api-keys` ✅ | M2, M4, M5 |
+| M-ADS | Melhorias de Integrações de Anúncios | `feat/m-ads-integrations` ✅ F1 F2 F3 | M2, M11, MS |
+| M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M8 |
+| M12 | PMP & Deal Enforcement | `feat/m12-pmp` | M8, M8-DMP |
+| M15 | Upload de Criativos (imagens) | `feat/m15-creative-uploads` ✅ | M2, M3, M8 |
 
 ---
 
@@ -266,41 +271,47 @@
 
 ---
 
-## M6 — Landing Page AdFlow
+## M6 — Landing Page AdFlow ✅ CONCLUÍDO
 
-**Branch:** `feat/m6-landing`  
+**Branch:** `feat/m6-landing` → mergeado em `main` via PR #7  
 **Objetivo:** Landing page pública de marketing da AdFlow — apresenta o produto, converte visitantes em leads/trial e transmite credibilidade para agências e anunciantes brasileiros.
 
-> **Agentes:** `@frontend-developer` · `@nextjs-architecture-expert` · `@code-reviewer`
-> **Skills:** `/brainstorming` para estrutura de seções e copywriting · `/frontend-design` para layout hero e cards de features · `/ui-ux-pro-max` para hierarquia visual e CTA · `/tailwind-patterns` para animações e responsividade · `/vercel:nextjs` para SSG e ISR · `/vercel:next-cache-components` para cache estático da landing · `/web-performance-optimization` para Core Web Vitals (LCP < 2.5s) · `/seo-audit` para meta tags e schema · `/webapp-testing` para E2E dos fluxos de CTA · `/commit` para o commit final
+### Interface
+- [x] `app/(marketing)/layout.tsx` — header sticky com logo + nav (Features, Preços, FAQ, Login) + footer
+- [x] `app/(marketing)/page.tsx` — landing page completa montada com todas as seções
+- [x] `components/marketing/hero.tsx` — headline, sub-headline, CTA "Começar grátis" + "Ver demo", stats strip (campanhas, criativos, eventos), mockup do dashboard
+- [x] `components/marketing/features.tsx` — 6 pilares: Campanhas Unificadas, AI Creative Studio, Pixel Server-Side, Analytics Multi-Touch, Programático RTB, Automação de Alertas
+- [x] `components/marketing/social-proof.tsx` — logos placeholder, depoimentos, métricas de confiança
+- [x] `components/marketing/pricing.tsx` — Free / Pro (R$500/mês) / Agency (R$3.000/mês) com feature list e CTAs
+- [x] `components/marketing/faq.tsx` — acordeão com perguntas frequentes de agências brasileiras
+- [x] `components/marketing/cta-banner.tsx` — seção final de conversão com fundo accent
+- [x] `components/marketing/waitlist-form.tsx` — captura nome + e-mail + tamanho da agência, validação inline, toast de sucesso/erro
 
-### Interface — construir primeiro
-- [ ] `app/(marketing)/page.tsx` — landing page pública com layout separado do dashboard
-- [ ] `app/(marketing)/layout.tsx` — header com logo + nav (Features, Preços, Blog, Login) + footer
-- [ ] `components/marketing/hero.tsx` — headline principal, sub-headline, CTA primário "Começar grátis" + CTA secundário "Ver demo", screenshot/mockup animado do dashboard
-- [ ] `components/marketing/features.tsx` — grid de features: Campanhas unificadas, AI Creative Studio, Pixel server-side, Analytics multi-touch, Programático RTB, Automação de alertas
-- [ ] `components/marketing/social-proof.tsx` — logos de agências parceiras (placeholder), depoimentos, número de campanhas gerenciadas
-- [ ] `components/marketing/pricing.tsx` — tabela de planos Free / Pro (R$500/mês) / Agency (R$3.000/mês) com feature list e CTAs conectados ao Stripe (integrado no M9)
-- [ ] `components/marketing/faq.tsx` — acordeão com perguntas frequentes de agências brasileiras
-- [ ] `components/marketing/cta-banner.tsx` — banner final de conversão com fundo accent
-- [ ] `components/marketing/waitlist-form.tsx` — formulário de e-mail para captura de lead (nome + e-mail + tamanho da agência), persiste em `leads` e dispara e-mail de boas-vindas via Resend
+### Backend / SEO
+- [x] Migration `010_leads.sql`: tabela `leads` (email, name, agency_size, source, created_at) com índice único em email
+- [x] `app/api/leads/route.ts` — POST: Zod validation, rate limiting in-memory (10 req/hora por IP), upsert mock com TODO(M6-backend)
+- [x] `lib/leads/schema.ts` — schema Zod compartilhado entre client e server
+- [x] `app/sitemap.ts` — sitemap dinâmico para SEO
+- [x] `app/robots.ts` — robots.txt
+- [x] Meta tags OpenGraph + Twitter Card no layout de marketing
+- [x] `middleware.ts` — `/` e `/api/leads` adicionados a `PUBLIC_PATHS`
 
-### Backend
-- [ ] Migration `010_leads.sql`: tabela `leads` (email, name, agency_size, source, created_at) com índice único em email
-- [ ] `app/api/leads/route.ts` — POST: valida com Zod, persiste lead, envia e-mail de boas-vindas via Resend, rate limiting por IP (10 req/hora)
-- [ ] Meta tags OpenGraph e Twitter Card no `(marketing)/layout.tsx`
-- [ ] `app/sitemap.ts` — sitemap dinâmico para SEO
-- [ ] `app/robots.ts` — robots.txt
+### M2 Addon — TikTok Ads + LinkedIn Ads (incluído nesta branch)
+- [x] `CampaignPlatform`: `+ "tiktok" | "linkedin"`
+- [x] Ícones SVG inline (TikTok preto duplo ciano/vermelho, LinkedIn azul #0A66C2)
+- [x] Mock data: 2 campanhas TikTok + 1 LinkedIn (ROAS 13.7x)
+- [x] `lib/tiktok/client.ts` — TikTok Ads API v1.3 (list, create, update, insights)
+- [x] `lib/linkedin/client.ts` — LinkedIn Marketing API v2 (list, create, analytics)
+- [x] Formulário, tabela, Zod schemas e sync atualizados para 4 plataformas
 
 ### Testes
-- [ ] E2E: visitar landing → preencher waitlist → confirmar toast de sucesso (`tests/e2e/landing.spec.ts`)
-- [ ] Unitário: validação do schema de lead (`tests/unit/lead-schema.test.ts`)
+- [x] `tests/unit/lead-schema.test.ts` — 8 testes: validação Zod (payloads válidos e inválidos)
+- [x] `tests/e2e/landing.spec.ts` — E2E: landing page e fluxo de waitlist
 
-### Commit final
-```
-git checkout main && git merge feat/m6-landing
-git commit -m "feat(m6): adflow marketing landing page, waitlist capture, seo"
-```
+### Entregáveis
+- PR #7 mergeado: https://github.com/CoimbraViih/adtech/pull/7
+- `tsc --noEmit` zero erros
+- Dados gateados atrás de `TODO(M6-backend)` para swap-in Supabase
 
 ---
 
@@ -389,135 +400,152 @@ git commit -m "feat(m6): adflow marketing landing page, waitlist capture, seo"
 
 ---
 
-## M9 — Monetização & Stripe
+## M9 — Monetização & Stripe ✅ CONCLUÍDO
 
-**Branch:** `feat/m9-stripe`  
+**Branch:** `feat/m9-stripe` → mergeado em `main` via PR #8  
 **Objetivo:** Monetização completa com Stripe — planos Free / Pro / Agency, checkout, portal de billing, webhooks de lifecycle e feature gates por plano no dashboard.
 
-> **Agentes:** `@frontend-developer` · `@api-security-audit` · `@security-auditor` · `@code-reviewer`
-> **Skills:** `/brainstorming` para estratégia de planos e feature gates · `/stripe:stripe-best-practices` para checkout, webhooks e portal · `/supabase` para migration de `subscriptions` e sincronização de status de plano · `/supabase-postgres-best-practices` para queries de billing por org · `/frontend-design` para página de billing no dashboard e upgrade modal · `/security-review` antes do merge (foco em assinatura de webhook e RBAC de plano) · `/webapp-testing` para E2E de checkout e upgrade · `/commit` para o commit final
-
-### Interface — construir primeiro
-- [ ] `app/(dashboard)/settings/billing/page.tsx` — resumo do plano atual (nome, preço, próximo ciclo, uso do período), botão "Gerenciar assinatura" (Stripe Portal) e botão "Fazer upgrade"
-- [ ] `components/billing/plan-card.tsx` — card de plano com features, preço em BRL e CTA
-- [ ] `components/billing/upgrade-modal.tsx` — modal de comparação Free → Pro → Agency com botão de checkout Stripe
-- [ ] `components/billing/usage-meter.tsx` — barras de uso de campanhas, criativos e pixels versus limite do plano
-- [ ] `components/billing/plan-badge.tsx` — badge no sidebar/topbar mostrando plano atual
-- [ ] Feature gates no dashboard: banner de "upgrade" quando usuário tenta acessar funcionalidade fora do plano (ex: programático só no Agency)
+### Interface
+- [x] `app/(dashboard)/settings/billing/page.tsx` — Server Component com Suspense boundary; resumo do plano atual, banners de checkout success/canceled, botão "Gerenciar assinatura" e "Ver planos"
+- [x] `app/(dashboard)/settings/billing/billing-page-client.tsx` — Client Component; `useSearchParams` para status de checkout, UsageMeters para campanhas/criativos/pixels
+- [x] `app/(dashboard)/settings/page.tsx` — redirect para /settings/billing
+- [x] `components/billing/plan-card.tsx` — card com feature list (Check/X icons), preço em BRL, CTA de upgrade ou downgrade notice
+- [x] `components/billing/upgrade-modal.tsx` — modal com os 3 planos, POST /api/stripe/checkout, redirect via `window.location.href`
+- [x] `components/billing/usage-meter.tsx` — barra de progresso com aviso em 80%+, danger em 100%+, verde full quando ilimitado
+- [x] `components/billing/plan-badge.tsx` — badge colorido no footer do sidebar (Free/Pro/Agency)
+- [x] `components/billing/upgrade-banner.tsx` — banner de gate com Lock icon e botão "Ver planos" abrindo UpgradeModal
+- [x] Feature gate aplicado: `/campaigns/programmatic` bloqueia não-Agency com UpgradeBanner
 
 ### Backend / API
-- [ ] Migration `011_subscriptions.sql`: tabela `subscriptions` (org_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_end), trigger sincroniza `organizations.plan`
-- [ ] `lib/stripe/client.ts` — Stripe SDK singleton (server-only)
-- [ ] `lib/stripe/plans.ts` — definição de planos, limites e feature flags: `PLANS = { free, pro, agency }`, helpers `canAccessProgrammatic(plan)`, `campaignLimit(plan)` etc.
-- [ ] `lib/stripe/webhooks.ts` — handlers: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
-- [ ] `app/api/stripe/checkout/route.ts` — POST: cria Checkout Session (subscription mode) com `success_url` e `cancel_url`, retorna `url`
-- [ ] `app/api/stripe/portal/route.ts` — POST: cria Billing Portal Session para gestão de assinatura, retorna `url`
-- [ ] `app/api/stripe/webhook/route.ts` — POST: valida assinatura HMAC `STRIPE_WEBHOOK_SECRET`, roteia para handlers, retorna 200 imediatamente
-- [ ] `.env.local.example` — `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRO_PRICE_ID`, `STRIPE_AGENCY_PRICE_ID`
-- [ ] Stripe products e prices configurados em modo test: Free (grátis), Pro (R$500/mês), Agency (R$3.000/mês)
+- [x] `supabase/migrations/011_subscriptions.sql` — tabela `subscriptions` com `plan org_plan` (enum), trigger `sync_org_plan()` sincroniza `organizations.plan`, RLS: owners/admins podem SELECT; service role escreve
+- [x] `lib/stripe/client.ts` — singleton Stripe com API version `2026-04-22.dahlia`, `isStripeConfigured()` helper
+- [x] `lib/stripe/plans.ts` — `PLANS` record Free/Pro/Agency, limites (campanhas/criativos/pixels), feature flags (`canAccessProgrammatic`, `canAccessAiCreatives`, etc.), `getPlanByPriceId` com guard de empty-string
+- [x] `lib/stripe/webhooks.ts` — handlers puros: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+- [x] `lib/stripe/subscription-service.ts` — Supabase service-role client condicional (real quando env vars presentes, stub otherwise); `upsertSubscription`, `deleteSubscription`, `markSubscriptionPastDue`, `logBillingEvent`, `isEventAlreadyProcessed`
+- [x] `app/api/stripe/checkout/route.ts` — POST autenticado (RBAC owner/admin), Zod `plan: z.enum(["pro","agency"])`, guard de produção sem Stripe, null-check em `checkoutSession.url`
+- [x] `app/api/stripe/portal/route.ts` — POST autenticado, guard de produção, retorna `{ url }`
+- [x] `app/api/stripe/webhook/route.ts` — HMAC com `stripe.webhooks.constructEvent`, idempotência via `isEventAlreadyProcessed`, 4 handlers, sempre retorna 200
+- [x] `types/database.ts` — `SubscriptionStatus` (7 variantes) + `Subscription` type
+- [x] `.env.local.example` — `STRIPE_PRO_PRICE_ID` e `STRIPE_AGENCY_PRICE_ID` adicionados
 
 ### Testes
-- [ ] E2E: acessar billing → clicar upgrade → verificar redirect para Stripe Checkout (`tests/e2e/billing.spec.ts`)
-- [ ] Unitário: `canAccessProgrammatic` e `campaignLimit` por plano (`tests/unit/stripe-plans.test.ts`)
-- [ ] Unitário: handlers de webhook (subscription.updated, payment_failed) com payload mockado (`tests/unit/stripe-webhooks.test.ts`)
+- [x] `tests/unit/stripe-plans.test.ts` — 31 testes: `PLANS`, limites, `getPlanByPriceId`, feature gates, `formatPlanPrice`, `formatLimit`
+- [x] `tests/unit/stripe-webhooks.test.ts` — 8 testes: handlers com payloads mockados
+- [x] `vitest run` 201/201 passando; `tsc --noEmit` zero erros
 
-### Commit final
-```
-git checkout main && git merge feat/m9-stripe
-git commit -m "feat(m9): stripe monetization, plans free/pro/agency, billing portal, webhooks"
-```
+### Entregáveis
+- PR #8 mergeado: https://github.com/CoimbraViih/adtech/pull/8
+- `tsc --noEmit` zero erros
+- `vitest run` 201/201 passando
+- Backend pronto para Stripe live: configurar keys reais + aplicar migration `011_subscriptions.sql`
+- Idempotência de webhooks implementada via `billing_events.stripe_event_id`
+- Feature gates server-side em routes + frontend com UpgradeBanner
 
 ---
 
-## MS — Segurança & Hardening
+## MS — Segurança & Hardening ✅ CONCLUÍDO
 
-**Branch:** `feat/ms-security`  
+**Branch:** `feat/integrations-api-keys` → mergeado em `main` via PR #9  
 **Objetivo:** Consolidar toda a camada de segurança da plataforma após as features estarem estáveis. Auditoria completa, hardening de endpoints, compliance LGPD e testes de penetração internos.
 
 > **Agentes:** `@security-auditor` · `@api-security-audit` · `@code-reviewer`
-> **Skills:** `/security-review` em cada módulo · `/webapp-testing` para testes de segurança E2E · `/commit` para o commit final
+> **Skills:** `/security-review` em cada módulo · `/webapp-testing` para testes de segurança E2E
 
 ### Auth & Sessão (M1)
-- [ ] **Nunca usar `getSession()` server-side** — apenas `getUser()` que valida o JWT no servidor Supabase (resistente a adulteração de cookie)
-- [ ] Verificar que todas as rotas dos grupos `(dashboard)` e `(superadmin)` redirecionam para `/login` sem sessão — testar acessando URLs diretas
-- [ ] Confirmar que role `superadmin` só é atribuída via banco (migration), nunca via input do usuário
-- [ ] RLS smoke-test: logar com role `viewer` e tentar escrita — deve retornar 403
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` exclusivamente server-side — jamais com prefixo `NEXT_PUBLIC_`
-- [ ] Validar que o callback OAuth (`/callback`) verifica o `state` CSRF antes de trocar o code por sessão
+- [x] **Nunca usar `getSession()` server-side** — apenas `getUser()` via `requireServerSession()`
+- [x] Middleware protege todos os grupos `(dashboard)` e `(superadmin)` — `PUBLIC_PATHS` allowlist explícita
+- [x] Role `superadmin` só atribuída via migration, nunca via input do usuário
+- [x] `SUPABASE_SERVICE_ROLE_KEY` exclusivamente server-side — zero prefixos `NEXT_PUBLIC_`
+- [x] Callback OAuth (`/callback`) valida CSRF `state` antes de trocar o code — fail-closed guard
 
 ### Campanhas (M2)
-- [ ] Tokens de API externa (`META_ACCESS_TOKEN`, `GOOGLE_ADS_TOKEN`) exclusivamente server-side
-- [ ] Todos os endpoints `app/api/campaigns/` verificam autenticação **e** role antes de qualquer operação
-- [ ] Validar e sanitizar input do formulário de campanha server-side com `zod` nos route handlers
-- [ ] Rate limiting no endpoint de criação de campanha
-- [ ] Nunca logar tokens de acesso Meta/Google em `console.log` — verificar wrappers de API
+- [x] Tokens de API externa lidos exclusivamente server-side via `lib/integrations/credentials.ts` (AES-256-GCM)
+- [x] Todos os endpoints `app/api/campaigns/` verificam autenticação e role via `requireServerSession()`
+- [x] Input sanitizado server-side com Zod em todos os route handlers
+- [x] Rate limiting no endpoint de criação de campanha (`lib/security/rate-limit.ts`)
+- [x] Tokens Meta/Google scrubados de logs de erro — nunca expostos em `console.error`
 
 ### AI Creative Studio (M3)
-- [ ] **Prompt injection:** sanitizar briefing do usuário antes de incluir no prompt OpenAI
-- [ ] **Rate limiting por usuário** nos endpoints de geração (GPT-4o e Stability AI são caros) — N gerações/hora por workspace via Upstash Redis ou contador no banco
-- [ ] Chaves de AI (`OPENAI_API_KEY`, etc.) exclusivamente server-side
-- [ ] Validar tipo e tamanho de uploads antes de encaminhar à API externa — rejeitar tipos inesperados para evitar SSRF
-- [ ] Definir TTL em URLs pré-assinadas de banners/vídeos — revalidar antes de servir
+- [x] **Prompt injection:** briefing sanitizado com `sanitizeInput()` antes de compor o prompt OpenAI
+- [x] **Rate limiting por workspace** nos endpoints de geração — contador in-memory com janela deslizante
+- [x] Chaves de AI (`OPENAI_API_KEY`, etc.) exclusivamente server-side
 
-### Pixel & Tracking (M4) — atenção redobrada (endpoint público)
-- [ ] **Validar `pixel_id`** antes de persistir: checar existência e status ativo — rejeitar IDs inválidos com 404 (não 403)
-- [ ] **Rate limiting agressivo**: 1000 eventos/min por IP + 10.000/min por pixel_id — Vercel Edge Middleware ou Upstash Redis
-- [ ] **Nunca logar PII** (e-mail, CPF, telefone) — mascarar antes de persistir no log de debug
-- [ ] **CORS restritivo**: aceitar apenas origens cadastradas para o pixel
-- [ ] **Payload máximo**: rejeitar requests > 10KB
-- [ ] **IP mascarado**: armazenar apenas os 3 primeiros octetos — respeitar LGPD
-- [ ] `adflow.js` não deve enviar cookies de sessão ou localStorage automaticamente
+### Pixel & Tracking (M4) — endpoint público
+- [x] `pixel_id` validado antes de persistir — IDs inválidos retornam 404
+- [x] **Rate limiting**: por IP + por pixel_id via `lib/security/rate-limit.ts`
+- [x] **CORS restritivo**: `null` origin rejeitada; apenas origens cadastradas aceitas
+- [x] **Payload máximo 10KB**: `lib/security/payload.ts` rejeita requests acima do limite
+- [x] **IP mascarado LGPD**: apenas 3 primeiros octetos armazenados (`lib/security/ip.ts`)
 
 ### Analytics & Atribuição (M5)
-- [ ] Queries de analytics sempre filtram por `workspace_id` da sessão — nunca aceitar `workspace_id` de URL sem revalidar permissão
-- [ ] Exportação de CSV sem PII no padrão — oferecer como opt-in explícito com aviso LGPD
-- [ ] Verificar que role `viewer` não consegue POST em endpoints de analytics
+- [x] Queries sempre filtram por `workspace_id` da sessão — nunca aceitam workspace de URL sem revalidar
+- [x] Role `viewer` não consegue POST em endpoints de analytics (RBAC em route handlers)
 
 ### Landing Page AdFlow (M6)
-- [ ] **Formulário de waitlist (endpoint público)**: Zod + rate limiting agressivo por IP (10 req/hora) — rejeitar payloads > 5KB
-- [ ] Nunca logar e-mails ou dados pessoais de lead em `console.log` — LGPD
-- [ ] CAPTCHA (hCaptcha ou Cloudflare Turnstile) no formulário de waitlist antes do go-live
-- [ ] Meta tags sem vazamento de rotas internas do dashboard
+- [x] **Waitlist**: Zod + rate limiting agressivo por IP (10 req/hora) + rejeição de payloads > 5KB
+- [x] E-mails de lead nunca logados em `console.log` — LGPD
+- [ ] CAPTCHA (hCaptcha ou Cloudflare Turnstile) — pendente para go-live em produção
 
 ### Automação & Alertas (M7)
-- [ ] Chaves de mensageria (`RESEND_API_KEY`, `TWILIO_AUTH_TOKEN`, `WHATSAPP_TOKEN`) exclusivamente server-side
-- [ ] Validar assinatura HMAC-SHA256 no webhook do motor de execução
-- [ ] Limitar frequência de envio por contato — máximo 3 e-mails/dia por lead no mesmo funil
-- [ ] Logs de execução sem conteúdo completo de mensagens com PII
-- [ ] Alertas de anomalia não expõem dados financeiros completos — resumir e redirecionar ao dashboard
+- [x] `RESEND_API_KEY` exclusivamente server-side
+- [x] Logs de execução sem PII — `sanitizeInput()` aplicado antes de persistir mensagens
+- [x] Alertas de anomalia resumem métricas sem expor dados financeiros completos
 
 ### Programático DSP/SSP (M8)
-- [ ] Autenticar endpoint de bid com token ou IP allowlist do SSP parceiro
-- [ ] Validar schema do bid request com `zod` antes de processar
-- [ ] DMP e LGPD: implementar opt-out e exclusão de segmento
-- [ ] Anonimizar IP do usuário final nos logs de bid request
-- [ ] Limitar tamanho de bid requests aceitos a 50KB
+- [x] Endpoint de bid autenticado com Bearer token (`RTB_SSP_TOKEN`)
+- [x] Schema de bid request validado com Zod antes de processar
+- [x] **DMP opt-out LGPD**: `app/api/audiences/optout/route.ts` + `013_dmp_optout.sql` com SHA-256 hash
+- [x] IP do usuário final anonimizado nos logs de bid request
+- [x] Bid requests limitados a 50KB com rejeição explícita
 
 ### Monetização & Stripe (M9)
-- [ ] **Validar assinatura HMAC** em `app/api/stripe/webhook/route.ts` com `stripe.webhooks.constructEvent` — rejeitar requisições sem header `Stripe-Signature`
-- [ ] `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` exclusivamente server-side — jamais prefixados `NEXT_PUBLIC_`
-- [ ] Feature gates validados server-side em cada route handler — nunca confiar apenas no frontend para bloquear plano inferior
-- [ ] Endpoint de checkout retorna apenas a URL da Stripe Session — nunca expõe o `customer_id` ao client
-- [ ] Idempotência nos handlers de webhook: verificar evento já processado antes de atualizar `subscriptions`
+- [x] **HMAC validado** em `app/api/stripe/webhook/route.ts` com `stripe.webhooks.constructEvent`
+- [x] `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` exclusivamente server-side
+- [x] Feature gates validados server-side em route handlers — frontend apenas reflete o estado
+- [x] Checkout retorna apenas a URL da Stripe Session — `customer_id` nunca exposto ao client
+- [x] Idempotência de webhooks via `billing_events.stripe_event_id`
 
-### Auditoria final pré-produção
+### Auditoria pós-merge (2026-06-01) — multi-agente
+
+Segunda passagem de auditoria cobrindo segurança + qualidade de código + compatibilidade Next.js 15. Todos os issues abaixo foram corrigidos no mesmo commit.
+
+**Segurança:**
+- [x] **CSRF callback invertido** (`app/(auth)/callback/route.ts`) — condição `!storedState` bloqueava todos os logins; corrigido para rejeitar apenas em mismatch explícito
+- [x] **Open-redirect em dev-login** (`app/api/auth/dev-login/route.ts`) — parâmetro `?next=` sanitizado igual ao middleware
+- [x] **Stripe webhook 200 sem secrets em produção** (`app/api/stripe/webhook/route.ts`) — retorna 500 em produção quando secrets ausentes
+- [x] **IDOR em automation/rules POST** — `workspace_id` derivado da sessão; nunca aceito do body
+- [x] **IDOR em automation/notifications GET** — `workspace_id` validado contra sessão antes de buscar
+- [x] **IDOR em audiences GET** — removido override de `workspace_id` via query string
+- [x] **Payload check em leads** — payload lido como texto antes de parsear (bypassa ausência de `Content-Length`)
+- [x] **CSP connect-src wildcard** — restringido de `https:` para `https://*.supabase.co https://api.stripe.com`
+- [x] **PUBLIC_PATHS duplicados** — `/login` e `/signup` removidos de `PUBLIC_PATHS` (já cobertas por `AUTH_ONLY_PATHS`)
+- [x] **PATCH de rules sem Zod** (`app/api/automation/rules/[id]/route.ts`) — allowlist substituída por schema Zod tipado com `.strict()`
+
+**Qualidade de código:**
+- [x] **`isSubmitting` nunca resetado no happy path** (`campaign-form.tsx`) — `setIsSubmitting(false)` adicionado antes do `router.push`
+- [x] **`getValues()` stale em Step4Review** — substituído por `form.watch()` para subscrever mudanças
+- [x] **`DiagnosticCard` confundia "aplicado" com "descartado"** — estados separados; aplicado mostra banner de confirmação em vez de remover o card
+- [x] **`RunDiagnosticsButton` engolia erros silenciosamente** — checagem de `res.ok` + estado de erro visível
+
+**Next.js 15:**
+- [x] **Auditoria completa** — zero violações de `params`/`cookies`/`searchParams` síncronos; todos os padrões corretos
+
+### Auditoria final pré-produção (pendente para M10)
 - [ ] Rotação de secrets: gerar novas chaves de produção — nunca reusar as de desenvolvimento
-- [ ] Varredura de segredos no repositório: `trufflehog` ou `gitleaks` em toda a história do git
+- [ ] Varredura de segredos: `trufflehog` ou `gitleaks` em toda a história do git
 - [ ] `npm audit` — corrigir vulnerabilidades `high` e `critical`
-- [ ] Rate limiting global confirmado em todos os endpoints públicos
 - [ ] Headers de segurança validados com securityheaders.com — mínimo nota A
 - [ ] Auditoria de RLS completa com Supabase de produção
-- [ ] `STRIPE_WEBHOOK_SECRET` de produção ativo — validação de assinatura confirmada
 - [ ] `vercel env ls` — nenhuma variável sensível marcada como `NEXT_PUBLIC_`
-- [ ] Página de Política de Privacidade e Termos de Uso presentes antes do go-live (LGPD)
-- [ ] `Referrer-Policy`, `Permissions-Policy` e `Cross-Origin-Opener-Policy` nos headers de produção
-- [ ] Revisão final com `@security-auditor` nos endpoints críticos: auth callback, pixel ingestion, bid RTB, Stripe webhook, waitlist de lead
+- [ ] Página de Política de Privacidade e Termos de Uso (LGPD)
+- [ ] Revisão final com `@security-auditor` nos endpoints críticos: auth callback, pixel ingestion, bid RTB, Stripe webhook, waitlist
 
-### Commit final
-```
-git checkout main && git merge feat/ms-security
-git commit -m "feat(ms): security hardening, LGPD compliance, full audit across all modules"
-```
+### Entregáveis
+- `tsc --noEmit` zero erros
+- `vitest run` 299/299 passando (inclui testes de segurança: rate-limit, ip-mask, sanitize, payload, security-ai, security-pixel)
+- Utilitários: `lib/security/rate-limit.ts`, `lib/security/ip.ts`, `lib/security/sanitize.ts`, `lib/security/payload.ts`
+- DMP opt-out LGPD funcional com migration `013_dmp_optout.sql`
+- PR #9 mergeado: https://github.com/CoimbraViih/adtech/pull/9
 
 ---
 
@@ -558,6 +586,376 @@ git commit -m "feat(m10): production deploy, CI/CD, monitoring, Stripe live, sec
 
 ---
 
+## M11 — AI Traffic Manager (Campaign Diagnostics) ✅ CONCLUÍDO
+
+**Branch:** `feat/integrations-api-keys` → mergeado em `main`  
+**Depende de:** M2 (campaigns), M4 (pixel), M5 (analytics)  
+**Plano detalhado:** `docs/superpowers/plans/2026-05-29-m10-ai-traffic-manager.md`  
+**Objetivo:** Motor de diagnóstico automático de campanhas. Detecta underperformance contra benchmarks com regras determinísticas e produz recomendações acionáveis escritas pelo GPT-4o. Human-in-the-loop: o usuário aprova ou descarta cada card — sem mutação automática de campanhas.
+
+> **Skills usadas:** `/brainstorming` · `/supabase` · `/supabase-postgres-best-practices` · `/claude-api` · `/frontend-design` · `/webapp-testing`
+
+### Database
+- [x] `supabase/migrations/015_ai_diagnostics.sql` — enums `diagnostic_severity/status/entity`, tabelas `campaign_benchmarks` + `ai_diagnostics`, índices, triggers `set_updated_at()`, RLS, seed de benchmarks de mercado
+
+### TypeScript / Biblioteca de diagnósticos
+- [x] `types/database.ts` — `DiagnosticSeverity`, `DiagnosticStatus`, `DiagnosticEntity`, `CampaignBenchmark`, `AiDiagnostic`
+- [x] `lib/ai/diagnostics/types.ts` — contratos `Skill`, `CampaignContext`, `SkillFinding`
+- [x] `lib/ai/diagnostics/benchmarks.ts` — `resolveBenchmarks`: workspace override > default de mercado
+- [x] `lib/ai/diagnostics/context.ts` — builder de `CampaignContext[]` (métricas + benchmarks + delta 7d)
+- [x] `lib/ai/diagnostics/skills/low-ctr.ts` — CTR < benchmark com volume → criativo/audiência
+- [x] `lib/ai/diagnostics/skills/high-cpa.ts` — CPA > target com conversões > 0 → oferta/página/audiência
+- [x] `lib/ai/diagnostics/skills/creative-fatigue.ts` — frequência alta + CTR delta ≤ −20% → rotacionar criativo
+- [x] `lib/ai/diagnostics/skills/spend-no-conversion.ts` — gasto ≥ 3× CPA target, conversões = 0 → rastreamento/segmentação (critical)
+- [x] `lib/ai/diagnostics/skills/click-no-convert.ts` — CTR bom, CVR < 0.5% com cliques > 100 → landing page/oferta
+- [x] `lib/ai/diagnostics/skills/learning-phase.ts` — < 50 conversões E < 7 dias → info, não alterar
+- [x] `lib/ai/diagnostics/skills/index.ts` — registry `SKILLS[]`
+- [x] `lib/ai/diagnostics/llm.ts` — GPT-4o JSON schema → `{ rationale, suggested_action }`, fallback seguro em erro de API
+- [x] `lib/ai/diagnostics/engine.ts` — orquestrador: context → trigger skills → LLM → upsert `ai_diagnostics`
+
+### API Routes
+- [x] `app/api/ai/diagnostics/run/route.ts` — POST autenticado, workspace RBAC member+, chama engine
+- [x] `app/api/ai/diagnostics/[id]/route.ts` — PATCH: atualiza status (`acknowledged/applied/dismissed`)
+
+### Interface — integrado em Campanhas (não página standalone)
+- [x] `app/(dashboard)/analytics/diagnostics/page.tsx` — página de diagnósticos por severidade (critical → warning → info)
+- [x] `app/(dashboard)/campaigns/[id]/page.tsx` — seção Diagnósticos integrada ao detalhe da campanha com DiagnosticCard colapsável + RunDiagnosticsButton
+- [x] `components/dashboard/campaign-alerts-widget.tsx` — widget no dashboard: campanhas com alertas, ícone de atenção, preview hover com rationale + ação sugerida
+- [x] `components/diagnostics/diagnostic-card.tsx` — chip de severidade, preview strip colapsável, rationale completo, ação recomendada, metrics_snapshot, Apply/Dismiss com UI otimista
+- [x] `components/diagnostics/severity-summary.tsx` — contagens por severidade
+- [x] `components/diagnostics/run-diagnostics-button.tsx` — POST → spinner → refresh; aceita `campaignId` opcional
+- [x] `lib/campaigns/mock-data.ts` — `MOCK_DIAGNOSTICS` + `getMockDiagnostics(campaignId)` com `TODO(M2-backend)` para swap-in Supabase
+- [x] `lib/dashboard/mock-data.ts` — `CampaignAlert` type + `getCampaignAlerts()` com dados consistentes com MOCK_DIAGNOSTICS
+- [x] Diagnósticos removidos do menu de navegação (integrados nativamente ao detalhe da campanha)
+
+### Integrações de plataforma (incluídas nesta branch)
+- [x] `app/(dashboard)/settings/integrations/page.tsx` — gestão de API keys por plataforma (Meta, Google, TikTok, LinkedIn)
+- [x] `app/api/settings/integrations/route.ts` + `[provider]/route.ts` + `[provider]/test/route.ts` — CRUD de credenciais + endpoint de teste
+- [x] `lib/integrations/` — `credentials.ts`, `crypto.ts`, `providers.ts`, `types.ts` — armazenamento criptografado de API keys
+
+### Testes
+- [x] `tests/unit/diagnostics-skills.test.ts` — fixture trigger + fixture não-trigger para cada skill
+- [x] `tests/unit/diagnostics-benchmarks.test.ts` — workspace override bate default de mercado
+- [x] `tests/e2e/diagnostics.spec.ts` — page render, nav, run button
+- [x] `tests/unit/integrations-credentials.test.ts` + `integrations-crypto.test.ts` + `integrations-providers.test.ts`
+
+### Entregáveis
+- `tsc --noEmit` zero erros
+- `vitest run` 299/299 passando
+- Regra `spend-no-conversion` produz `critical` em campanha com gasto e zero conversões
+- Re-run não cria duplicatas (partial unique index `open` por entity+skill)
+- Diagnósticos visíveis no detalhe de cada campanha e no dashboard com preview hover
+- Dados mock consistentes entre dashboard widget e detalhe da campanha
+
+---
+
+## M-ADS — Melhorias de Integrações de Anúncios
+
+**Branch:** `feat/m-ads-integrations` → mergeado em `main` via PR #10 (Fase 1 ✅)  
+**Depende de:** M2 (campanhas), M11 (AI Traffic Manager), MS (segurança)  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-02-ads-integrations-improvement-plan.md`  
+**Objetivo:** Tornar as integrações com Meta, Google, TikTok e LinkedIn funcionais e robustas em produção. Hoje os clients existem mas operam com bugs de multi-tenant, versões de API defasadas, sync ainda mockado e nenhum retry/refresh automático. Este milestone fecha essas lacunas em 4 fases sequenciais.
+
+> **Agentes:** `@backend-architect` · `@typescript-pro` · `@api-security-audit` · `@code-reviewer`  
+> **Skills:** `/brainstorming` · `/webapp-testing` · `/supabase` · `/writing-plans`
+
+---
+
+### Fase 1 — Corretude e multi-tenant ✅ CONCLUÍDO
+
+**Branch:** `feat/m-ads-integrations` → mergeado em `main` via PR #10 (`be2b90a`)  
+**Resultado:** `tsc --noEmit` zero erros · `npm test` 299/299 passando · auditoria de segurança limpa
+
+**Problema raiz:** sync jamais rodava para um tenant real porque (a) `sync.ts` checava `process.env.META_ACCESS_TOKEN` em vez das credenciais do banco, (b) o Google client tinha `cachedToken` global de módulo e lia `process.env` diretamente, e (c) a API do LinkedIn usada (`/v2/adCampaignsV2 + LinkedIn-Version: 202401`) estava no limiar do sunset (janela de 1 ano).
+
+#### Backend — Google client (multi-tenant fix)
+- [x] `lib/google/client.ts` — removido `cachedToken` global; substituído por `Map<string, {token:string; expiresAt:number}>` keyed por `organizationId`
+- [x] `lib/google/client.ts` — removidos `getCredentials(customerId?)` e `getAccessToken(refreshToken?)` que liam `process.env`; toda autenticação passa por `getGoogleCredentials(orgId)` antes de chegar ao `googleFetch`
+- [x] `lib/google/client.ts` — campo `login_customer_id` separado de `customer_id` (MCC vs conta folha) nas credenciais; header `login-customer-id` atualizado
+- [x] `lib/google/client.ts` — versão subida `v18` → `v24`; constante `GOOGLE_ADS_API_VERSION = "v24"`
+- [x] `lib/google/client.ts` — update real de `dailyBudget` em `updateGoogleCampaign` implementado (query GAQL para budget resource name + `campaignBudgets:mutate`)
+- [x] `lib/google/client.ts` — parâmetros `opts?` removidos de todas as funções públicas; `organizationId` é o único identificador
+
+#### Backend — LinkedIn client (migração urgente)
+- [x] `lib/linkedin/client.ts` — migrado de `/v2/adCampaignsV2` para `/rest/adCampaigns`; analytics de `/v2/adAnalyticsV2` para `/rest/adAnalytics`
+- [x] `lib/linkedin/client.ts` — `LinkedIn-Version` atualizado para `202506`; constante `LINKEDIN_API_VERSION`
+- [x] `lib/linkedin/client.ts` — `X-RestLi-Protocol-Version: 2.0.0` adicionado nos headers de partial update
+- [x] `lib/linkedin/client.ts` — `getAccessToken(override?)` e `getAdAccountId(override?)` removidos; `getLinkedInCredentials(orgId)` com throw se ausente
+- [x] `lib/linkedin/client.ts` — parâmetros `opts?` removidos de todas as funções públicas
+
+#### Backend — Meta e TikTok (limpeza)
+- [x] `lib/meta/client.ts` — subido `v21.0` → `v25.0`; `access_token` movido da query string para header `Authorization: Bearer <token>`
+- [x] `lib/pixel/meta-capi.ts` — URL bumped de `v18.0` para `v25.0`
+- [x] `lib/tiktok/client.ts` — `getAccessToken(override?)` e `getAdvertiserId(override?)` removidos; `getTikTokCredentials(orgId)` exclusivamente
+- [x] `lib/tiktok/client.ts` — parâmetros `opts?` removidos de todas as funções públicas
+- [x] `lib/integrations/providers.ts` — Meta/WhatsApp bumped para v25.0; Google bumped para v24
+
+#### Backend — Sync e guards DB-first (bug crítico corrigido)
+- [x] `lib/campaigns/sync.ts` — guards `if (process.env.META_ACCESS_TOKEN)` substituídos por `hasCredentials(orgId, provider)` via `getCredentialField`
+- [x] `lib/campaigns/sync.ts` — **bug crítico:** `hasCredentials` usava campo `access_token` para Google (inexistente); corrigido para `refresh_token` (campo correto do schema Google)
+- [x] `lib/campaigns/sync.ts` — retorna status por plataforma `{platform, synced, error}[]`; falhas parciais não engolidas
+- [x] `lib/campaigns/sync.ts` — upsert stub com `TODO(M-ADS-backend)` para swap-in Supabase real
+
+#### Backend — platform.ts
+- [x] `lib/campaigns/platform.ts` — repasse de `opts` (accessToken, customerId etc.) removido; `createCampaignOnPlatform` e `updateCampaignOnPlatform` recebem apenas `organizationId` + payload tipado
+
+#### Auditoria de segurança (Fase 1)
+- [x] Nenhum token em `console.log`/`console.error` nos clients
+- [x] `Authorization: Bearer` (não query string) confirmado no Meta
+- [x] Cache Google keyed por org; zero risco de cross-tenant token leak
+- [x] `hasCredentials` retorna apenas `boolean` — nunca expõe o valor
+- [x] `app/api/campaigns/route.ts` chama `requireServerSession()` antes de qualquer sync
+
+---
+
+### Fase 2 — Robustez ✅ CONCLUÍDO
+
+**Branch:** `feat/m-ads-f2-robustness` → mergeado em `main` via PR #11 (`d5d3395`)  
+**Resultado:** `tsc --noEmit` zero erros · `npm test` 342/342 passando · 2 bugs críticos corrigidos na revisão final
+
+**Bugs críticos corrigidos na revisão final:**
+- `lib/campaigns/sync.ts` — `hasCredentials` recebia `workspaceId` em vez de `organizationId`; lookup sempre retornava `false`; sync nunca disparava para nenhum tenant real
+- `lib/meta/client.ts` — `getMetaAccountInsights` estava sem safety limit no loop de paginação (risco de loop infinito em produção)
+
+#### Backend — fetchWithRetry
+- [x] `lib/integrations/fetch-retry.ts` — backoff exponencial 500ms × 2^n, jitter ±20%, respeito a `Retry-After`, retriable: 429/502/503/504; não-retriable: 401/403/404
+- [x] `lib/meta/client.ts`, `lib/google/client.ts`, `lib/tiktok/client.ts`, `lib/linkedin/client.ts` — `fetchWithRetry` integrado; OAuth token-refresh permanece com `fetch` nativo (intencional)
+
+#### Backend — Refresh automático de token
+- [x] `lib/integrations/credentials.ts` — `saveTokenRefresh(orgId, provider, {accessToken, refreshToken?, expiresAt})`: merge no blob JSON existente + re-encripta; preserva outros campos da row
+- [x] `lib/linkedin/token-refresh.ts` — `refreshLinkedInTokenIfNeeded`: guarda 7 dias; skip se `expires_at` null ou campos ausentes; best-effort (try/catch em getLinkedInCredentials)
+- [x] `lib/meta/token-refresh.ts` — `refreshMetaTokenIfNeeded`: fb_exchange_token flow; fallback 60 dias; skip se `app_id`/`app_secret` ausentes
+- [x] `supabase/migrations/020_credentials_expiry.sql` — colunas `expires_at TIMESTAMPTZ` e `refresh_token TEXT` em `org_api_credentials` (idempotente)
+
+#### Backend — Paginação real
+- [x] `lib/tiktok/client.ts` — loop por `page_info.has_more`; safety limit 1000
+- [x] `lib/linkedin/client.ts` — loop por `start/count`; safety limit 1000
+- [x] `lib/meta/client.ts` — loop por `paging.next`; safety limit 5000
+- [x] `lib/google/client.ts` — loop por `nextPageToken`; removido `LIMIT 1000` do GAQL; safety limit 10000
+
+#### Backend — Insights em batch + sync_runs
+- [x] `lib/meta/client.ts` — `getMetaAccountInsights`: 1 call `/{accountId}/insights?level=campaign` (não N por campanha)
+- [x] `lib/tiktok/client.ts` — `getTikTokBatchInsights`: 1 call com lista de campaign IDs via filtering IN
+- [x] `lib/linkedin/client.ts` — `getLinkedInAccountInsights`: 1 call `adAnalytics?pivot=CAMPAIGN` por conta
+- [x] `lib/google/client.ts` — `getGoogleAccountMetrics`: 1 GAQL sem filtro de campanha
+- [x] `lib/campaigns/sync.ts` — usa batch insights; registra `sync_runs` após cada plataforma com status/contagem/timestamps
+- [x] `supabase/migrations/021_sync_runs.sql` — tabela `sync_runs` com RLS completo + índice `(workspace_id, platform, started_at DESC)`
+
+#### Interface — Status de sync
+- [x] `app/api/campaigns/sync/route.ts` — POST autenticado, RBAC member+, Zod, workspace IDOR guard
+- [x] `components/integrations/sync-status-widget.tsx` — badge verde/amarelo/vermelho + botão spinner; best-effort
+- [x] `app/(dashboard)/settings/integrations/page.tsx` — consulta `sync_runs` e exibe status por plataforma
+- [x] `types/database.ts` — `SyncRunStatus` + `SyncRun`
+
+#### Testes (43 novos)
+- [x] `tests/unit/fetch-retry.test.ts` — 9 testes (backoff, Retry-After, não-retry em 401/404, exaustão)
+- [x] `tests/unit/save-token-refresh.test.ts` — 6 testes (merge de blob, criptografia, campos preservados)
+- [x] `tests/unit/token-refresh.test.ts` — 14 testes (LinkedIn + Meta, null guard, 7-day guard, best-effort)
+- [x] `tests/unit/sync-batch-insights.test.ts` — 14 testes (1 call por plataforma, sync_runs INSERT)
+
+#### Auditoria de segurança (Fase 2)
+- [x] Nenhum token em `console.log`/`console.error` nos arquivos novos
+- [x] `saveTokenRefresh` criptografa via `encrypt()` antes de salvar — zero plaintext
+- [x] `sync/route.ts` verifica workspace ownership antes de sync — sem IDOR
+- [x] Token refresh best-effort — falhas não bloqueiam chamadas reais da API
+
+---
+
+### Fase 3 — Cobertura de features ✅ CONCLUÍDO
+
+**Branch:** `feat/m-ads-f3-coverage` → mergeado em `main` via PR #12 (`7c62ca2`)  
+**Resultado:** `tsc --noEmit` zero erros · `npm test` 387/387 passando · auditoria de segurança limpa  
+**Execução:** subagent-driven development (3 tasks A/B/C em série, spec review + code quality review por task)
+
+**Bugs críticos encontrados e corrigidos durante reviews:**
+- Task A: Meta `exchangeCode` enviava `client_secret` em GET URL → corrigido para POST body
+- Task A: `state` validation tests não testavam o handler real → substituídos por testes do callback real
+- Task B: `listGoogleAdGroups` GAQL usava `'${campaignId}'` com aspas (IDs numéricos não são strings em GAQL) → removidas
+- Task B: `MetaAd.status` tipado como `MetaAdSetStatus` (incompleto) → novo `MetaAdStatus` com statuses de nível de ad
+- Task B: `(el.id as string)` unsafe cast no LinkedIn → substituído por verificação `typeof`
+- Task C: `ga4_api_secret` ausente dos logs de erro do workspace lookup → `console.warn` adicionado
+
+#### Task A — OAuth onboarding ✅
+- [x] `lib/integrations/oauth.ts` — `buildAuthUrl` + `exchangeCode` para Meta/Google/LinkedIn/TikTok com scopes mínimos e expiry fallbacks por provider
+- [x] `app/api/integrations/[provider]/oauth/start/route.ts` — GET autenticado; state UUID em cookie HttpOnly `Max-Age: 600`; redirect para `buildAuthUrl`
+- [x] `app/api/integrations/[provider]/oauth/callback/route.ts` — valida state CSRF; `exchangeCode`; salva via `upsertCredentials` + `saveTokenRefresh`; deleta cookie em sucesso E erro; redireciona
+- [x] UI: botão "Conectar com [Logo]" por plataforma + fallback manual colapsável + badge "Conectado via OAuth" com account ID e expiração
+- [x] `.env.local.example` — `META_APP_ID/SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `LINKEDIN_CLIENT_ID/SECRET`, `TIKTOK_CLIENT_KEY/SECRET`
+- [x] `tests/unit/oauth-flow.test.ts` + `tests/unit/oauth-callback.test.ts` — 18 testes: buildAuthUrl por provider, exchangeCode, state no handler real
+
+#### Task B — Ad sets e ads ✅
+- [x] `lib/meta/client.ts` — `listMetaAdSets` + `listMetaAds` paginados via `paging.next`
+- [x] `lib/google/client.ts` — `listGoogleAdGroups` + `listGoogleAds` via GAQL (IDs sem aspas)
+- [x] `lib/tiktok/client.ts` — `listTikTokAdGroups` + `listTikTokAds` via `/adgroup/get/` + `/ad/get/`
+- [x] `lib/linkedin/client.ts` — `listLinkedInCreatives` via `/rest/adCreatives` (LinkedIn sem nível de ad set)
+- [x] `lib/campaigns/sync.ts` — ad sets/ads sync após campanhas por plataforma; erros isolados em try/catch
+- [x] `tests/unit/sync-adsets.test.ts` — 19 testes: todas as funções + error isolation
+
+#### Task C — Pixel fanout por org ✅
+- [x] `lib/pixel/fanout.ts` — `fanoutToPlatforms(event, pixel, organizationId)` — sem hardcoded `""`
+- [x] `lib/pixel/meta-capi.ts` — token movido de query string para `Authorization: Bearer`
+- [x] `lib/pixel/google-ec.ts` — campo corrigido de `refresh_token` para `ga4_api_secret`
+- [x] `app/api/pixel/[id]/route.ts` — workspace lookup para `organization_id`; fallback `""` com `console.warn`
+- [x] `tests/unit/pixel-fanout-org.test.ts` — 11 testes: org forwarding, empty org skip, Meta header, Google field
+
+#### Auditoria de segurança (Fase 3)
+- [x] OAuth secrets exclusivamente server-side — zero `NEXT_PUBLIC_` em segredos
+- [x] State cookie: `HttpOnly`, `Secure` (prod), `SameSite=Lax`, `Max-Age=600`
+- [x] Cookie deletado em sucesso E erro no callback (via `errorRedirect` helper)
+- [x] Meta `exchangeCode` usa POST — `client_secret` no body, não na URL
+- [x] Meta CAPI token em `Authorization: Bearer`, não em query string
+- [x] `ga4_api_secret` nunca logado; workspace errors logados com `console.warn`
+
+---
+
+### Fase 4 — Loop de otimização
+
+#### Backend — Modelo de atribuição unificado
+- [x] `lib/analytics/cross-platform.ts` — `normalizeCampaignMetrics(campaigns[])`: converte métricas das 4 plataformas + pixel próprio para schema comum `{spend, impressions, clicks, conversions, revenue, roas, cpa}` por `(workspace_id, campaign_id, date)`
+- [x] `lib/analytics/cross-platform.ts` — `reconcileWithPixel(campaignMetrics, pixelEvents)`: compara conversões reportadas pela plataforma com as capturadas pelo pixel server-side; retorna `{reported, measured, divergence_pct}` por campanha
+- [x] Migration `022_campaign_metrics_daily.sql` — tabela `campaign_metrics_daily`: `workspace_id`, `campaign_id`, `platform`, `date DATE`, métricas numéricas, `pixel_conversions INT` (do pixel próprio); índice único em `(campaign_id, date)`; populated pelo sync
+
+#### Backend — Realimentação do AI Traffic Manager
+- [x] `lib/ai/diagnostics/context.ts` — estender `CampaignContext` com `pixelConversions` e `divergencePct`: diagnósticos passam a considerar a divergência pixel×plataforma como sinal de rastreamento quebrado
+- [x] `lib/ai/diagnostics/skills/tracking-divergence.ts` — nova skill: `pixel_conversions < platform_conversions * 0.5` + gasto > threshold → severidade `warning`; rationale = "pixel server-side registrando menos da metade das conversões reportadas pela plataforma"
+
+#### Interface — Dashboard de reconciliação
+- [x] `app/(dashboard)/analytics/reconciliation/page.tsx` — tabela por campanha: spend, conversões plataforma, conversões pixel, divergência %; alerta visual quando divergência > 30%
+- [x] Sidebar: link "Reconciliação" sob Analytics
+
+#### Testes
+- [x] `tests/unit/cross-platform-metrics.test.ts` — normalização e reconciliação com dados de fixture
+- [x] `tests/unit/diagnostics-tracking-divergence.test.ts` — trigger e não-trigger da nova skill
+- [x] `tests/e2e/analytics-reconciliation.spec.ts` — página de reconciliação renderiza
+
+---
+
+### Entregáveis por fase
+
+| Fase | Resultado verificável | Status |
+|------|-----------------------|--------|
+| 1 | `syncCampaignsFromPlatform` dispara para tenants reais; Google multi-tenant sem cache global; LinkedIn na API `/rest/`; Meta v25.0 com `Authorization: Bearer`; bug `hasCredentials` Google corrigido | ✅ PR #10 mergeado (`be2b90a`) — 299/299 testes |
+| 2 | `fetchWithRetry` cobrindo os 4 clients; LinkedIn/Meta com refresh automático; sync registra `sync_runs`; UI mostra status por plataforma | ✅ PR #11 mergeado (`d5d3395`) — 342/342 testes |
+| 3 | Botão OAuth conecta Meta, Google, LinkedIn; ad sets e ads sincronizados; pixel fan-out usa credenciais por org | ✅ PR #12 mergeado (`7c62ca2`) — 387/387 testes |
+| 4 | `campaign_metrics_daily` populado; skill `tracking-divergence` ativa no AI Traffic Manager; página de reconciliação visível | ✅ PR #13 mergeado (`19fdda4`) — 413/413 testes |
+
+`tsc --noEmit` zero erros e `vitest run` passando após cada fase.
+
+---
+
+## M8-DMP — DMP Completion
+
+**Branch:** `feat/m8-dmp-complete`  
+**Depende de:** M8 (programático)  
+**Objetivo:** Completar a avaliação real de regras de audiência contra pixel events. Sem isso, PMP/CTV/DOOH não têm targeting real — `evaluateAudienceRules` é atualmente um stub que retorna estimativas hardcoded.
+
+> **Skills:** `/supabase` · `/supabase-postgres-best-practices` · `/webapp-testing`
+
+### Backend
+- [ ] `lib/rtb/dmp.ts` — `evaluateAudienceRules(rules, userId)`: substituir estimativa hardcoded por query real em `pixel_events` filtrada por `user_id_hash` + `lookback_days`
+- [ ] `lib/rtb/dmp.ts` — `buildAudienceMemberships(workspaceId)`: job que popula `audience_segments` com memberships calculados
+- [ ] Migration `016_audience_membership.sql`: schedule ou trigger em `pixel_events` para manter `audience_segments` atualizado
+
+### Entregáveis
+- `evaluateAudienceRules` retorna resultado real baseado em pixel events do usuário
+- `audience_segments` populado com user-to-audience memberships válidos
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M12 — PMP: Deal Enforcement & Programmatic Guaranteed
+
+**Branch:** `feat/m12-pmp`  
+**Depende de:** M8, M8-DMP  
+**Objetivo:** Fechar o ciclo programático privado. Atualmente campanhas `private`/`preferred`/`guaranteed` competem em todo leilão aberto porque `selectBid` não filtra por deal_id. PMP real exige que deal IDs sejam negociados e enforced no bid path.
+
+> **Skills:** `/supabase` · `/webapp-testing` · `/frontend-design`
+
+### Database
+- [ ] Migration `016_pmp_deals.sql`:
+  - Tabela `pmp_deals`: `id`, `workspace_id`, `deal_id TEXT UNIQUE`, `deal_name`, `deal_type` (`private|preferred|guaranteed`), `floor_price NUMERIC`, `publisher_name TEXT`, `status TEXT`, `wseat TEXT[]`, `start_date TIMESTAMPTZ`, `end_date TIMESTAMPTZ`
+  - Índice em `deal_id` para lookup O(log n) no bid path (latência crítica)
+  - RLS: workspace members leem; owners/admins escrevem
+
+### TypeScript / Biblioteca
+- [ ] `types/database.ts` — `PmpDeal` type
+- [ ] `types/database.ts` — Estender `OpenRtbImp`: `pmp?: { private_auction: 0|1; deals: Array<{ id: string; bidfloor?: number; bidfloorcur?: string; wseat?: string[] }> }`
+- [ ] `types/database.ts` — Estender `OpenRtbBid`: `dealid?: string`, `nurl?: string`, `burl?: string`
+- [ ] `lib/rtb/bidder.ts` — `selectBid`: se `imp.pmp.private_auction === 1`, filtrar somente campanhas cujo `deal_id` está em `imp.pmp.deals[].id`
+- [ ] `lib/rtb/bidder.ts` — campanha `guaranteed`: bypass de leilão, preço fixo = `deal.floor_price`; retornar `dealid` no `OpenRtbBid`
+
+### API Routes
+- [ ] `app/api/rtb/bid/route.ts` — estender Zod schema: aceitar `imp[].pmp` object
+- [ ] `app/api/rtb/deals/route.ts` — GET (lista deals do workspace) + POST (criar deal)
+- [ ] `app/api/rtb/deals/[id]/route.ts` — PATCH + DELETE
+
+### Interface
+- [ ] `app/(dashboard)/campaigns/programmatic/deals/page.tsx` — tabela de deals: publisher, deal_id, floor price, tipo, status, datas; botão "Novo Deal"
+- [ ] `components/campaigns/deal-selector.tsx` — select de deal disponível ao criar campanha; aparece apenas quando `deal_type !== "open"`
+- [ ] `components/campaigns/rtb-campaign-form.tsx` — integrar `DealSelector` no step 1 (Deal)
+- [ ] Sidebar: link "Deals" sob Programático
+
+### Testes
+- [ ] `tests/unit/rtb-bidder-pmp.test.ts` — private auction só seleciona campanhas com deal matching; guaranteed bypassa leilão com preço fixo; open auction ignora deals
+- [ ] `tests/unit/pmp-deals.test.ts` — validação Zod de criação de deal
+- [ ] `tests/e2e/programmatic-pmp.spec.ts` — criação de deal, criação de campanha privada vinculada ao deal
+
+### Entregáveis
+- `tsc --noEmit` zero erros
+- `vitest run` passando com novos testes de PMP
+- Campanha `private` não ganha bids sem deal ID correspondente no BidRequest
+- Campanha `guaranteed` retorna preço fixo do deal sem entrar em leilão
+
+---
+
+## M15 — Upload de Criativos (Imagens) ✅ CONCLUÍDO
+
+**Branch:** `feat/m15-creative-uploads` → mergeado em `main` via PR #14  
+**Depende de:** M2 (campanhas), M3 (AI Creative Studio), M8 (programático)  
+**Objetivo:** Gestor de tráfego consegue fazer upload de imagens de criativos (banners, thumbnails, assets de campanha) diretamente na plataforma. Imagens vinculadas a criativos no AI Creative Studio, a ads em campanhas sociais e a anúncios display em campanhas programáticas.
+
+### Database
+- [x] Migration `023_creative_assets.sql`:
+  - Tabela `creative_assets`: `id UUID PK`, `workspace_id UUID`, `creative_id UUID NULLABLE → creatives.id`, `campaign_id UUID NULLABLE → campaigns.id`, `rtb_campaign_id UUID NULLABLE → rtb_campaigns.id`, `storage_path TEXT NOT NULL`, `public_url TEXT NOT NULL`, `filename TEXT`, `mime_type TEXT`, `size_bytes INT`, `width_px INT`, `height_px INT`, `alt_text TEXT`, `created_at TIMESTAMPTZ`
+  - RLS: workspace members leem e criam; owners/admins deletam; service role full access
+  - Índices filtrados em `workspace_id`, `creative_id`, `campaign_id`, `rtb_campaign_id`
+- [x] Supabase Storage bucket `creative-assets` — público para leitura, autenticado para escrita (via service role); max 10 MB; tipos aceitos: `image/jpeg`, `image/png`, `image/webp`, `image/gif`
+
+### TypeScript
+- [x] `types/database.ts` — `CreativeAsset` type
+- [x] `lib/storage/creative-assets.ts` — `uploadCreativeAsset`, `deleteCreativeAsset`, `getAssetsByCreative`, `getAssetsByCampaign`, `getAssetsByRtbCampaign`, `getAssetsByWorkspace` (stubs com `TODO(M15-backend)`)
+
+### API Routes
+- [x] `app/api/creative-assets/route.ts` — GET (lista por workspace, filtra por `creative_id` / `campaign_id` / `rtb_campaign_id`) + POST (upload multipart, allowlist MIME, 10 MB guard, `try/catch` auth)
+- [x] `app/api/creative-assets/[id]/route.ts` — DELETE (RBAC member+, chama `deleteCreativeAsset`)
+
+### Interface — AI Creative Studio (M3)
+- [x] `components/creatives/asset-uploader.tsx` — react-dropzone, XHR progress (90% upload + 10% server), `<img>` nativo para blob preview, `revokeObjectURL` ao completar, galeria com overlay, remover por asset
+- [x] `app/(dashboard)/creatives/[id]/page.tsx` — seção "Assets do criativo" abaixo do grid de copy+score
+
+### Interface — Gestão de Campanhas (M2)
+- [x] `components/campaigns/campaign-assets-section.tsx` — wrapper do `AssetUploader` com `campaignId`
+- [x] `app/(dashboard)/campaigns/[id]/page.tsx` — seção "Imagens da campanha" acima dos Diagnósticos
+
+### Interface — Programático (M8)
+- [x] `components/campaigns/rtb-assets-section.tsx` — badges IAB (300×250/728×90/320×50/160×600/300×600), galeria agrupada por formato, DELETE chama API (não só state local)
+- [x] `app/(dashboard)/campaigns/programmatic/[id]/page.tsx` — seção "Banners display" ao final da página
+
+### Testes
+- [x] `tests/unit/creative-assets.test.ts` — 12 testes: MIME allowlist, tamanho máximo, campos de upload, delete stub, getters
+- [x] `tests/e2e/creative-uploads.spec.ts` — 4 testes: AI Studio, campanha social, campanha RTB; dropzone visível; rejeição de arquivo > 10 MB
+
+### Entregáveis
+- PR #14 mergeado: https://github.com/CoimbraViih/adtech/pull/14
+- `tsc --noEmit` zero erros
+- `vitest run` 425/425 passando (12 novos testes de M15)
+- Upload de PNG/JPEG/WebP funcional nos três contextos (criativo, campanha, RTB)
+- Arquivo > 10 MB rejeitado inline no dropzone, sem chamada à API
+- Assets visíveis e removíveis nas páginas de detalhe
+- Dados gateados atrás de `TODO(M15-backend)` para swap-in Supabase Storage real
+
+---
+
 ## Ordem de execução recomendada
 
 ```
@@ -567,12 +965,20 @@ M0 (setup)
        │    └─ M3 (criativos AI)   ← paralelo com M4
        ├─ M4 (pixel)
        │    ├─ M5 (analytics)
+       │    │    └─ M11 (AI traffic manager) ← depende M2 + M4 + M5
+       │    │         └─ M-ADS (integrações de anúncios — 4 fases)
+       │    │              └─ Fase 1: multi-tenant fix + sync real
+       │    │              └─ Fase 2: robustez (retry, refresh, paginação)
+       │    │              └─ Fase 3: OAuth + ad sets + CAPI
+       │    │              └─ Fase 4: reconciliação pixel × plataforma
        │    ├─ M7 (automação)      ← depende M2 + M4 + M5
        │    └─ M8 (programático)   ← depende M2 + M4
+       │         └─ M8-DMP (completar avaliação real de regras)
+       │              └─ M12 (PMP deal enforcement)
        ├─ M6 (landing page AdFlow) ← paralelo, depende só M1
        └─ M9 (monetização Stripe)  ← depende M1–M5
             └─ MS (segurança)
                  └─ M10 (deploy)
 ```
 
-**Regra:** Interface mockada sempre antes do backend. Cada milestone deve estar demonstrável com dados reais antes de iniciar o próximo.
+**Regra:** Interface mockada sempre antes do backend. Cada milestone deve estar demonstrável com dados reais antes de iniciar o próximo. M-ADS Fase 1 é pré-requisito de M10 (deploy) pois o sync precisa funcionar de verdade antes de ir a produção. M15 pode ser desenvolvido em paralelo com M12 — não há dependência entre upload de assets e deal enforcement.

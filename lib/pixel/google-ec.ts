@@ -1,14 +1,16 @@
 import type { PixelEvent } from "@/types/database";
+import { getCredentialField } from "@/lib/integrations/credentials";
 
 const GA4_MP_URL = "https://www.google-analytics.com/mp/collect";
 
 export async function sendGoogleEcEvent(
+  organizationId: string,
   event: PixelEvent,
   googleTagId: string
 ): Promise<void> {
-  const apiSecret = process.env.GOOGLE_GA4_API_SECRET;
+  const apiSecret = await getCredentialField(organizationId, "google", "ga4_api_secret", "GA4_API_SECRET");
   if (!apiSecret) {
-    console.warn("[google-ec] GOOGLE_GA4_API_SECRET not set — skipping");
+    console.warn("[google-ec] GA4_API_SECRET not set — skipping");
     return;
   }
 

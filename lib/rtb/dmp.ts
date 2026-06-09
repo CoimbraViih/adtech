@@ -1,5 +1,7 @@
 import type { Audience } from "@/types/database";
 import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
+import { createHash } from "crypto";
+import { createServiceClient } from "@/lib/supabase/service";
 
 /**
  * Returns audience IDs that match the given user.
@@ -7,15 +9,23 @@ import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
  * AND audience_id IN (SELECT id FROM audiences WHERE workspace_id = workspaceId)
  */
 export async function matchUserToSegments(
-  userIdHash: string,
+  userId: string,
   workspaceId: string
 ): Promise<string[]> {
+  if (!userId) return [];
+
+  const userHash = createHash("sha256").update(userId).digest("hex");
+  const supabase = createServiceClient();
+  const { data: optOut } = await supabase
+    .from("dmp_optouts")
+    .select("user_hash")
+    .eq("user_hash", userHash)
+    .maybeSingle();
+
+  if (optOut) return [];
+
   // workspaceId reserved for future Supabase swap-in
   void workspaceId;
-
-  if (!userIdHash) {
-    return [];
-  }
 
   return MOCK_AUDIENCES.slice(0, 2).map((a) => a.id);
 }
@@ -36,9 +46,9 @@ export async function evaluateAudienceRules(
 
 /**
  * Hashes a user identifier (cookie/fingerprint) for privacy-safe storage.
- * Uses a simple base64 placeholder — real implementation uses crypto.subtle.
- * TODO(M8-backend): replace with crypto.subtle.digest SHA-256
+ * Uses SHA-256 via Node.js crypto module.
  */
 export function hashUserId(rawId: string): string {
-  return btoa(rawId).replace(/=/g, "").slice(0, 32);
+  if (!rawId) return "";
+  return createHash("sha256").update(rawId).digest("hex");
 }

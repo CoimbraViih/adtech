@@ -284,6 +284,7 @@ export type Pixel = {
   name: string;
   meta_pixel_id: string | null;
   google_tag_id: string | null;
+  domain: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -526,6 +527,8 @@ export type OpenRtbImp = {
   bidfloorcur?: string;
 };
 
+// ─── Integrations & API Keys ─────────────────────────────────────────────────
+
 export type OpenRtbBidRequest = {
   id: string;
   imp: OpenRtbImp[];
@@ -561,4 +564,136 @@ export type OpenRtbBidResponse = {
   bidid?: string;
   cur?: string;
   nbr?: number;
+};
+
+// ─── M9: Billing / Stripe ────────────────────────────────────────────────────
+
+export type SubscriptionStatus =
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "canceled"
+  | "unpaid"
+  | "incomplete"
+  | "incomplete_expired";
+
+export type Subscription = {
+  id: string;
+  organization_id: string;
+  stripe_customer_id: string;
+  stripe_subscription_id: string;
+  plan: OrgPlan;
+  status: SubscriptionStatus;
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+// ─── Integrations ─────────────────────────────────────────────────────────────
+
+export type OrgApiCredential = {
+  id: string;
+  organization_id: string;
+  provider: string;
+  credentials: string; // AES-256-GCM encrypted blob — never plaintext
+  last_tested_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type IntegrationStatus = {
+  provider: string;
+  configured: boolean;
+  last_tested_at: string | null;
+};
+
+// ─── M-ADS: Sync Runs ────────────────────────────────────────────────────────
+
+export type SyncRunStatus = "success" | "error" | "partial"
+
+export type SyncRun = {
+  id: string
+  workspace_id: string
+  platform: string
+  status: SyncRunStatus
+  campaigns_synced: number
+  error_message: string | null
+  started_at: string
+  finished_at: string | null
+  created_at: string
+}
+
+// ── Campaign Metrics Daily (M-ADS Fase 4) ─────────────────────────────────────
+
+export type CampaignMetricsDaily = {
+  id: string;
+  workspace_id: string;
+  campaign_external_id: string;
+  platform: CampaignPlatform;
+  date: string; // YYYY-MM-DD
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  roas: number | null;
+  cpa: number | null;
+  pixel_conversions: number;
+  created_at: string;
+  updated_at: string;
+};
+
+// ─── M11: AI Traffic Manager ──────────────────────────────────────────────────
+
+export type DiagnosticSeverity = "info" | "warning" | "critical";
+export type DiagnosticStatus = "open" | "acknowledged" | "applied" | "dismissed";
+export type DiagnosticEntity = "campaign" | "ad_set" | "ad";
+
+export type CampaignBenchmark = {
+  id: string;
+  workspace_id: string | null;
+  platform: string;
+  objective: string;
+  metric: string;
+  target_value: number;
+  comparator: "gte" | "lte";
+  created_at: string;
+  updated_at: string;
+};
+
+export type AiDiagnostic = {
+  id: string;
+  workspace_id: string;
+  entity_type: DiagnosticEntity;
+  entity_id: string;
+  campaign_id: string | null;
+  skill_id: string;
+  severity: DiagnosticSeverity;
+  status: DiagnosticStatus;
+  title: string;
+  rationale: string;
+  suggested_action: string;
+  metrics_snapshot: Record<string, number>;
+  created_at: string;
+  updated_at: string;
+};
+
+// M15 — Creative Asset Uploads
+export type CreativeAsset = {
+  id: string;
+  workspace_id: string;
+  creative_id: string | null;
+  campaign_id: string | null;
+  rtb_campaign_id: string | null;
+  storage_path: string;
+  public_url: string;
+  filename: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  width_px: number | null;
+  height_px: number | null;
+  alt_text: string | null;
+  created_at: string;
 };

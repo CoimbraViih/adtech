@@ -74,7 +74,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   // Propagate status change to external platform
   if (parsed.data.status && campaign.external_id) {
     try {
-      await updateCampaignOnPlatform({
+      await updateCampaignOnPlatform(session.organization.id, {
         platform: campaign.platform,
         externalId: campaign.external_id,
         status: parsed.data.status as CampaignStatus,
@@ -113,7 +113,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
 
   if (campaign.external_id) {
     try {
-      await updateCampaignOnPlatform({
+      await updateCampaignOnPlatform(session.organization.id, {
         platform: campaign.platform,
         externalId: campaign.external_id,
         status: "archived",

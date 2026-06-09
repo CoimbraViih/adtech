@@ -1,6 +1,6 @@
 -- Migration 010: leads table for landing page waitlist capture
 
-CREATE TABLE leads (
+CREATE TABLE IF NOT EXISTS leads (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email       TEXT NOT NULL,
   name        TEXT NOT NULL,
@@ -9,11 +9,12 @@ CREATE TABLE leads (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX leads_email_idx ON leads(email);
+CREATE UNIQUE INDEX IF NOT EXISTS leads_email_idx ON leads(email);
 
 -- RLS: service role only (public endpoint uses service client, no authenticated user)
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "service_role_all" ON leads;
 CREATE POLICY "service_role_all" ON leads
   FOR ALL
   TO service_role

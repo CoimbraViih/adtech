@@ -57,13 +57,14 @@ Revenue model: monthly subscription (R$500–3.000) + % of managed spend (3–8%
 | Whisper | Auto-subtitles |
 | Meta Marketing API | Campaign management |
 | Google Ads API | Campaign management |
-| OpenRTB 2.6 | Programmatic DSP/SSP |
+| OpenRTB 2.6 | Programmatic DSP/SSP (open auction) |
 | WhatsApp Business API | Automation messaging |
 
 ### Infrastructure
 - **Hosting:** Vercel (Next.js app) + AWS São Paulo (backend services, post-MVP)
 - **Containers:** Docker + Kubernetes (post-MVP)
 - **Region strategy:** AWS sa-east-1 (primary) + us-east-1 (secondary)
+- **Creative asset storage:** Supabase Storage bucket `creative-assets` — imagens de banners, thumbnails e assets de campanha (M15)
 
 ---
 
@@ -85,7 +86,7 @@ adtech/
 │   │   ├── analytics/            # M5: attribution dashboard
 │   │   ├── pixel/                # M4: pixel management
 │   │   ├── landing-pages/        # M6: LP builder
-│   │   ├── automation/           # M8: funnel automation
+│   │   ├── automation/           # M7: funnel automation
 │   │   ├── settings/
 │   │   │   └── billing/page.tsx  # Stripe billing portal
 │   │   └── onboarding/page.tsx   # Org + workspace setup wizard
@@ -124,6 +125,8 @@ adtech/
 │   │   ├── client.ts
 │   │   ├── plans.ts              # Plan definitions & feature gates
 │   │   └── webhooks.ts           # Webhook event handlers
+│   ├── storage/
+│   │   └── creative-assets.ts    # M15: upload/delete/list de assets no Supabase Storage
 │   └── auth/
 │       └── roles.ts              # RBAC helpers (canManageCampaigns, etc.)
 │
@@ -285,14 +288,38 @@ See `.env.local.example` for the full list.
 
 | # | Milestone | Status | Plan File |
 |---|-----------|--------|-----------|
-| M1 | Foundation & Auth | Planned | `docs/superpowers/plans/2026-05-14-m1-foundation-auth.md` |
-| M2 | Campaign Management | — | — |
-| M3 | AI Creative Studio | — | — |
-| M4 | Server-Side Pixel & Tracking | — | — |
-| M5 | Analytics & Attribution | — | — |
-| M6 | Landing Page Builder | — | — |
-| M7 | Programmatic DSP/SSP | — | — |
-| M8 | Automation & Alerts | — | — |
-| M9 | White-label & SuperAdmin | — | — |
+| M0 | Setup & Design System | ✅ Done | — |
+| M1 | Foundation & Auth | ✅ Done | `docs/superpowers/plans/2026-05-14-m1-foundation-auth.md` |
+| M2 | Campaign Management | ✅ Done | — |
+| M3 | AI Creative Studio | ✅ Done | — |
+| M4 | Server-Side Pixel & Tracking | ✅ Done | — |
+| M5 | Analytics & Attribution | ✅ Done | — |
+| M6 | Landing Page AdFlow | ✅ Done | — |
+| M7 | Automation & Alerts | ✅ Done | — |
+| M8 | Programmatic DSP/SSP | ✅ Done | — |
+| M9 | Monetização & Stripe | ✅ Done | — |
+| MS | Security & Hardening | ✅ Done | — |
+| M11 | AI Traffic Manager (Campaign Diagnostics) | ✅ Done | `docs/superpowers/plans/2026-05-29-m10-ai-traffic-manager.md` |
+| M-ADS | Ads Integrations Improvement (Meta/Google/TikTok/LinkedIn) | ✅ Done (Fases 1–4) | `docs/superpowers/plans/2026-06-02-ads-integrations-improvement-plan.md` |
+| M10 | Deploy & Production | Planned | — |
+| M8-DMP | DMP Completion (real audience rule evaluation) | Planned | — |
+| M12 | PMP & Deal Enforcement | Planned | — |
+| M15 | Creative Asset Uploads (images) | Planned | — |
 
-**Recommended execution order:** M1 → M2 → M4 → M5 → M3 / M6 → M8 / M7 → M9
+**Recommended execution order:** M10 (deploy) → M8-DMP → M12 / M15
+
+### M-ADS — Integrations Architecture (current state, post Fase 4)
+
+Four ad platform clients exist in `lib/meta/`, `lib/google/`, `lib/tiktok/`, `lib/linkedin/`. Multi-tenant credential storage is in `lib/integrations/` (AES-256-GCM, table `org_api_credentials`). Key function: `getCredentialField(orgId, provider, field, envFallback)`.
+
+**Completed (Fases 1–4):**
+- Multi-tenant credential lookup via `getCredentialField` — no more `process.env` gates in sync
+- LinkedIn migrated to `/rest/adCampaigns` + `Linkedin-Version: 202506`
+- `fetchWithRetry` with exponential backoff, token refresh for Meta/LinkedIn/TikTok, pagination on all list calls
+- OAuth onboarding: `/api/integrations/[provider]/oauth/start` + `/callback` for all 4 providers
+- Ad sets and ads synced in `sync.ts` for all 4 platforms
+- Pixel fanout wired with `organizationId` — Meta CAPI token in `Authorization: Bearer` header
+- `campaign_metrics_daily` populado pelo sync após cada sincronização das 4 plataformas
+- Skill `tracking-divergence` no AI Traffic Manager: dispara `warning` quando pixel < 50% das conversões da plataforma (spend >= R$100)
+- Página `/analytics/reconciliation` com tabela de divergência pixel × plataforma por campanha
+- No retry/backoff, no token refresh for Meta/LinkedIn/TikTok, no pagination on list calls

@@ -58,8 +58,11 @@ export async function sendMagicLink(
  * Removed in production builds automatically via NODE_ENV check in the route.
  */
 export async function devLogin(nextPath = "/dashboard") {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("devLogin is not available in production");
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.ENABLE_DEV_LOGIN !== "true"
+  ) {
+    throw new Error("devLogin is not available in this environment");
   }
   const cookieStore = await cookies();
   cookieStore.set({

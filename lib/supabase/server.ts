@@ -103,12 +103,16 @@ export async function createServerSupabaseClient() {
   type Chain = Promise<QueryResult> & {
     select: (..._args: unknown[]) => Chain;
     eq: (..._args: unknown[]) => Chain;
+    neq: (..._args: unknown[]) => Chain;
+    not: (..._args: unknown[]) => Chain;
     in: (..._args: unknown[]) => Chain;
     insert: (..._args: unknown[]) => Chain;
     update: (..._args: unknown[]) => Chain;
+    upsert: (..._args: unknown[]) => Chain;
     delete: () => Chain;
     order: (..._args: unknown[]) => Chain;
     limit: (..._args: unknown[]) => Chain;
+    or: (..._args: unknown[]) => Chain;
     single: () => Promise<QueryResult>;
   };
 
@@ -117,12 +121,16 @@ export async function createServerSupabaseClient() {
     const chain = Object.assign(result, {
       select: (..._args: unknown[]) => chain,
       eq: (..._args: unknown[]) => chain,
+      neq: (..._args: unknown[]) => chain,
+      not: (..._args: unknown[]) => chain,
       in: (..._args: unknown[]) => chain,
       insert: (..._args: unknown[]) => chain,
       update: (..._args: unknown[]) => chain,
+      upsert: (..._args: unknown[]) => chain,
       delete: () => chain,
       order: (..._args: unknown[]) => chain,
       limit: (..._args: unknown[]) => chain,
+      or: (..._args: unknown[]) => chain,
       single: () => Promise.resolve({ data: null as unknown, error: null as unknown }),
     }) as Chain;
     return chain;

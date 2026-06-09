@@ -28,6 +28,9 @@
 # supabase local dev
 .supabase
 
+# Claude Code internal files
+.superpowers/
+
 # playwright output
 playwright-report
 test-results

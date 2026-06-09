@@ -45,6 +45,15 @@ describe("POST /api/pixel/[id]", () => {
         error: null,
       }),
     });
+    // workspace lookup for organizationId
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { organization_id: "org_1" },
+        error: null,
+      }),
+    });
 
     const req = makeRequest(PIXEL_ID, { event_type: "page_view" }, {
       "x-forwarded-for": "1.2.3.4",

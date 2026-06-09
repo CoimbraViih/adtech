@@ -63,6 +63,11 @@ export function canManageWorkspaces(session: SessionContext): boolean {
   return hasMinRole(session.role, "admin");
 }
 
+/** Can configure org-level API credentials (owner or admin only) */
+export function canManageIntegrations(session: SessionContext): boolean {
+  return hasMinRole(session.role, "admin");
+}
+
 // ── Utility ───────────────────────────────────────────────────────────────────
 
 /** Human-readable label for a role — use in UI badges */

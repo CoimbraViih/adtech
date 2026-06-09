@@ -10,12 +10,15 @@ import {
   Settings,
   Layers,
   Users,
+  GitCompareArrows,
 } from "lucide-react";
 
 export type NavItem = {
   label: string;
   href: string;
   icon: ComponentType<{ className?: string }>;
+  /** When true, marks this item active for any route starting with `href` */
+  matchPrefix?: boolean;
 };
 
 export const NAV_ITEMS: NavItem[] = [
@@ -25,8 +28,9 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Audiências",    href: "/audiences",               icon: Users },
   { label: "Criativos",     href: "/creatives",               icon: Sparkles },
   { label: "Analytics",     href: "/analytics",               icon: BarChart3 },
+  { label: "Reconciliação", href: "/analytics/reconciliation", icon: GitCompareArrows },
   { label: "Pixel",         href: "/pixel",                   icon: Radio },
   { label: "Landing Pages", href: "/landing-pages",           icon: FileText },
   { label: "Automação",     href: "/automation",              icon: Zap },
-  { label: "Configurações", href: "/settings",                icon: Settings },
+  { label: "Configurações", href: "/settings",                icon: Settings, matchPrefix: true },
 ];

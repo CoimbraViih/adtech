@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -12,6 +13,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { PlanBadge } from "@/components/billing/plan-badge";
+import { FAKE_SESSION } from "@/lib/auth/session";
 
 function AdFlowLogo({ collapsed }: { collapsed: boolean }) {
   return (
@@ -47,6 +50,17 @@ function DesktopSidebar() {
         <AdFlowLogo collapsed={collapsed} />
 
         <SidebarNav collapsed={collapsed} />
+
+        {/* Plan badge — links to billing page */}
+        {!collapsed && (
+          <Link
+            href="/settings/billing"
+            className="flex items-center justify-between px-3 py-2 mx-2 mb-1 rounded-md hover:bg-[color:var(--adflow-border)] transition-colors"
+          >
+            <span className="text-xs text-[color:var(--adflow-fg-muted)]">Plano atual</span>
+            <PlanBadge plan={FAKE_SESSION.organization.plan} />
+          </Link>
+        )}
 
         <div className="shrink-0 p-2 border-t border-[color:var(--adflow-border)]">
           <button

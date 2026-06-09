@@ -1,20 +1,21 @@
 /**
- * Meta Marketing API wrapper.
+ * Meta Marketing API wrapper — real implementation.
  *
  * Docs: https://developers.facebook.com/docs/marketing-apis
- * API version: v21.0
+ * API version: v25.0
  *
- * Required env vars:
- *   META_ACCESS_TOKEN      — long-lived User or System User access token
- *   META_AD_ACCOUNT_ID     — ad account ID (act_XXXXXXXXX)
- *
- * TODO(M2-backend): wire META_ACCESS_TOKEN per workspace (stored in DB encrypted).
- * For now falls back to env vars for single-tenant dev.
+ * Credentials are resolved per-org from `org_api_credentials` via
+ * `getMetaCredentials()`. Env-var fallbacks (META_ACCESS_TOKEN,
+ * META_AD_ACCOUNT_ID) are handled inside `getCredentialField` and are NOT
+ * read directly in this module.
  */
 
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
+import { getCredentialField } from "@/lib/integrations/credentials";
+import { fetchWithRetry } from "@/lib/integrations/fetch-retry";
+import { refreshMetaTokenIfNeeded } from "@/lib/meta/token-refresh";
 
-const BASE_URL = "https://graph.facebook.com/v21.0";
+const BASE_URL = "https://graph.facebook.com/v25.0";
 
 // ── types ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +62,7 @@ type MetaCreateCampaignInput = {
   stop_time?: string;
 };
 
-// ── objective mapping ──────────────────────────────────────────────────────
+// ── objective mapping ───────────────────────────────────────────────────────
 
 const OBJECTIVE_MAP: Record<CampaignObjective, MetaObjective> = {
   awareness:       "OUTCOME_AWARENESS",
@@ -79,16 +80,27 @@ const STATUS_MAP: Record<CampaignStatus, MetaCampaignStatus> = {
   archived: "ARCHIVED",
 };
 
-// ── http helpers ───────────────────────────────────────────────────────────
+// ── http helpers ────────────────────────────────────────────────────────────
 
-function getCredentials(accessToken?: string, adAccountId?: string) {
-  const token = accessToken ?? process.env.META_ACCESS_TOKEN;
-  const account = adAccountId ?? process.env.META_AD_ACCOUNT_ID;
+async function getMetaCredentials(organizationId: string) {
+  // Best-effort proactive refresh — a refresh failure must not block the
+  // caller from using whatever valid token is currently stored.
+  try {
+    await refreshMetaTokenIfNeeded(organizationId);
+  } catch (err) {
+    console.warn("[meta] token refresh skipped:", (err as Error).message);
+  }
 
-  if (!token) throw new Error("META_ACCESS_TOKEN is not configured");
-  if (!account) throw new Error("META_AD_ACCOUNT_ID is not configured");
-
-  return { token, account: account.startsWith("act_") ? account : `act_${account}` };
+  const [token, accountId] = await Promise.all([
+    getCredentialField(organizationId, "meta", "access_token", "META_ACCESS_TOKEN"),
+    getCredentialField(organizationId, "meta", "ad_account_id", "META_AD_ACCOUNT_ID"),
+  ]);
+  if (!token) throw new Error("Meta Ads Access Token não configurado. Configure em Settings → Integrações.");
+  if (!accountId) throw new Error("Meta Ads Account ID não configurado. Configure em Settings → Integrações.");
+  return {
+    token,
+    account: accountId.startsWith("act_") ? accountId : `act_${accountId}`,
+  };
 }
 
 async function metaFetch<T>(
@@ -97,9 +109,14 @@ async function metaFetch<T>(
 ): Promise<T> {
   const { token, ...rest } = options;
   const url = path.startsWith("http") ? path : `${BASE_URL}${path}`;
-  const separator = url.includes("?") ? "&" : "?";
 
-  const res = await fetch(`${url}${separator}access_token=${token}`, rest);
+  const res = await fetchWithRetry(url, {
+    ...rest,
+    headers: {
+      ...(rest.headers as Record<string, string> | undefined),
+      Authorization: `Bearer ${token}`,
+    },
+  });
   const data = await res.json() as T & { error?: { message: string; code: number } };
 
   if (!res.ok || (data as { error?: { message: string } }).error) {
@@ -110,33 +127,57 @@ async function metaFetch<T>(
   return data;
 }
 
-// ── public API ─────────────────────────────────────────────────────────────
+// ── public API ──────────────────────────────────────────────────────────────
+
+type MetaListResponse = {
+  data: MetaCampaign[];
+  paging?: {
+    cursors?: { before: string; after: string };
+    next?: string;
+  };
+};
+
+const META_SAFETY_LIMIT = 5000;
 
 /**
- * List all campaigns for the configured ad account.
+ * List all campaigns for the configured ad account (fully paginated).
  */
-export async function listMetaCampaigns(opts?: {
-  accessToken?: string;
-  adAccountId?: string;
-  status?: MetaCampaignStatus[];
-}): Promise<MetaCampaign[]> {
-  const { token, account } = getCredentials(opts?.accessToken, opts?.adAccountId);
+export async function listMetaCampaigns(
+  organizationId: string,
+  opts?: {
+    status?: MetaCampaignStatus[];
+  }
+): Promise<MetaCampaign[]> {
+  const { token, account } = await getMetaCredentials(organizationId);
 
   const fields = "id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time";
   const statusFilter = opts?.status?.join(",") ?? "ACTIVE,PAUSED";
 
-  const data = await metaFetch<{ data: MetaCampaign[] }>(
-    `/${account}/campaigns?fields=${fields}&effective_status=['${statusFilter.replace(/,/g, "','")}']&limit=200`,
-    { token, method: "GET" }
-  );
+  const initialPath = `/${account}/campaigns?fields=${fields}&effective_status=['${statusFilter.replace(/,/g, "','")}']&limit=200`;
 
-  return data.data;
+  const accumulated: MetaCampaign[] = [];
+  let nextPath: string | undefined = initialPath;
+
+  while (nextPath !== undefined) {
+    const response: MetaListResponse = await metaFetch<MetaListResponse>(nextPath, { token, method: "GET" });
+    accumulated.push(...response.data);
+
+    if (!response.paging?.next) break;
+    if (accumulated.length >= META_SAFETY_LIMIT) break;
+
+    // paging.next is an absolute URL — metaFetch routes it correctly via
+    // the `path.startsWith("http")` check in its URL construction.
+    nextPath = response.paging.next;
+  }
+
+  return accumulated;
 }
 
 /**
  * Create a campaign on Meta and return its external ID.
  */
 export async function createMetaCampaign(
+  organizationId: string,
   input: {
     name: string;
     objective: CampaignObjective;
@@ -145,10 +186,9 @@ export async function createMetaCampaign(
     lifetimeBudget?: number | null;
     startDate: string; // YYYY-MM-DD
     endDate?: string | null;
-  },
-  opts?: { accessToken?: string; adAccountId?: string }
+  }
 ): Promise<string> {
-  const { token, account } = getCredentials(opts?.accessToken, opts?.adAccountId);
+  const { token, account } = await getMetaCredentials(organizationId);
 
   const body: MetaCreateCampaignInput = {
     name: input.name,
@@ -188,11 +228,11 @@ export async function createMetaCampaign(
  * Update campaign status or budget on Meta.
  */
 export async function updateMetaCampaign(
+  organizationId: string,
   externalId: string,
-  update: { status?: CampaignStatus; dailyBudget?: number },
-  opts?: { accessToken?: string }
+  update: { status?: CampaignStatus; dailyBudget?: number }
 ): Promise<void> {
-  const { token } = getCredentials(opts?.accessToken);
+  const { token } = await getMetaCredentials(organizationId);
 
   const body: Record<string, string> = {};
   if (update.status) body.status = STATUS_MAP[update.status];
@@ -213,18 +253,153 @@ export async function updateMetaCampaign(
 }
 
 /**
+ * Fetch account-level insights for all campaigns in a single API call.
+ * Uses /{accountId}/insights?level=campaign to retrieve metrics for every
+ * campaign under the account, then returns them keyed by campaign_id.
+ * This replaces the N-per-campaign pattern with 1 call per account.
+ */
+export async function getMetaAccountInsights(
+  organizationId: string,
+  opts: {
+    datePreset?: "today" | "last_7d" | "last_30d" | "last_month";
+    since?: string; // YYYY-MM-DD
+    until?: string;
+  } = {}
+): Promise<Record<string, MetaInsights>> {
+  const { token, account } = await getMetaCredentials(organizationId);
+
+  const fields = "campaign_id,spend,impressions,clicks,actions,purchase_roas,date_start,date_stop";
+  const timeRange = opts.since && opts.until
+    ? `&time_range={'since':'${opts.since}','until':'${opts.until}'}`
+    : `&date_preset=${opts.datePreset ?? "last_30d"}`;
+
+  // level=campaign on an account endpoint returns one row per campaign.
+  const initialPath = `/${account}/insights?fields=${fields}&level=campaign${timeRange}&limit=200`;
+
+  const accumulated: MetaInsights[] = [];
+  let nextPath: string | undefined = initialPath;
+
+  type AccountInsightsPage = { data: MetaInsights[]; paging?: { next?: string } };
+
+  while (nextPath !== undefined) {
+    const response: AccountInsightsPage = await metaFetch<AccountInsightsPage>(
+      nextPath,
+      { token, method: "GET" }
+    );
+    accumulated.push(...response.data);
+    if (!response.paging?.next) break;
+    if (accumulated.length >= META_SAFETY_LIMIT) break;
+    nextPath = response.paging.next;
+  }
+
+  // Key by campaign_id for O(1) join in the sync loop.
+  const byId: Record<string, MetaInsights> = {};
+  for (const ins of accumulated) {
+    byId[ins.campaign_id] = ins;
+  }
+  return byId;
+}
+
+// ── ad sets & ads types ────────────────────────────────────────────────────
+
+type MetaAdSetStatus = "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED";
+type MetaAdStatus = "ACTIVE" | "PAUSED" | "DELETED" | "ARCHIVED" | "DISAPPROVED" | "PENDING_REVIEW" | "WITH_ISSUES";
+
+export type MetaAdSet = {
+  id: string;
+  name: string;
+  status: MetaAdSetStatus;
+  daily_budget?: string; // Meta returns cents as string
+  targeting?: Record<string, unknown>;
+  created_time: string;
+};
+
+export type MetaAd = {
+  id: string;
+  name: string;
+  status: MetaAdStatus;
+  creative?: { id: string; name?: string };
+};
+
+type MetaAdSetListResponse = {
+  data: MetaAdSet[];
+  paging?: { next?: string };
+};
+
+type MetaAdListResponse = {
+  data: MetaAd[];
+  paging?: { next?: string };
+};
+
+/**
+ * List all ad sets for a given campaign (fully paginated).
+ */
+export async function listMetaAdSets(
+  orgId: string,
+  campaignId: string
+): Promise<MetaAdSet[]> {
+  const { token } = await getMetaCredentials(orgId);
+
+  const fields = "id,name,status,daily_budget,targeting,created_time";
+  const initialPath = `/${campaignId}/adsets?fields=${fields}&limit=200`;
+
+  const accumulated: MetaAdSet[] = [];
+  let nextPath: string | undefined = initialPath;
+
+  while (nextPath !== undefined) {
+    const response: MetaAdSetListResponse = await metaFetch<MetaAdSetListResponse>(nextPath, { token, method: "GET" });
+    accumulated.push(...response.data);
+
+    if (!response.paging?.next) break;
+    if (accumulated.length >= META_SAFETY_LIMIT) break;
+
+    nextPath = response.paging.next;
+  }
+
+  return accumulated;
+}
+
+/**
+ * List all ads for a given ad set (fully paginated).
+ */
+export async function listMetaAds(
+  orgId: string,
+  adSetId: string
+): Promise<MetaAd[]> {
+  const { token } = await getMetaCredentials(orgId);
+
+  const fields = "id,name,status,creative{id,name}";
+  const initialPath = `/${adSetId}/ads?fields=${fields}&limit=200`;
+
+  const accumulated: MetaAd[] = [];
+  let nextPath: string | undefined = initialPath;
+
+  while (nextPath !== undefined) {
+    const response: MetaAdListResponse = await metaFetch<MetaAdListResponse>(nextPath, { token, method: "GET" });
+    accumulated.push(...response.data);
+
+    if (!response.paging?.next) break;
+    if (accumulated.length >= META_SAFETY_LIMIT) break;
+
+    nextPath = response.paging.next;
+  }
+
+  return accumulated;
+}
+
+/**
  * Fetch campaign-level insights for a date range.
  */
 export async function getMetaCampaignInsights(
+  organizationId: string,
   externalId: string,
   opts: {
     datePreset?: "today" | "last_7d" | "last_30d" | "last_month";
     since?: string; // YYYY-MM-DD
     until?: string;
-    accessToken?: string;
   } = {}
 ): Promise<MetaInsights[]> {
-  const { token } = getCredentials(opts.accessToken);
+  const { token } = await getMetaCredentials(organizationId);
 
   const fields = "campaign_id,spend,impressions,clicks,actions,purchase_roas,date_start,date_stop";
   const timeRange = opts.since && opts.until

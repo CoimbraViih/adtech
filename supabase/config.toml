@@ -1,0 +1,40 @@
+# Supabase local development configuration
+# This file documents the auth settings that govern the hosted project.
+# Authoritative source: Supabase dashboard. This file is for reference only.
+# Run `supabase db push` to apply migrations; local dev is not used.
+
+[api]
+port = 54321
+
+[db]
+port = 54322
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/callback"]
+
+# JWT expires after 1 hour; clients must use refresh token to get a new one.
+jwt_expiry = 3600
+
+# Rotate refresh tokens on each use to limit replay window.
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+[auth.email]
+enable_signup = true
+
+# Require email confirmation before the account is active.
+enable_confirmations = true
+
+# Force re-confirmation when changing email address.
+double_confirm_changes = true
+
+min_password_length = 8
+
+[auth.external.google]
+enabled = true
+# client_id and client_secret are configured via the Supabase dashboard.
+# Do NOT commit those values here.
+
+[auth.sms]
+enabled = false

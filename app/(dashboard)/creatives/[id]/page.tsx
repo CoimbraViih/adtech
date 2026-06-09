@@ -8,6 +8,8 @@ import { CreativeTypeBadge } from "@/components/creatives/creative-type-badge";
 import { CreativeScore } from "@/components/creatives/creative-score";
 import { PolicyChecker } from "@/components/creatives/policy-checker";
 import { StatusBadge } from "@/components/campaigns/status-badge";
+import { AssetUploader } from "@/components/creatives/asset-uploader";
+import { getAssetsByCreative } from "@/lib/storage/creative-assets";
 type AnyStatus = Parameters<typeof StatusBadge>[0]["status"];
 
 export default async function CreativeDetailPage({
@@ -20,6 +22,10 @@ export default async function CreativeDetailPage({
   // TODO(M3-backend): replace with Supabase query
   const creative = MOCK_CREATIVES.find((c) => c.id === id);
   if (!creative) notFound();
+
+  // TODO(M15-backend): replace with real session.workspace.id
+  const workspaceId = "ws_demo";
+  const initialAssets = await getAssetsByCreative(id);
 
   const campaign = creative.campaign_id
     ? MOCK_CAMPAIGNS.find((c) => c.id === creative.campaign_id)
@@ -235,6 +241,18 @@ export default async function CreativeDetailPage({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Assets section */}
+      <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-5">
+        <h2 className="text-xs font-semibold text-[color:var(--adflow-fg-muted)] uppercase tracking-wider mb-4">
+          Assets do criativo
+        </h2>
+        <AssetUploader
+          workspaceId={workspaceId}
+          creativeId={id}
+          initialAssets={initialAssets}
+        />
       </div>
     </div>
   );

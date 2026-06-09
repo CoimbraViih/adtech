@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireServerSession } from "@/lib/supabase/server";
 import { generateCopyVariations } from "@/lib/ai/openai";
 import { MOCK_COPY_VARIATIONS } from "@/lib/creatives/mock-data";
+import { sanitizeBriefing } from "@/lib/security/sanitize";
+import { createRateLimiter } from "@/lib/security/rate-limit";
 import { z } from "zod";
 
 const schema = z.object({
@@ -9,11 +11,22 @@ const schema = z.object({
   count: z.number().int().min(1).max(6).optional().default(4),
 });
 
+// 20 generations per workspace per hour (GPT-4o is expensive)
+const genLimiter = createRateLimiter("ai-copy-gen", 20, 60 * 60 * 1000);
+
 export async function POST(req: NextRequest) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+  }
+
+  if (genLimiter(session.workspace.id)) {
+    return NextResponse.json(
+      { error: "Limite de gerações atingido. Tente novamente em 1 hora." },
+      { status: 429 }
+    );
   }
 
   let body: unknown;
@@ -32,19 +45,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Use mock data when API key is not configured (dev mode)
+  // Sanitize briefing before sending to OpenAI
+  const safeBriefing = sanitizeBriefing(parsed.data.briefing);
+
   if (!process.env.OPENAI_API_KEY) {
-    await new Promise((r) => setTimeout(r, 800)); // simulate latency
+    await new Promise((r) => setTimeout(r, 800));
     return NextResponse.json({
       variations: MOCK_COPY_VARIATIONS.slice(0, parsed.data.count),
     });
   }
 
   try {
-    const variations = await generateCopyVariations(parsed.data.briefing, parsed.data.count);
+    const variations = await generateCopyVariations(session.organization.id, safeBriefing, parsed.data.count);
     return NextResponse.json({ variations });
   } catch (err) {
-    console.error("[creatives/generate/copy]", err);
+    console.error("[creatives/generate/copy]", (err as Error).message);
     return NextResponse.json(
       { error: "Erro ao gerar copy. Tente novamente." },
       { status: 502 }

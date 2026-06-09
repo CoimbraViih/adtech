@@ -1,11 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { MOCK_CAMPAIGNS, MOCK_AD_SETS, getMockMetricSnapshots } from "@/lib/campaigns/mock-data";
+import { MOCK_CAMPAIGNS, MOCK_AD_SETS, getMockMetricSnapshots, getMockDiagnostics } from "@/lib/campaigns/mock-data";
 import { StatusBadge } from "@/components/campaigns/status-badge";
 import { PlatformIcon } from "@/components/campaigns/platform-icon";
 import { CampaignCharts } from "@/components/campaigns/campaign-charts";
 import { AdSetsTable } from "@/components/campaigns/ad-sets-table";
+import { DiagnosticCard } from "@/components/diagnostics/diagnostic-card";
+import { SeveritySummary } from "@/components/diagnostics/severity-summary";
+import { RunDiagnosticsButton } from "@/components/diagnostics/run-diagnostics-button";
+import { CampaignAssetsSection } from "@/components/campaigns/campaign-assets-section";
+import { getAssetsByCampaign } from "@/lib/storage/creative-assets";
 
 function fmt(n: number, dec = 0) {
   return n.toLocaleString("pt-BR", {
@@ -13,6 +18,8 @@ function fmt(n: number, dec = 0) {
     maximumFractionDigits: dec,
   });
 }
+
+const SEVERITY_ORDER: Record<string, number> = { critical: 0, warning: 1, info: 2 };
 
 export default async function CampaignDetailPage({
   params,
@@ -24,6 +31,11 @@ export default async function CampaignDetailPage({
   // TODO(M2-backend): replace with Supabase query
   const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
   if (!campaign) notFound();
+
+  // TODO(M2-backend): replace with Supabase query on ai_diagnostics
+  const workspaceId = "ws_demo";
+  const diagnostics = getMockDiagnostics(id);
+  const campaignAssets = await getAssetsByCampaign(id);
 
   const adSets = MOCK_AD_SETS.filter((a) => a.campaign_id === id);
   const snapshots = getMockMetricSnapshots(id);
@@ -125,6 +137,35 @@ export default async function CampaignDetailPage({
           <AdSetsTable adSets={adSets} />
         </div>
       )}
+
+      {/* Assets */}
+      <CampaignAssetsSection
+        workspaceId={workspaceId}
+        campaignId={id}
+        initialAssets={campaignAssets}
+      />
+
+      {/* Diagnostics */}
+      <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-[color:var(--adflow-fg)]">Diagnósticos</h2>
+          <RunDiagnosticsButton workspaceId={workspaceId} campaignId={id} />
+        </div>
+
+        {diagnostics.length >= 2 && <SeveritySummary diagnostics={diagnostics} />}
+
+        {diagnostics.length === 0 ? (
+          <p className="text-sm text-[color:var(--adflow-fg-muted)] py-4 text-center">
+            Nenhum problema detectado — rode uma análise para começar.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {diagnostics.map((d) => (
+              <DiagnosticCard key={d.id} diagnostic={d} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

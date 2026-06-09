@@ -1,6 +1,7 @@
 /**
  * Platform abstraction layer for campaign operations.
  * Routes create/update calls to the correct external API.
+ * Credentials are resolved per-org from the DB — no opts pass-through.
  */
 
 import type { CampaignCreateInput, CampaignPlatform, CampaignStatus } from "@/types/database";
@@ -10,34 +11,65 @@ import { createTikTokCampaign, updateTikTokCampaign } from "@/lib/tiktok/client"
 import { createLinkedInCampaign, updateLinkedInCampaign } from "@/lib/linkedin/client";
 
 export async function createCampaignOnPlatform(
-  input: CampaignCreateInput,
-  opts?: { accessToken?: string; customerId?: string; refreshToken?: string; advertiserId?: string; adAccountId?: string }
+  organizationId: string,
+  input: CampaignCreateInput
 ): Promise<string> {
   if (input.platform === "meta") {
     return createMetaCampaign(
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date },
-      { accessToken: opts?.accessToken }
+      organizationId,
+      {
+        name: input.name,
+        objective: input.objective,
+        status: "draft",
+        dailyBudget: input.daily_budget,
+        lifetimeBudget: input.lifetime_budget,
+        startDate: input.start_date,
+        endDate: input.end_date,
+      }
     );
   }
 
   if (input.platform === "google") {
     return createGoogleCampaign(
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, startDate: input.start_date, endDate: input.end_date },
-      { customerId: opts?.customerId, refreshToken: opts?.refreshToken }
+      organizationId,
+      {
+        name: input.name,
+        objective: input.objective,
+        status: "draft",
+        dailyBudget: input.daily_budget,
+        startDate: input.start_date,
+        endDate: input.end_date,
+      }
     );
   }
 
   if (input.platform === "tiktok") {
     return createTikTokCampaign(
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date },
-      { accessToken: opts?.accessToken, advertiserId: opts?.advertiserId }
+      organizationId,
+      {
+        name: input.name,
+        objective: input.objective,
+        status: "draft",
+        dailyBudget: input.daily_budget,
+        lifetimeBudget: input.lifetime_budget,
+        startDate: input.start_date,
+        endDate: input.end_date,
+      }
     );
   }
 
   if (input.platform === "linkedin") {
     return createLinkedInCampaign(
-      { name: input.name, objective: input.objective, status: "draft", dailyBudget: input.daily_budget, lifetimeBudget: input.lifetime_budget, startDate: input.start_date, endDate: input.end_date },
-      { accessToken: opts?.accessToken, adAccountId: opts?.adAccountId }
+      organizationId,
+      {
+        name: input.name,
+        objective: input.objective,
+        status: "draft",
+        dailyBudget: input.daily_budget,
+        lifetimeBudget: input.lifetime_budget,
+        startDate: input.start_date,
+        endDate: input.end_date,
+      }
     );
   }
 
@@ -45,46 +77,44 @@ export async function createCampaignOnPlatform(
   throw new Error("Programmatic campaigns are not yet supported via external API");
 }
 
-export async function updateCampaignOnPlatform(update: {
-  platform: CampaignPlatform;
-  externalId: string;
-  status?: CampaignStatus;
-  dailyBudget?: number;
-  accessToken?: string;
-  customerId?: string;
-  refreshToken?: string;
-  advertiserId?: string;
-  adAccountId?: string;
-}): Promise<void> {
+export async function updateCampaignOnPlatform(
+  organizationId: string,
+  update: {
+    platform: CampaignPlatform;
+    externalId: string;
+    status?: CampaignStatus;
+    dailyBudget?: number;
+  }
+): Promise<void> {
   if (update.platform === "meta") {
     return updateMetaCampaign(
+      organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { accessToken: update.accessToken }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 
   if (update.platform === "google") {
     return updateGoogleCampaign(
+      organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { customerId: update.customerId, refreshToken: update.refreshToken }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 
   if (update.platform === "tiktok") {
     return updateTikTokCampaign(
+      organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { accessToken: update.accessToken, advertiserId: update.advertiserId }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 
   if (update.platform === "linkedin") {
     return updateLinkedInCampaign(
+      organizationId,
       update.externalId,
-      { status: update.status, dailyBudget: update.dailyBudget },
-      { accessToken: update.accessToken, adAccountId: update.adAccountId }
+      { status: update.status, dailyBudget: update.dailyBudget }
     );
   }
 }

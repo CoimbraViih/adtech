@@ -10,6 +10,7 @@ const MOCK_PIXEL: Pixel = {
   name: "Site Principal",
   meta_pixel_id: "123456789012345",
   google_tag_id: "G-XXXXXXXXXX",
+  domain: null,
   created_at: new Date("2026-05-20").toISOString(),
   updated_at: new Date("2026-05-20").toISOString(),
 };

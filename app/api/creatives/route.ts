@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireServerSession } from "@/lib/supabase/server";
-import { canManageCampaigns } from "@/lib/auth/roles";
+import { canManageCreatives } from "@/lib/auth/roles";
 import { MOCK_CREATIVES } from "@/lib/creatives/mock-data";
 import { z } from "zod";
 
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
-  if (!canManageCampaigns(session)) {
+  if (!canManageCreatives(session)) {
     return NextResponse.json({ error: "Permissão insuficiente." }, { status: 403 });
   }
 
