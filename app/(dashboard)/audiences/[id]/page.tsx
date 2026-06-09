@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { MOCK_AUDIENCES, MOCK_RTB_CAMPAIGNS } from "@/lib/rtb/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import type { AudienceType, AudienceRule, RtbCampaignStatus } from "@/types/database";
 
 const TYPE_LABELS: Record<AudienceType, string> = {
@@ -42,12 +42,32 @@ type Props = { params: Promise<{ id: string }> };
 export default async function AudienceDetailPage({ params }: Props) {
   const { id } = await params;
 
-  const audience = MOCK_AUDIENCES.find((a) => a.id === id);
-  if (!audience) notFound();
+  let session;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
 
-  const linkedCampaigns = MOCK_RTB_CAMPAIGNS.filter(
-    (c) => c.audience_id === audience.id
-  );
+  const supabase = await createServerSupabaseClient();
+  const [audienceRes, campaignsRes] = await Promise.all([
+    supabase
+      .from("audiences")
+      .select("*")
+      .eq("id", id)
+      .eq("workspace_id", session.workspace.id)
+      .single(),
+    supabase
+      .from("rtb_campaigns")
+      .select("id, name, status, max_cpm, audience_id")
+      .eq("workspace_id", session.workspace.id)
+      .eq("audience_id", id),
+  ]);
+
+  if (!audienceRes.data) notFound();
+
+  const audience = audienceRes.data;
+  const linkedCampaigns = campaignsRes.data ?? [];
 
   return (
     <div className="p-6 space-y-6">
@@ -64,10 +84,10 @@ export default async function AudienceDetailPage({ params }: Props) {
         <span
           className={cn(
             "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-            TYPE_BADGE_CLASS[audience.type]
+            TYPE_BADGE_CLASS[audience.type as AudienceType]
           )}
         >
-          {TYPE_LABELS[audience.type]}
+          {TYPE_LABELS[audience.type as AudienceType]}
         </span>
       </div>
 
@@ -87,7 +107,7 @@ export default async function AudienceDetailPage({ params }: Props) {
         <div className="rounded-lg border border-border bg-surface p-4">
           <p className="text-sm text-muted">Regras Ativas</p>
           <p className="text-2xl font-bold text-white mt-1">
-            {audience.rules.length}
+            {Array.isArray(audience.rules) ? audience.rules.length : 0}
           </p>
           <p className="text-xs text-muted mt-1">condições de segmentação</p>
         </div>
@@ -105,13 +125,13 @@ export default async function AudienceDetailPage({ params }: Props) {
         <h2 className="text-base font-medium text-white mb-3">
           Regras de Segmentação
         </h2>
-        {audience.rules.length === 0 ? (
+        {!Array.isArray(audience.rules) || audience.rules.length === 0 ? (
           <div className="rounded-lg border border-border bg-surface p-6 text-center text-muted text-sm">
             Nenhuma regra definida para esta audiência.
           </div>
         ) : (
           <div className="space-y-2">
-            {audience.rules.map((rule, i) => (
+            {(audience.rules as AudienceRule[]).map((rule, i) => (
               <div
                 key={i}
                 className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3"
@@ -176,10 +196,10 @@ export default async function AudienceDetailPage({ params }: Props) {
                       <span
                         className={cn(
                           "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                          STATUS_BADGE[campaign.status]
+                          STATUS_BADGE[campaign.status as RtbCampaignStatus]
                         )}
                       >
-                        {STATUS_LABELS[campaign.status]}
+                        {STATUS_LABELS[campaign.status as RtbCampaignStatus]}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-white">

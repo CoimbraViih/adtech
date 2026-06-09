@@ -1,18 +1,27 @@
-"use client";
-
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { redirect } from "next/navigation";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { AudiencesListClient } from "@/components/audiences/audiences-list-client";
-import { CreateAudienceDialog } from "@/components/audiences/create-audience-dialog";
-import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
+import { CreateAudienceButton } from "@/components/audiences/create-audience-button";
+import type { Audience } from "@/types/database";
 
-export default function AudiencesPage() {
-  const audiences = MOCK_AUDIENCES;
+export default async function AudiencesPage() {
+  let session;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
 
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase
+    .from("audiences")
+    .select("*")
+    .eq("workspace_id", session.workspace.id)
+    .order("created_at", { ascending: false });
+
+  const audiences: Audience[] = data ?? [];
   const totalSize = audiences.reduce((sum, a) => sum + a.size_estimate, 0);
   const withRules = audiences.filter((a) => a.rules.length > 0).length;
-
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
     <div className="p-6 space-y-6">
@@ -24,9 +33,7 @@ export default function AudiencesPage() {
             Segmentos comportamentais para campanhas programáticas
           </p>
         </div>
-        <Button size="sm" onClick={() => setDialogOpen(true)}>
-          Nova Audiência
-        </Button>
+        <CreateAudienceButton />
       </div>
 
       {/* KPI Cards */}
@@ -49,15 +56,6 @@ export default function AudiencesPage() {
 
       {/* Audiences list */}
       <AudiencesListClient audiences={audiences} />
-
-      {/* Create dialog */}
-      <CreateAudienceDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onCreated={() => {
-          // TODO(M8-backend): refresh data from Supabase
-        }}
-      />
     </div>
   );
 }

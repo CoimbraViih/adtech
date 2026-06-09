@@ -65,6 +65,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ai_diagnostics_open_unique_idx
   ON ai_diagnostics(entity_type, entity_id, skill_id)
   WHERE status = 'open';
 -- unconditional unique key for upsert conflict resolution (PostgREST requires non-partial index)
+ALTER TABLE ai_diagnostics DROP CONSTRAINT IF EXISTS ai_diagnostics_entity_skill_unique;
 ALTER TABLE ai_diagnostics ADD CONSTRAINT ai_diagnostics_entity_skill_unique
   UNIQUE (workspace_id, entity_type, entity_id, skill_id);
 
@@ -83,6 +84,7 @@ CREATE TRIGGER set_ai_diagnostics_updated_at
 ALTER TABLE campaign_benchmarks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_diagnostics      ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS campaign_benchmarks_select ON campaign_benchmarks;
 CREATE POLICY campaign_benchmarks_select ON campaign_benchmarks FOR SELECT
   USING (
     workspace_id IS NULL
@@ -91,6 +93,7 @@ CREATE POLICY campaign_benchmarks_select ON campaign_benchmarks FOR SELECT
     )
   );
 
+DROP POLICY IF EXISTS campaign_benchmarks_write ON campaign_benchmarks;
 CREATE POLICY campaign_benchmarks_write ON campaign_benchmarks FOR ALL
   USING (workspace_id IN (
     SELECT workspace_id FROM workspace_members
@@ -99,11 +102,13 @@ CREATE POLICY campaign_benchmarks_write ON campaign_benchmarks FOR ALL
     SELECT workspace_id FROM workspace_members
     WHERE user_id = auth.uid() AND role IN ('owner','admin','member')));
 
+DROP POLICY IF EXISTS ai_diagnostics_select ON ai_diagnostics;
 CREATE POLICY ai_diagnostics_select ON ai_diagnostics FOR SELECT
   USING (workspace_id IN (
     SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
   ));
 
+DROP POLICY IF EXISTS ai_diagnostics_write ON ai_diagnostics;
 CREATE POLICY ai_diagnostics_write ON ai_diagnostics FOR ALL
   USING (workspace_id IN (
     SELECT workspace_id FROM workspace_members

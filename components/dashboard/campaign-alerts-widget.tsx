@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, Lightbulb } from "lucide-react";
 import { PlatformIcon } from "@/components/campaigns/platform-icon";
-import type { CampaignAlert } from "@/lib/dashboard/mock-data";
+import type { CampaignAlert } from "@/types/dashboard";
 import type { CampaignPlatform } from "@/types/database";
 
 export function CampaignAlertsWidget({ alerts }: { alerts: CampaignAlert[] }) {

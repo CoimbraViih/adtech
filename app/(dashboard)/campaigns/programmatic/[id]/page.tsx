@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { ComponentType } from "react";
 import { ChevronLeft, Activity, Target, TrendingUp, DollarSign, BarChart2 } from "lucide-react";
-import { MOCK_RTB_CAMPAIGNS, MOCK_BID_LOG } from "@/lib/rtb/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/campaigns/status-badge";
 import { RtbPerformance } from "@/components/campaigns/rtb-performance";
 import { RtbAssetsSection } from "@/components/campaigns/rtb-assets-section";
@@ -68,16 +68,34 @@ type PageProps = {
 export default async function ProgrammaticDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  const campaign = MOCK_RTB_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) notFound();
+  let session;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
 
-  // TODO(M15-backend): replace with real session.workspace.id
-  const workspaceId = "ws_demo";
-  const rtbAssets = await getAssetsByRtbCampaign(id);
+  const supabase = await createServerSupabaseClient();
+  const [campaignRes, bidLogRes, rtbAssets] = await Promise.all([
+    supabase
+      .from("rtb_campaigns")
+      .select("*")
+      .eq("id", id)
+      .eq("workspace_id", session.workspace.id)
+      .single(),
+    supabase
+      .from("bid_requests_log")
+      .select("*")
+      .eq("rtb_campaign_id", id)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    getAssetsByRtbCampaign(id),
+  ]);
 
-  const bidLog = MOCK_BID_LOG.filter(
-    (b) => b.rtb_campaign_id === campaign.id
-  ).slice(0, 20);
+  if (!campaignRes.data) notFound();
+
+  const campaign = campaignRes.data;
+  const bidLog = bidLogRes.data ?? [];
 
   const winRate =
     campaign.win_rate !== null ? fmt(campaign.win_rate * 100, 1) + "%" : "—";
@@ -103,36 +121,20 @@ export default async function ProgrammaticDetailPage({ params }: PageProps) {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <SmallKpi
-          label="Impressões"
-          value={fmt(campaign.impressions)}
-          icon={Activity}
-        />
-        <SmallKpi
-          label="Wins"
-          value={fmt(campaign.wins)}
-          icon={Target}
-        />
+        <SmallKpi label="Impressões" value={fmt(campaign.impressions)} icon={Activity} />
+        <SmallKpi label="Wins" value={fmt(campaign.wins)} icon={Target} />
         <SmallKpi
           label="Win Rate"
           value={winRate}
           icon={TrendingUp}
           highlight={campaign.win_rate !== null && campaign.win_rate >= 0.4}
         />
-        <SmallKpi
-          label="CPM Médio"
-          value={avgCpm}
-          icon={BarChart2}
-        />
-        <SmallKpi
-          label="Gasto"
-          value={`R$ ${fmt(campaign.spend, 2)}`}
-          icon={DollarSign}
-        />
+        <SmallKpi label="CPM Médio" value={avgCpm} icon={BarChart2} />
+        <SmallKpi label="Gasto" value={`R$ ${fmt(campaign.spend, 2)}`} icon={DollarSign} />
       </div>
 
       {/* Performance charts */}
-      <RtbPerformance campaignId={campaign.id} />
+      <RtbPerformance bidLog={bidLog} />
 
       {/* Bid Log */}
       <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4">
@@ -185,7 +187,7 @@ export default async function ProgrammaticDetailPage({ params }: PageProps) {
                       )}
                     </td>
                     <td className="px-3 py-2.5">
-                      <OutcomeBadge outcome={bid.outcome} />
+                      <OutcomeBadge outcome={bid.outcome as BidOutcome} />
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono text-sm tabular-nums text-[color:var(--adflow-fg-muted)]">
                       {bid.response_ms !== null ? `${bid.response_ms}ms` : "—"}
@@ -215,10 +217,7 @@ export default async function ProgrammaticDetailPage({ params }: PageProps) {
             label="Pacing"
             value={campaign.pacing === "even" ? "Distribuído" : "ASAP"}
           />
-          <ConfigItem
-            label="Budget Diário"
-            value={`R$ ${fmt(campaign.daily_budget, 2)}`}
-          />
+          <ConfigItem label="Budget Diário" value={`R$ ${fmt(campaign.daily_budget, 2)}`} />
           <ConfigItem
             label="Budget Total"
             value={
@@ -237,7 +236,7 @@ export default async function ProgrammaticDetailPage({ params }: PageProps) {
 
       {/* Banners */}
       <RtbAssetsSection
-        workspaceId={workspaceId}
+        workspaceId={session.workspace.id}
         rtbCampaignId={id}
         initialAssets={rtbAssets}
       />
@@ -269,9 +268,7 @@ function SmallKpi({
       <p
         className={cn(
           "text-xl font-semibold tabular-nums",
-          highlight
-            ? "text-[color:var(--adflow-success)]"
-            : "text-[color:var(--adflow-fg)]"
+          highlight ? "text-[color:var(--adflow-success)]" : "text-[color:var(--adflow-fg)]"
         )}
       >
         {value}
@@ -297,9 +294,7 @@ function ConfigItem({
       <span
         className={cn(
           "text-sm font-medium",
-          highlight
-            ? "text-[color:var(--adflow-success)]"
-            : "text-[color:var(--adflow-fg)]"
+          highlight ? "text-[color:var(--adflow-success)]" : "text-[color:var(--adflow-fg)]"
         )}
       >
         {value}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
-import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
+import { canManageCampaigns } from "@/lib/auth/roles";
 import { z } from "zod";
 import type { AudienceCreateInput } from "@/types/database";
 
@@ -20,24 +20,27 @@ const createSchema = z.object({
 });
 
 // GET /api/audiences — list audiences for the current workspace
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
     session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Always use workspace from the authenticated session — never trust query param
-  const workspaceId = session.workspace.id;
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("audiences")
+    .select("*")
+    .eq("workspace_id", session.workspace.id)
+    .order("created_at", { ascending: false });
 
-  // TODO(M8-backend): replace with Supabase query
-  // const supabase = createServerSupabaseClient();
-  // const { data, error } = await supabase.from("audiences").select("*").eq("workspace_id", workspaceId);
-  const data = MOCK_AUDIENCES.filter((a) => a.workspace_id === workspaceId || a.workspace_id === "ws_demo");
+  if (error) {
+    console.error("[audiences/list]", error.message);
+    return NextResponse.json({ error: "Erro ao buscar audiências." }, { status: 500 });
+  }
 
-  return NextResponse.json({ data });
+  return NextResponse.json({ data: data ?? [] });
 }
 
 // POST /api/audiences — create a new audience
@@ -47,6 +50,10 @@ export async function POST(req: NextRequest) {
     session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+  }
+
+  if (!canManageCampaigns(session)) {
+    return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
   }
 
   let body: unknown;
@@ -73,21 +80,21 @@ export async function POST(req: NextRequest) {
     lookalike_source_id: parsed.data.lookalike_source_id ?? null,
   };
 
-  // TODO(M8-backend): insert into Supabase
-  // const { data, error } = await supabase.from("audiences").insert({
-  //   workspace_id: session.workspace.id,
-  //   ...input,
-  // }).select().single();
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("audiences")
+    .insert({
+      workspace_id: session.workspace.id,
+      size_estimate: 0,
+      ...input,
+    })
+    .select()
+    .single();
 
-  const now = new Date().toISOString();
-  const newAudience = {
-    id: `aud_${Date.now()}`,
-    workspace_id: session.workspace.id,
-    size_estimate: 0,
-    created_at: now,
-    updated_at: now,
-    ...input,
-  };
+  if (error) {
+    console.error("[audiences/create]", error.message);
+    return NextResponse.json({ error: "Erro ao criar audiência." }, { status: 500 });
+  }
 
-  return NextResponse.json({ data: newAudience }, { status: 201 });
+  return NextResponse.json({ data }, { status: 201 });
 }

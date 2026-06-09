@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import type { ComponentType } from "react";
 import { Plus, Activity, TrendingUp, TrendingDown, DollarSign, BarChart2 } from "lucide-react";
 import { RtbCampaignsTable } from "@/components/campaigns/rtb-campaigns-table";
-import { MOCK_RTB_CAMPAIGNS, getMockRtbKpis } from "@/lib/rtb/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
 import { canAccessProgrammatic } from "@/lib/stripe/plans";
 import { UpgradeBanner } from "@/components/billing/upgrade-banner";
-import { FAKE_SESSION } from "@/lib/auth/session";
+import type { RtbCampaign } from "@/types/database";
 
 function fmt(n: number, dec = 0) {
   return n.toLocaleString("pt-BR", {
@@ -21,12 +22,19 @@ export default async function ProgrammaticPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
 }) {
-  const plan = FAKE_SESSION.organization.plan;
+  let session;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
+
+  const plan = session.organization.plan;
   if (!canAccessProgrammatic(plan)) {
     return (
       <div className="space-y-4">
         <h1 className="text-lg font-semibold text-[color:var(--adflow-fg)]">Programático</h1>
-        <UpgradeBanner feature="Programático RTB" requiredPlan="agency" />
+        <UpgradeBanner feature="Programático RTB" requiredPlan="agency" currentPlan={plan} />
       </div>
     );
   }
@@ -41,7 +49,20 @@ export default async function ProgrammaticPage({
     ? (sp.compare as CompareMode)
     : "prev_period";
 
-  const kpis = getMockRtbKpis("ws_demo");
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase
+    .from("rtb_campaigns")
+    .select("*")
+    .eq("workspace_id", session.workspace.id)
+    .order("created_at", { ascending: false });
+
+  const rtbCampaigns: RtbCampaign[] = data ?? [];
+
+  const totalBids = rtbCampaigns.reduce((s, c) => s + c.impressions, 0);
+  const totalWins = rtbCampaigns.reduce((s, c) => s + c.wins, 0);
+  const totalSpend = rtbCampaigns.reduce((s, c) => s + c.spend, 0);
+  const winRate = totalBids > 0 ? totalWins / totalBids : 0;
+  const avgCpm = totalWins > 0 ? (totalSpend / totalWins) * 1000 : 0;
 
   return (
     <div className="space-y-6">
@@ -52,11 +73,9 @@ export default async function ProgrammaticPage({
             Campanhas Programáticas
           </h1>
           <p className="text-sm text-[color:var(--adflow-fg-muted)] mt-0.5">
-            {MOCK_RTB_CAMPAIGNS.filter((c) => c.status === "active").length} ativa
-            {MOCK_RTB_CAMPAIGNS.filter((c) => c.status === "active").length !== 1
-              ? "s"
-              : ""}{" "}
-            de {MOCK_RTB_CAMPAIGNS.length} no total
+            {rtbCampaigns.filter((c) => c.status === "active").length} ativa
+            {rtbCampaigns.filter((c) => c.status === "active").length !== 1 ? "s" : ""}{" "}
+            de {rtbCampaigns.length} no total
           </p>
         </div>
         <Link
@@ -77,37 +96,20 @@ export default async function ProgrammaticPage({
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard
-          label="Total de Bids"
-          value={fmt(kpis.totalBids)}
-          icon={Activity}
-          change={+8.2}
-        />
+        <KpiCard label="Total de Bids" value={fmt(totalBids)} icon={Activity} />
         <KpiCard
           label="Win Rate"
-          value={`${fmt(kpis.winRate * 100, 1)}%`}
+          value={`${fmt(winRate * 100, 1)}%`}
           icon={TrendingUp}
-          change={+3.5}
-          highlight={kpis.winRate >= 0.4}
+          highlight={winRate >= 0.4}
         />
-        <KpiCard
-          label="CPM Médio"
-          value={`R$ ${fmt(kpis.avgCpm, 2)}`}
-          icon={BarChart2}
-          change={-2.1}
-          invertChange
-        />
-        <KpiCard
-          label="Gasto Total"
-          value={`R$ ${fmt(kpis.totalSpend, 2)}`}
-          icon={DollarSign}
-          change={+14.7}
-        />
+        <KpiCard label="CPM Médio" value={`R$ ${fmt(avgCpm, 2)}`} icon={BarChart2} />
+        <KpiCard label="Gasto Total" value={`R$ ${fmt(totalSpend, 2)}`} icon={DollarSign} />
       </div>
 
       {/* Table */}
       <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4">
-        <RtbCampaignsTable campaigns={MOCK_RTB_CAMPAIGNS} />
+        <RtbCampaignsTable campaigns={rtbCampaigns} />
       </div>
     </div>
   );
@@ -117,22 +119,10 @@ type KpiCardProps = {
   label: string;
   value: string;
   icon: ComponentType<{ className?: string }>;
-  change: number;
   highlight?: boolean;
-  invertChange?: boolean;
 };
 
-function KpiCard({
-  label,
-  value,
-  icon: Icon,
-  change,
-  highlight,
-  invertChange,
-}: KpiCardProps) {
-  const isPositive = invertChange ? change <= 0 : change >= 0;
-  const ChangeIcon = change >= 0 ? TrendingUp : TrendingDown;
-
+function KpiCard({ label, value, icon: Icon, highlight }: KpiCardProps) {
   return (
     <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4">
       <div className="flex items-center justify-between mb-3">
@@ -145,32 +135,11 @@ function KpiCard({
       </div>
       <p
         className={`text-2xl font-semibold tabular-nums ${
-          highlight
-            ? "text-[color:var(--adflow-success)]"
-            : "text-[color:var(--adflow-fg)]"
+          highlight ? "text-[color:var(--adflow-success)]" : "text-[color:var(--adflow-fg)]"
         }`}
       >
         {value}
       </p>
-      <div className="flex items-center gap-1 mt-1.5">
-        <ChangeIcon
-          className={`w-3 h-3 ${
-            isPositive
-              ? "text-[color:var(--adflow-success)]"
-              : "text-[color:var(--adflow-danger)]"
-          }`}
-        />
-        <span
-          className={`text-xs ${
-            isPositive
-              ? "text-[color:var(--adflow-success)]"
-              : "text-[color:var(--adflow-danger)]"
-          }`}
-        >
-          {change > 0 ? "+" : ""}
-          {change}% vs mês anterior
-        </span>
-      </div>
     </div>
   );
 }

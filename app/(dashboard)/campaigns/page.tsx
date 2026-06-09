@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
 import { CampaignTable } from "@/components/campaigns/campaign-table";
-import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
+import type { Campaign } from "@/types/database";
 
 function fmt(n: number, dec = 0) {
   return n.toLocaleString("pt-BR", {
@@ -17,6 +19,13 @@ export default async function CampaignsPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
 }) {
+  let session;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
+
   const sp = await searchParams;
   const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
   const dateTo = sp.to ?? new Date().toISOString().slice(0, 10);
@@ -24,11 +33,20 @@ export default async function CampaignsPage({
     ? (sp.compare as CompareMode)
     : "prev_period";
 
-  const active = MOCK_CAMPAIGNS.filter((c) => c.status === "active");
-  const totalSpend = MOCK_CAMPAIGNS.reduce((s, c) => s + c.spend, 0);
-  const totalRevenue = MOCK_CAMPAIGNS.reduce((s, c) => s + c.revenue, 0);
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase
+    .from("campaigns")
+    .select("*")
+    .eq("workspace_id", session.workspace.id)
+    .order("created_at", { ascending: false });
+
+  const campaigns: Campaign[] = data ?? [];
+
+  const active = campaigns.filter((c) => c.status === "active");
+  const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
+  const totalRevenue = campaigns.reduce((s, c) => s + c.revenue, 0);
   const avgRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
-  const totalConversions = MOCK_CAMPAIGNS.reduce((s, c) => s + c.conversions, 0);
+  const totalConversions = campaigns.reduce((s, c) => s + c.conversions, 0);
   const avgCpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
 
   return (
@@ -38,7 +56,7 @@ export default async function CampaignsPage({
         <div>
           <h1 className="text-xl font-semibold text-[color:var(--adflow-fg)]">Campanhas</h1>
           <p className="text-sm text-[color:var(--adflow-fg-muted)] mt-0.5">
-            {active.length} ativa{active.length !== 1 ? "s" : ""} de {MOCK_CAMPAIGNS.length} no total
+            {active.length} ativa{active.length !== 1 ? "s" : ""} de {campaigns.length} no total
           </p>
         </div>
         <Link
@@ -55,37 +73,15 @@ export default async function CampaignsPage({
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard
-          label="Gasto total"
-          value={`R$ ${fmt(totalSpend, 2)}`}
-          icon={DollarSign}
-          change={+12.4}
-        />
-        <KpiCard
-          label="ROAS médio"
-          value={`${fmt(avgRoas, 2)}x`}
-          icon={TrendingUp}
-          change={+8.1}
-          highlight={avgRoas >= 3}
-        />
-        <KpiCard
-          label="CPA médio"
-          value={`R$ ${fmt(avgCpa, 2)}`}
-          icon={TrendingDown}
-          change={-4.3}
-          invertChange
-        />
-        <KpiCard
-          label="Conversões"
-          value={fmt(totalConversions)}
-          icon={Target}
-          change={+21.7}
-        />
+        <KpiCard label="Gasto total" value={`R$ ${fmt(totalSpend, 2)}`} icon={DollarSign} />
+        <KpiCard label="ROAS médio" value={`${fmt(avgRoas, 2)}x`} icon={TrendingUp} highlight={avgRoas >= 3} />
+        <KpiCard label="CPA médio" value={`R$ ${fmt(avgCpa, 2)}`} icon={TrendingDown} />
+        <KpiCard label="Conversões" value={fmt(totalConversions)} icon={Target} />
       </div>
 
       {/* Table */}
       <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4">
-        <CampaignTable campaigns={MOCK_CAMPAIGNS} />
+        <CampaignTable campaigns={campaigns} />
       </div>
     </div>
   );
@@ -95,15 +91,10 @@ type KpiCardProps = {
   label: string;
   value: string;
   icon: React.ComponentType<{ className?: string }>;
-  change: number;
   highlight?: boolean;
-  invertChange?: boolean;
 };
 
-function KpiCard({ label, value, icon: Icon, change, highlight, invertChange }: KpiCardProps) {
-  const isPositive = invertChange ? change <= 0 : change >= 0;
-  const ChangeIcon = change >= 0 ? TrendingUp : TrendingDown;
-
+function KpiCard({ label, value, icon: Icon, highlight }: KpiCardProps) {
   return (
     <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4">
       <div className="flex items-center justify-between mb-3">
@@ -121,20 +112,6 @@ function KpiCard({ label, value, icon: Icon, change, highlight, invertChange }: 
       >
         {value}
       </p>
-      <div className="flex items-center gap-1 mt-1.5">
-        <ChangeIcon
-          className={`w-3 h-3 ${
-            isPositive ? "text-[color:var(--adflow-success)]" : "text-[color:var(--adflow-danger)]"
-          }`}
-        />
-        <span
-          className={`text-xs ${
-            isPositive ? "text-[color:var(--adflow-success)]" : "text-[color:var(--adflow-danger)]"
-          }`}
-        >
-          {change > 0 ? "+" : ""}{change}% vs mês anterior
-        </span>
-      </div>
     </div>
   );
 }

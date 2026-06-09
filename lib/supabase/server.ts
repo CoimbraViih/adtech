@@ -1,57 +1,160 @@
-/**
- * Supabase server client (per-request, cookies-based).
- * Used in Server Components, Route Handlers, and Server Actions.
- *
- * TODO(M1-backend): replace body with:
- *   import { createServerClient } from "@supabase/ssr";
- *   import { cookies } from "next/headers";
- *   import type { Database } from "@/types/supabase";
- *
- *   export async function getSupabaseServerClient() {
- *     const cookieStore = await cookies();
- *     return createServerClient<Database>(
- *       process.env.NEXT_PUBLIC_SUPABASE_URL!,
- *       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
- *       {
- *         cookies: {
- *           getAll: () => cookieStore.getAll(),
- *           setAll: (toSet) => toSet.forEach(({ name, value, options }) =>
- *             cookieStore.set(name, value, options)
- *           ),
- *         },
- *       }
- *     );
- *   }
- *
- * IMPORTANT: always call `supabase.auth.getUser()` — NEVER `getSession()`.
- * getSession() reads from local storage (tamper-able); getUser() validates
- * the JWT server-side via the Supabase API.
- */
-
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import {
-  getSessionFromCookies,
-  FAKE_SESSION,
-} from "@/lib/auth/session";
-import type { SessionContext } from "@/types/database";
+import type { SessionContext, OrgPlan, OrgRole } from "@/types/database";
 
-/**
- * Returns the current session from the fake cookie store.
- * Returns null when unauthenticated (no cookie present).
- */
-export async function getServerSession(): Promise<SessionContext | null> {
+/** Hardcoded dev session — active only when NODE_ENV !== 'production' and no real auth. */
+const DEV_SESSION: SessionContext = {
+  user: {
+    id: "00000000-0000-0000-0000-000000000001",
+    email: "dev@adflow.app",
+    display_name: "Dev User",
+    avatar_url: null,
+  },
+  organization: {
+    id: "00000000-0000-0000-0000-000000000010",
+    name: "AdFlow Dev Org",
+    plan: "agency" as OrgPlan,
+    stripe_customer_id: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  },
+  workspace: {
+    id: "00000000-0000-0000-0000-000000000020",
+    organization_id: "00000000-0000-0000-0000-000000000010",
+    name: "Dev Workspace",
+    description: null,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  },
+  role: "owner" as OrgRole,
+};
+
+export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
-  const raw = cookieStore.get("adflow_session")?.value ?? null;
-  if (!raw) return null;
-
-  // Use the same decoder as the session helper
-  const { decodeSession } = await import("@/lib/auth/session");
-  return decodeSession(raw);
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (toSet) =>
+          toSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          ),
+      },
+    }
+  );
 }
 
 /**
- * Returns the session or throws — use inside protected route handlers
- * where you want an automatic 401 on missing session.
+ * Returns SessionContext for the authenticated user, or null.
+ * Resolves org + workspace from DB after validating the JWT via getUser().
+ */
+export async function getServerSession(): Promise<SessionContext | null> {
+  // Guard: if Supabase env vars are missing, skip real auth in dev
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (process.env.NODE_ENV !== "production") return DEV_SESSION;
+    return null;
+  }
+
+  let supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  try {
+    supabase = await createServerSupabaseClient();
+  } catch {
+    if (process.env.NODE_ENV !== "production") return DEV_SESSION;
+    return null;
+  }
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    // Dev bypass: return fake session so pages render without real Supabase auth
+    if (process.env.NODE_ENV !== "production") return DEV_SESSION;
+    return null;
+  }
+
+  // Fetch the user's org membership (first org by creation date)
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select(
+      "role, organizations(id, name, plan, stripe_customer_id, created_at, updated_at)"
+    )
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .single();
+
+  if (!membership || !membership.organizations) {
+    if (process.env.NODE_ENV !== "production") return DEV_SESSION;
+    return null;
+  }
+
+  const org = membership.organizations as unknown as {
+    id: string;
+    name: string;
+    plan: string;
+    stripe_customer_id: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+
+  // Fetch the first workspace in that org this user belongs to
+  const { data: wsMembership } = await supabase
+    .from("workspace_members")
+    .select(
+      "workspaces(id, organization_id, name, description, created_at, updated_at)"
+    )
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .single();
+
+  if (!wsMembership || !wsMembership.workspaces) {
+    if (process.env.NODE_ENV !== "production") return DEV_SESSION;
+    return null;
+  }
+
+  const ws = wsMembership.workspaces as unknown as {
+    id: string;
+    organization_id: string;
+    name: string;
+    description: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email ?? "",
+      display_name: (user.user_metadata?.display_name as string) ?? null,
+      avatar_url: (user.user_metadata?.avatar_url as string) ?? null,
+    },
+    organization: {
+      id: org.id,
+      name: org.name,
+      plan: org.plan as OrgPlan,
+      stripe_customer_id: org.stripe_customer_id,
+      created_at: org.created_at,
+      updated_at: org.updated_at,
+    },
+    workspace: {
+      id: ws.id,
+      organization_id: ws.organization_id,
+      name: ws.name,
+      description: ws.description,
+      created_at: ws.created_at,
+      updated_at: ws.updated_at,
+    },
+    role: membership.role as OrgRole,
+  };
+}
+
+/**
+ * Returns the session or throws — use inside protected route handlers.
  */
 export async function requireServerSession(): Promise<SessionContext> {
   const session = await getServerSession();
@@ -61,97 +164,7 @@ export async function requireServerSession(): Promise<SessionContext> {
   return session;
 }
 
-/**
- * Fake "getUser" — mirrors `supabase.auth.getUser()` shape.
- * TODO(M1-backend): replace with real Supabase client call.
- */
 export async function getUser() {
-  const session = await getServerSession();
-  if (!session) return { data: { user: null }, error: null };
-  return {
-    data: {
-      user: {
-        id: session.user.id,
-        email: session.user.email,
-        user_metadata: {
-          display_name: session.user.display_name,
-          avatar_url: session.user.avatar_url,
-        },
-      },
-    },
-    error: null,
-  };
-}
-
-// Suppress unused-import warning — exported for convenience
-export { getSessionFromCookies, FAKE_SESSION };
-
-/**
- * Returns a minimal fake Supabase-like client for use in server-side helpers.
- * TODO(M1-backend): replace with a real Supabase client once the backend is wired up.
- *
- * The returned object mirrors the subset of the Supabase client API used by
- * `lib/automation/rules.ts` and other server helpers:
- *   client.from(table).select(...).eq(...) …  (returns { data, error })
- *   client.auth.getUser()
- */
-export async function createServerSupabaseClient() {
-  // Build a chainable query builder that resolves to { data: null, error: null }
-  // by default.  Real data only flows once M1-backend replaces this stub.
-  type QueryResult = { data: unknown; error: unknown };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  type Chain = Promise<QueryResult> & {
-    select: (..._args: unknown[]) => Chain;
-    eq: (..._args: unknown[]) => Chain;
-    neq: (..._args: unknown[]) => Chain;
-    not: (..._args: unknown[]) => Chain;
-    in: (..._args: unknown[]) => Chain;
-    insert: (..._args: unknown[]) => Chain;
-    update: (..._args: unknown[]) => Chain;
-    upsert: (..._args: unknown[]) => Chain;
-    delete: () => Chain;
-    order: (..._args: unknown[]) => Chain;
-    limit: (..._args: unknown[]) => Chain;
-    or: (..._args: unknown[]) => Chain;
-    single: () => Promise<QueryResult>;
-  };
-
-  function makeChain(): Chain {
-    const result = Promise.resolve({ data: null as unknown, error: null as unknown });
-    const chain = Object.assign(result, {
-      select: (..._args: unknown[]) => chain,
-      eq: (..._args: unknown[]) => chain,
-      neq: (..._args: unknown[]) => chain,
-      not: (..._args: unknown[]) => chain,
-      in: (..._args: unknown[]) => chain,
-      insert: (..._args: unknown[]) => chain,
-      update: (..._args: unknown[]) => chain,
-      upsert: (..._args: unknown[]) => chain,
-      delete: () => chain,
-      order: (..._args: unknown[]) => chain,
-      limit: (..._args: unknown[]) => chain,
-      or: (..._args: unknown[]) => chain,
-      single: () => Promise.resolve({ data: null as unknown, error: null as unknown }),
-    }) as Chain;
-    return chain;
-  }
-
-  return {
-    from: (_table: string) => makeChain(),
-    auth: {
-      getUser: async () => {
-        const session = await getServerSession();
-        if (!session) return { data: { user: null }, error: null };
-        return {
-          data: {
-            user: {
-              id: session.user.id,
-              email: session.user.email,
-            },
-          },
-          error: null,
-        };
-      },
-    },
-  };
+  const supabase = await createServerSupabaseClient();
+  return supabase.auth.getUser();
 }

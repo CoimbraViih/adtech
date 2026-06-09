@@ -1,7 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { MOCK_CAMPAIGNS, MOCK_AD_SETS, getMockMetricSnapshots, getMockDiagnostics } from "@/lib/campaigns/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/campaigns/status-badge";
 import { PlatformIcon } from "@/components/campaigns/platform-icon";
 import { CampaignCharts } from "@/components/campaigns/campaign-charts";
@@ -19,8 +19,6 @@ function fmt(n: number, dec = 0) {
   });
 }
 
-const SEVERITY_ORDER: Record<string, number> = { critical: 0, warning: 1, info: 2 };
-
 export default async function CampaignDetailPage({
   params,
 }: {
@@ -28,28 +26,75 @@ export default async function CampaignDetailPage({
 }) {
   const { id } = await params;
 
-  // TODO(M2-backend): replace with Supabase query
-  const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) notFound();
+  let session;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
 
-  // TODO(M2-backend): replace with Supabase query on ai_diagnostics
-  const workspaceId = "ws_demo";
-  const diagnostics = getMockDiagnostics(id);
-  const campaignAssets = await getAssetsByCampaign(id);
+  const supabase = await createServerSupabaseClient();
 
-  const adSets = MOCK_AD_SETS.filter((a) => a.campaign_id === id);
-  const snapshots = getMockMetricSnapshots(id);
+  const [campaignRes, adSetsRes, diagnosticsRes, snapshotsRes, campaignAssets] =
+    await Promise.all([
+      supabase
+        .from("campaigns")
+        .select("*")
+        .eq("id", id)
+        .eq("workspace_id", session.workspace.id)
+        .single(),
+      supabase
+        .from("ad_sets")
+        .select("*")
+        .eq("campaign_id", id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("ai_diagnostics")
+        .select("*")
+        .eq("campaign_id", id)
+        .eq("status", "open")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("campaign_metrics_daily")
+        .select("*")
+        .eq("campaign_id", id)
+        .gte(
+          "date",
+          new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10)
+        )
+        .order("date", { ascending: true }),
+      getAssetsByCampaign(id),
+    ]);
 
-  const ctr = campaign.impressions > 0
-    ? ((campaign.clicks / campaign.impressions) * 100).toFixed(2)
-    : null;
+  if (!campaignRes.data) notFound();
+
+  const campaign = campaignRes.data;
+  const adSets = adSetsRes.data ?? [];
+  const diagnostics = diagnosticsRes.data ?? [];
+  const snapshots = snapshotsRes.data ?? [];
+
+  const ctr =
+    campaign.impressions > 0
+      ? ((campaign.clicks / campaign.impressions) * 100).toFixed(2)
+      : null;
 
   const stats: { label: string; value: string; sub?: string }[] = [
     { label: "Gasto total", value: `R$ ${fmt(campaign.spend, 2)}` },
     { label: "Receita", value: `R$ ${fmt(campaign.revenue, 2)}` },
-    { label: "ROAS", value: campaign.roas !== null ? `${fmt(campaign.roas, 2)}x` : "—", sub: "Retorno sobre gasto" },
-    { label: "CPA", value: campaign.cpa !== null ? `R$ ${fmt(campaign.cpa, 2)}` : "—", sub: "Custo por conversão" },
-    { label: "Impressões", value: campaign.impressions > 0 ? fmt(campaign.impressions) : "—" },
+    {
+      label: "ROAS",
+      value: campaign.roas !== null ? `${fmt(campaign.roas, 2)}x` : "—",
+      sub: "Retorno sobre gasto",
+    },
+    {
+      label: "CPA",
+      value: campaign.cpa !== null ? `R$ ${fmt(campaign.cpa, 2)}` : "—",
+      sub: "Custo por conversão",
+    },
+    {
+      label: "Impressões",
+      value: campaign.impressions > 0 ? fmt(campaign.impressions) : "—",
+    },
     { label: "Cliques", value: campaign.clicks > 0 ? fmt(campaign.clicks) : "—" },
     { label: "CTR", value: ctr !== null ? `${ctr}%` : "—", sub: "Taxa de clique" },
     { label: "Conversões", value: fmt(campaign.conversions) },
@@ -140,7 +185,7 @@ export default async function CampaignDetailPage({
 
       {/* Assets */}
       <CampaignAssetsSection
-        workspaceId={workspaceId}
+        workspaceId={session.workspace.id}
         campaignId={id}
         initialAssets={campaignAssets}
       />
@@ -149,7 +194,7 @@ export default async function CampaignDetailPage({
       <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-[color:var(--adflow-fg)]">Diagnósticos</h2>
-          <RunDiagnosticsButton workspaceId={workspaceId} campaignId={id} />
+          <RunDiagnosticsButton workspaceId={session.workspace.id} campaignId={id} />
         </div>
 
         {diagnostics.length >= 2 && <SeveritySummary diagnostics={diagnostics} />}

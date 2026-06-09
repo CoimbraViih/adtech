@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { MOCK_RTB_CAMPAIGNS } from "@/lib/rtb/mock-data";
 import { selectBid, buildBidResponse } from "@/lib/rtb/bidder";
+import { createServiceClient } from "@/lib/supabase/service";
 import { matchUserToSegments } from "@/lib/rtb/dmp";
 import { maskIp } from "@/lib/security/ip";
 import { createRateLimiter } from "@/lib/security/rate-limit";
+import type { RtbCampaign } from "@/types/database";
 
 const BidRequestSchema = z.object({
   id: z.string().min(1),
@@ -43,23 +44,19 @@ export async function OPTIONS(): Promise<Response> {
 export async function POST(request: Request): Promise<Response> {
   const sspToken = process.env.RTB_SSP_TOKEN;
 
-  // In production, SSP token is mandatory. In dev, it's optional.
-  const isProd = process.env.NODE_ENV === "production";
-  if (isProd && !sspToken) {
+  if (!sspToken) {
     return new Response(JSON.stringify({ error: "SSP token not configured." }), {
       status: 503,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
 
-  if (sspToken) {
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader || authHeader !== `Bearer ${sspToken}`) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      });
-    }
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || authHeader !== `Bearer ${sspToken}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
   }
 
   // Payload size cap (50 KB — read raw body text)
@@ -116,9 +113,15 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const bidRequest = parsed.data;
 
-    await matchUserToSegments(bidRequest.user?.id ?? "", "demo");
+    await matchUserToSegments(bidRequest.user?.id ?? "", "");
 
-    const campaigns = MOCK_RTB_CAMPAIGNS.filter((c) => c.status === "active");
+    const serviceClient = createServiceClient();
+    const { data: activeCampaigns } = await serviceClient
+      .from("rtb_campaigns")
+      .select("*")
+      .eq("status", "active");
+
+    const campaigns = (activeCampaigns ?? []) as RtbCampaign[];
 
     const bid = selectBid(campaigns, bidRequest, {
       todaySpend: new Map(),

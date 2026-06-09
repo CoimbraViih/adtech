@@ -20,7 +20,7 @@ import {
   getImpressionsAndConversionsByDay,
   getCreativesSummary,
   getCampaignAlerts,
-} from "@/lib/dashboard/mock-data";
+} from "@/lib/dashboard/queries";
 
 type SearchParams = { from?: string; to?: string; compare?: string };
 
@@ -34,30 +34,45 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     redirect("/login");
   }
 
   const sp = await searchParams;
-  const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const dateFrom =
+    sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
   const dateTo = sp.to ?? new Date().toISOString().slice(0, 10);
   const compare = parseCompare(sp.compare);
 
-  const kpis = getDashboardKpis();
-  const deltas = getKpiDeltas();
-  const statusCounts = getCampaignStatusCounts();
-  const topCampaigns = getTopCampaigns(5);
-  const campaignAlerts = getCampaignAlerts();
-  const revenueData = getRevenueByDay(dateFrom, dateTo);
-  const roasSpendData = getRoasAndSpendByDay(dateFrom, dateTo);
-  const impConvData = getImpressionsAndConversionsByDay(dateFrom, dateTo);
-  const creatives = getCreativesSummary();
+  const workspaceId = session.workspace.id;
+
+  const [
+    kpis,
+    deltas,
+    statusCounts,
+    topCampaigns,
+    campaignAlerts,
+    revenueData,
+    roasSpendData,
+    impConvData,
+    creatives,
+  ] = await Promise.all([
+    getDashboardKpis(workspaceId),
+    getKpiDeltas(),
+    getCampaignStatusCounts(workspaceId),
+    getTopCampaigns(workspaceId, 5),
+    getCampaignAlerts(workspaceId),
+    getRevenueByDay(workspaceId, dateFrom, dateTo),
+    getRoasAndSpendByDay(workspaceId, dateFrom, dateTo),
+    getImpressionsAndConversionsByDay(workspaceId, dateFrom, dateTo),
+    getCreativesSummary(workspaceId),
+  ]);
 
   return (
     <div className="space-y-6">
-      {/* Header + date filter */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-[color:var(--adflow-fg)]">Dashboard</h1>
@@ -79,36 +94,29 @@ export default async function DashboardPage({
         </Suspense>
       </div>
 
-      {/* KPI strip */}
       <DashboardKpiStrip kpis={kpis} deltas={deltas} showDelta={compare !== "none"} />
 
-      {/* Charts row 1: Revenue | ROAS+Spend */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <RevenueBarChart data={revenueData} />
         <RoasSpendChart data={roasSpendData} />
       </div>
 
-      {/* Chart row 2: Impressions + Conversions full width */}
       <ImpressionsConversionsChart data={impConvData} />
 
-      {/* Hub row: Campaign status + section cards */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <CampaignStatusHub counts={statusCounts} />
         <div className="lg:col-span-3">
           <SectionHubCards
             creatives={creatives}
-            pixelEvents={1_243}
-            pixelCount={2}
-            analyticsConversions={247}
-            analyticsRevenue={48_750}
+            pixelEvents={0}
+            pixelCount={0}
+            analyticsConversions={kpis.conversions}
+            analyticsRevenue={kpis.revenue}
           />
         </div>
       </div>
 
-      {/* Campaign alerts */}
       <CampaignAlertsWidget alerts={campaignAlerts} />
-
-      {/* Top campaigns */}
       <TopCampaignsTable campaigns={topCampaigns} />
     </div>
   );

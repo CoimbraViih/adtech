@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { canManageCampaigns } from "@/lib/auth/roles";
-import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
 import { syncCampaignsFromPlatform } from "@/lib/campaigns/sync";
 import { createCampaignOnPlatform } from "@/lib/campaigns/platform";
 import { createRateLimiter } from "@/lib/security/rate-limit";
@@ -41,31 +40,31 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status");
   const sync = searchParams.get("sync") === "true";
 
-  // TODO(M2-backend): replace with Supabase query
-  // const supabase = createServerClient();
-  // let query = supabase.from("campaigns").select("*").eq("workspace_id", session.workspace.id);
-  // if (platform) query = query.eq("platform", platform);
-  // if (status) query = query.eq("status", status);
-  // const { data, error } = await query.order("created_at", { ascending: false });
+  const supabase = await createServerSupabaseClient();
+  let query = supabase
+    .from("campaigns")
+    .select("*")
+    .eq("workspace_id", session.workspace.id);
 
-  let campaigns = MOCK_CAMPAIGNS.filter(
-    (c) => c.workspace_id === "ws_demo"
-  );
+  if (platform) query = query.eq("platform", platform);
+  if (status) query = query.eq("status", status);
 
-  if (platform) campaigns = campaigns.filter((c) => c.platform === platform);
-  if (status) campaigns = campaigns.filter((c) => c.status === status);
+  const { data: campaigns, error } = await query.order("created_at", { ascending: false });
 
-  // Optional: sync from external platforms before returning
+  if (error) {
+    console.error("[campaigns/list]", error.message);
+    return NextResponse.json({ error: "Erro ao buscar campanhas." }, { status: 500 });
+  }
+
   if (sync) {
     try {
       await syncCampaignsFromPlatform(session.workspace.id, session.organization.id);
     } catch (err) {
       console.error("[campaigns/sync] error:", (err as Error).message);
-      // Non-fatal: credentials not configured or API unreachable — return stale data
     }
   }
 
-  return NextResponse.json(campaigns);
+  return NextResponse.json(campaigns ?? []);
 }
 
 // POST /api/campaigns — create a new campaign
@@ -115,42 +114,40 @@ export async function POST(req: NextRequest) {
     targeting: parsed.data.targeting,
   };
 
-  // 1. Create on external platform (Meta / Google / skip programmatic)
   let externalId: string | null = null;
   if (input.platform !== "programmatic") {
     try {
       externalId = await createCampaignOnPlatform(session.organization.id, input);
     } catch (err) {
       console.error(`[campaigns/create] platform error:`, err);
-      // Non-fatal for MVP: save locally without external ID
     }
   }
 
-  // 2. TODO(M2-backend): insert into Supabase
-  // const { data, error } = await supabase.from("campaigns").insert({
-  //   workspace_id: session.workspace.id,
-  //   external_id: externalId,
-  //   ...input,
-  // }).select().single();
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("campaigns")
+    .insert({
+      workspace_id: session.workspace.id,
+      external_id: externalId,
+      status: "draft",
+      spend: 0,
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      revenue: 0,
+      cpa: null,
+      roas: null,
+      ctr: null,
+      cpc: null,
+      ...input,
+    })
+    .select()
+    .single();
 
-  const newCampaign = {
-    id: `cmp_${Date.now()}`,
-    workspace_id: session.workspace.id,
-    external_id: externalId,
-    status: "draft" as const,
-    spend: 0,
-    impressions: 0,
-    clicks: 0,
-    conversions: 0,
-    revenue: 0,
-    cpa: null,
-    roas: null,
-    ctr: null,
-    cpc: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    ...input,
-  };
+  if (error) {
+    console.error("[campaigns/create]", error.message);
+    return NextResponse.json({ error: "Erro ao criar campanha." }, { status: 500 });
+  }
 
-  return NextResponse.json(newCampaign, { status: 201 });
+  return NextResponse.json(data, { status: 201 });
 }

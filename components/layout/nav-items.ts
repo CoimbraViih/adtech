@@ -5,7 +5,6 @@ import {
   Sparkles,
   BarChart3,
   Radio,
-  FileText,
   Zap,
   Settings,
   Layers,
@@ -19,18 +18,19 @@ export type NavItem = {
   icon: ComponentType<{ className?: string }>;
   /** When true, marks this item active for any route starting with `href` */
   matchPrefix?: boolean;
+  /** Sub-paths that should NOT activate this item (used to avoid collision with sibling items) */
+  excludePrefixes?: string[];
 };
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard",     href: "/dashboard",               icon: LayoutDashboard },
-  { label: "Campanhas",     href: "/campaigns",               icon: Megaphone },
+  { label: "Campanhas",     href: "/campaigns",               icon: Megaphone,    excludePrefixes: ["/campaigns/programmatic"] },
   { label: "Programático",  href: "/campaigns/programmatic",  icon: Layers },
   { label: "Audiências",    href: "/audiences",               icon: Users },
   { label: "Criativos",     href: "/creatives",               icon: Sparkles },
-  { label: "Analytics",     href: "/analytics",               icon: BarChart3 },
+  { label: "Analytics",     href: "/analytics",               icon: BarChart3,    excludePrefixes: ["/analytics/reconciliation"] },
   { label: "Reconciliação", href: "/analytics/reconciliation", icon: GitCompareArrows },
   { label: "Pixel",         href: "/pixel",                   icon: Radio },
-  { label: "Landing Pages", href: "/landing-pages",           icon: FileText },
   { label: "Automação",     href: "/automation",              icon: Zap },
   { label: "Configurações", href: "/settings",                icon: Settings, matchPrefix: true },
 ];

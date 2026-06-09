@@ -23,7 +23,8 @@
 | M8 | Programático DSP/SSP | `feat/m8-programmatic` ✅ | M1, M2, M4 |
 | M9 | Monetização & Stripe | `feat/m9-stripe` ✅ | M1–M5 |
 | MS | Segurança & Hardening | `feat/integrations-api-keys` ✅ | M1–M9 |
-| M10 | Deploy & Produção | `feat/m10-deploy` | M1–M9, MS |
+| MS-DB | Backend Reset & Hardening de DB (Supabase) | `feat/ms-db-security` ✅ | MS, M11, M-ADS |
+| M10 | Deploy & Produção | `feat/m10-deploy` | M1–M9, MS, MS-DB |
 | M11 | AI Traffic Manager (Campaign Diagnostics) | `feat/integrations-api-keys` ✅ | M2, M4, M5 |
 | M-ADS | Melhorias de Integrações de Anúncios | `feat/m-ads-integrations` ✅ F1 F2 F3 | M2, M11, MS |
 | M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M8 |
@@ -953,6 +954,61 @@ git commit -m "feat(m10): production deploy, CI/CD, monitoring, Stripe live, sec
 - Arquivo > 10 MB rejeitado inline no dropzone, sem chamada à API
 - Assets visíveis e removíveis nas páginas de detalhe
 - Dados gateados atrás de `TODO(M15-backend)` para swap-in Supabase Storage real
+
+---
+
+## MS-DB — Backend Reset & Hardening de DB ✅ CONCLUÍDO
+
+**Branch:** `feat/ms-db-security` → mergeado em `main` via PR #15  
+**Depende de:** MS, M11, M-ADS (todas as migrations aplicadas)  
+**Objetivo:** Reset completo do banco Supabase e aplicação de auditoria de segurança multi-agente cobrindo RLS, funções SECURITY DEFINER, índices de cobertura, self-escalation e revogação de grants PUBLIC.
+
+> **Agentes usados:** `@security-auditor` · `@api-security-audit`  
+> **Plugins:** `supabase:get_advisors` (security + performance) · `supabase-postgres-best-practices`
+
+### Reset & Migrations (001–023)
+- [x] Supabase project `hpvjmtumlphiaiduybei` resetado do zero
+- [x] 23 migrations aplicadas: schema core, RBAC, billing, campanhas, criativos, pixel, analytics, automação, programático, DMP opt-out, landing page, assinaturas, integrações, AI diagnostics, sync_runs, credentials expiry, reconciliação, creative assets
+- [x] Migration `024_user_registrations.sql` criada mas **não aplicada** — auth/login adiado intencionalmente
+- [x] Auth routes/components removidos (`app/(auth)/`, `components/auth/`)
+- [x] `middleware.ts` substituído por `proxy.ts` (Next.js 16 compatível)
+- [x] `lib/supabase/server.ts` — DEV_SESSION bypass ativo em `NODE_ENV !== production` em 5 pontos
+
+### Hardening de Segurança — Migration 025
+- [x] **`function_search_path_mutable` (7 funções)** — todas `SECURITY DEFINER` com `SET search_path = public, pg_temp`
+- [x] **`auth_rls_initplan` (65+ policies em 21 tabelas)** — todas reconstruídas com `(SELECT auth.uid())` para cache por query, não por linha
+- [x] **`multiple_permissive_policies`** — `creative_assets` (FOR ALL redundante), `ai_diagnostics` (FOR ALL → UPDATE only), `campaign_benchmarks` (FOR ALL → granular)
+- [x] **`unindexed_foreign_keys` (13 FKs)** — todos indexados: `alert_notifications`, `alert_rules`, `pixels`, `rtb_campaigns`, `creatives`, `creative_versions`, `campaign_benchmarks`, `org_api_credentials`
+- [x] **GIN indexes** em `ad_sets.targeting`, `rtb_campaigns.targeting`, `audiences.rules`
+- [x] **Composite indexes de cobertura** em `workspace_members(user_id, role, workspace_id)` e `organization_members(user_id, role, organization_id)` — substituem os simples `user_id_idx`
+- [x] **Índice composto** em `pixel_events(pixel_id, received_at)`
+- [x] **Admin self-escalation** — trigger `org_members_no_self_escalation` bloqueia admin promovendo a si mesmo para owner
+- [x] **Explicit deny policies** — `billing_events` e `creative_versions` recebem policies de DELETE `USING (false)`; `creative_versions` também bloqueia UPDATE
+- [x] **`handle_new_user`** — valida `avatar_url` com regex `^https?://` antes de persistir (XSS/SSRF)
+- [x] **`sync_org_plan`** — valida enum do plano antes de escrever em `organizations`
+- [x] **`creative_assets.updated_at`** — coluna + trigger adicionados
+- [x] **Pixels DELETE** — restrito a `owner/admin`; `member` pode apenas SELECT/INSERT/UPDATE
+
+### Revogação de grants — Migrations 026–027
+- [x] **026** — `REVOKE EXECUTE FROM PUBLIC` em todas as funções; `GRANT TO authenticated, service_role` nos helpers de RLS; revoke total nas funções trigger-only
+- [x] **027** — `prevent_org_member_self_escalation` (criada em 025 após os REVOKEs de 026) — `REVOKE FROM PUBLIC, anon, authenticated`
+
+### Estado final dos advisors Supabase
+| Advisor | Status |
+|---------|--------|
+| `function_search_path_mutable` | ✅ Resolvido |
+| `auth_rls_initplan` | ✅ Resolvido |
+| `multiple_permissive_policies` | ✅ Resolvido |
+| `unindexed_foreign_keys` | ✅ Resolvido |
+| `anon_security_definer_function_executable` | ✅ Resolvido |
+| `authenticated_security_definer_function_executable` (RLS helpers) | ⚠️ Intencional — authenticated DEVE chamar para RLS funcionar |
+| `auth_leaked_password_protection` | ⚠️ Pendente — configurar em Auth Dashboard quando implementar login |
+
+### Entregáveis
+- Migrations 025, 026, 027 aplicadas em `hpvjmtumlphiaiduybei`
+- Zero advisors CRITICAL ou HIGH no Supabase
+- `anon` não consegue chamar nenhuma função SECURITY DEFINER via `/rest/v1/rpc/`
+- PR #15 mergeado: https://github.com/CoimbraViih/adtech/pull/15
 
 ---
 

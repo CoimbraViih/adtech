@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import { encodeSession, FAKE_SESSION } from "@/lib/auth/session";
 import type { SessionContext, OrgRole } from "@/types/database";
 
-// ── Extracted decision logic (mirrors middleware.ts exactly) ──────────────────
+// ── Extracted decision logic (mirrors proxy.ts exactly) ──────────────────
 
 const PUBLIC_PATHS = [
   "/login",

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { canManageCampaigns } from "@/lib/auth/roles";
-import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
 import { updateCampaignOnPlatform } from "@/lib/campaigns/platform";
 import { z } from "zod";
 import type { CampaignStatus } from "@/types/database";
@@ -15,26 +14,30 @@ const patchSchema = z.object({
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-// GET /api/campaigns/[id]
 export async function GET(_req: NextRequest, ctx: RouteContext) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
   const { id } = await ctx.params;
+  const supabase = await createServerSupabaseClient();
+  const { data: campaign, error } = await supabase
+    .from("campaigns")
+    .select("*")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
 
-  // TODO(M2-backend): replace with Supabase query
-  const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
+  if (error || !campaign) {
     return NextResponse.json({ error: "Campanha não encontrada." }, { status: 404 });
   }
 
   return NextResponse.json(campaign);
 }
 
-// PATCH /api/campaigns/[id] — update status, budget, etc.
 export async function PATCH(req: NextRequest, ctx: RouteContext) {
   let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
@@ -65,32 +68,46 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     );
   }
 
-  // TODO(M2-backend): update in Supabase
-  const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
+  const supabase = await createServerSupabaseClient();
+  const { data: existing } = await supabase
+    .from("campaigns")
+    .select("id, platform, external_id")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
+
+  if (!existing) {
     return NextResponse.json({ error: "Campanha não encontrada." }, { status: 404 });
   }
 
-  // Propagate status change to external platform
-  if (parsed.data.status && campaign.external_id) {
+  if (parsed.data.status && existing.external_id) {
     try {
       await updateCampaignOnPlatform(session.organization.id, {
-        platform: campaign.platform,
-        externalId: campaign.external_id,
+        platform: existing.platform,
+        externalId: existing.external_id,
         status: parsed.data.status as CampaignStatus,
         dailyBudget: parsed.data.daily_budget,
       });
     } catch (err) {
       console.error("[campaigns/patch] platform update error:", err);
-      // Non-fatal: update locally anyway
     }
   }
 
-  const updated = { ...campaign, ...parsed.data, updated_at: new Date().toISOString() };
+  const { data: updated, error: updateError } = await supabase
+    .from("campaigns")
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .select()
+    .single();
+
+  if (updateError || !updated) {
+    return NextResponse.json({ error: "Erro ao atualizar campanha." }, { status: 500 });
+  }
+
   return NextResponse.json(updated);
 }
 
-// DELETE /api/campaigns/[id] — archive campaign
 export async function DELETE(_req: NextRequest, ctx: RouteContext) {
   let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
@@ -104,23 +121,39 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
   }
 
   const { id } = await ctx.params;
+  const supabase = await createServerSupabaseClient();
 
-  // TODO(M2-backend): soft-delete (status = 'archived') in Supabase
-  const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
+  const { data: existing } = await supabase
+    .from("campaigns")
+    .select("id, platform, external_id")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
+
+  if (!existing) {
     return NextResponse.json({ error: "Campanha não encontrada." }, { status: 404 });
   }
 
-  if (campaign.external_id) {
+  if (existing.external_id) {
     try {
       await updateCampaignOnPlatform(session.organization.id, {
-        platform: campaign.platform,
-        externalId: campaign.external_id,
+        platform: existing.platform,
+        externalId: existing.external_id,
         status: "archived",
       });
     } catch (err) {
       console.error("[campaigns/delete] platform archive error:", err);
     }
+  }
+
+  const { error: archiveError } = await supabase
+    .from("campaigns")
+    .update({ status: "archived", updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id);
+
+  if (archiveError) {
+    return NextResponse.json({ error: "Erro ao arquivar campanha." }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

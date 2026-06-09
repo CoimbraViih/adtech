@@ -10,7 +10,8 @@
       "Bash(npx vitest *)",
       "Bash(gh pr create --title 'feat\\(m5\\): analytics & attribution dashboard + full cockpit dashboard overview' --body ' *)",
       "Bash(git commit -m ' *)",
-      "Bash(node --max-old-space-size=512 node_modules/.bin/tsc --noEmit)"
+      "Bash(node --max-old-space-size=512 node_modules/.bin/tsc --noEmit)",
+      "PowerShell(taskkill /PID 29612 /F)"
     ]
   }
 }

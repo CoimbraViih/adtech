@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { Plus, Wand2, FileText, CheckCircle2 } from "lucide-react";
 import { CreativeCard } from "@/components/creatives/creative-card";
-import { MOCK_CREATIVES } from "@/lib/creatives/mock-data";
-import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Creative } from "@/types/database";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
 
@@ -17,6 +17,13 @@ export default async function CreativesPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
 }) {
+  let session;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
+
   const sp = await searchParams;
   const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
   const dateTo = sp.to ?? new Date().toISOString().slice(0, 10);
@@ -24,13 +31,29 @@ export default async function CreativesPage({
     ? (sp.compare as CompareMode)
     : "prev_period";
 
-  const copies = MOCK_CREATIVES.filter((c) => c.type === "copy");
+  const supabase = await createServerSupabaseClient();
+  const [creativesRes, campaignsRes] = await Promise.all([
+    supabase
+      .from("creatives")
+      .select("*")
+      .eq("workspace_id", session.workspace.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("campaigns")
+      .select("id, name")
+      .eq("workspace_id", session.workspace.id),
+  ]);
+
+  const allCreatives: Creative[] = creativesRes.data ?? [];
+  const campaignMap = Object.fromEntries(
+    (campaignsRes.data ?? []).map((c) => [c.id, c.name])
+  );
+
+  const copies = allCreatives.filter((c) => c.type === "copy");
   const total = copies.length;
   const approved = copies.filter((c) => c.status === "approved").length;
   const avg = avgScore(copies.map((c) => c.score));
   const policyPassed = copies.filter((c) => c.policy_passed === true).length;
-
-  const campaignMap = Object.fromEntries(MOCK_CAMPAIGNS.map((c) => [c.id, c.name]));
 
   return (
     <div className="space-y-6">
@@ -79,8 +102,6 @@ export default async function CreativesPage({
   );
 }
 
-// ── KPI card ──────────────────────────────────────────────────────────────────
-
 type KpiCardProps = {
   label: string;
   value: string;
@@ -102,8 +123,6 @@ function KpiCard({ label, value, icon: Icon }: KpiCardProps) {
     </div>
   );
 }
-
-// ── Gallery ───────────────────────────────────────────────────────────────────
 
 function CreativeGallery({
   creatives,

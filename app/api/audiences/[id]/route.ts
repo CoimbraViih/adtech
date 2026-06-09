@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
-import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
 const audienceRuleSchema = z.object({
@@ -18,32 +17,34 @@ const patchSchema = z.object({
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-// GET /api/audiences/[id]
 export async function GET(_req: NextRequest, ctx: RouteContext) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
   const { id } = await ctx.params;
+  const supabase = await createServerSupabaseClient();
+  const { data: audience, error } = await supabase
+    .from("audiences")
+    .select("*")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
 
-  // TODO(M8-backend): replace with Supabase query
-  const audience = MOCK_AUDIENCES.find((a) => a.id === id);
-  if (!audience) {
-    return NextResponse.json(
-      { error: "Audiência não encontrada." },
-      { status: 404 }
-    );
+  if (error || !audience) {
+    return NextResponse.json({ error: "Audiência não encontrada." }, { status: 404 });
   }
 
   return NextResponse.json({ data: audience });
 }
 
-// PATCH /api/audiences/[id] — update name, description, or rules
 export async function PATCH(req: NextRequest, ctx: RouteContext) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
@@ -66,41 +67,63 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     );
   }
 
-  // TODO(M8-backend): update in Supabase
-  const audience = MOCK_AUDIENCES.find((a) => a.id === id);
-  if (!audience) {
-    return NextResponse.json(
-      { error: "Audiência não encontrada." },
-      { status: 404 }
-    );
+  const supabase = await createServerSupabaseClient();
+  const { data: existing } = await supabase
+    .from("audiences")
+    .select("id")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
+
+  if (!existing) {
+    return NextResponse.json({ error: "Audiência não encontrada." }, { status: 404 });
   }
 
-  const updated = {
-    ...audience,
-    ...parsed.data,
-    updated_at: new Date().toISOString(),
-  };
+  const { data: updated, error: updateError } = await supabase
+    .from("audiences")
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .select()
+    .single();
+
+  if (updateError || !updated) {
+    return NextResponse.json({ error: "Erro ao atualizar audiência." }, { status: 500 });
+  }
 
   return NextResponse.json({ data: updated });
 }
 
-// DELETE /api/audiences/[id]
 export async function DELETE(_req: NextRequest, ctx: RouteContext) {
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
   try {
-    await requireServerSession();
+    session = await requireServerSession();
   } catch {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
   const { id } = await ctx.params;
+  const supabase = await createServerSupabaseClient();
 
-  // TODO(M8-backend): delete from Supabase
-  const audience = MOCK_AUDIENCES.find((a) => a.id === id);
-  if (!audience) {
-    return NextResponse.json(
-      { error: "Audiência não encontrada." },
-      { status: 404 }
-    );
+  const { data: existing } = await supabase
+    .from("audiences")
+    .select("id")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
+
+  if (!existing) {
+    return NextResponse.json({ error: "Audiência não encontrada." }, { status: 404 });
+  }
+
+  const { error: deleteError } = await supabase
+    .from("audiences")
+    .delete()
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id);
+
+  if (deleteError) {
+    return NextResponse.json({ error: "Erro ao excluir audiência." }, { status: 500 });
   }
 
   return new Response(null, { status: 204 });

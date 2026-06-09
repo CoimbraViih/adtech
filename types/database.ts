@@ -697,3 +697,25 @@ export type CreativeAsset = {
   alt_text: string | null;
   created_at: string;
 };
+
+// ─── Supabase Database Schema Type ───────────────────────────────────────────
+// Provides type safety for the service/server Supabase clients.
+// Replace with `supabase gen types typescript --project-id <id>` once the
+// production Supabase project ID is wired up.
+
+type FlexTable = {
+  Row: Record<string, unknown>;
+  Insert: Record<string, unknown>;
+  Update: Record<string, unknown>;
+  Relationships: [];
+};
+
+export type SupabaseDatabase = {
+  public: {
+    Tables: { [tableName: string]: FlexTable };
+    Views: { [viewName: string]: FlexTable };
+    Functions: { [funcName: string]: { Args: Record<string, unknown>; Returns: unknown } };
+    Enums: { [enumName: string]: string };
+    CompositeTypes: { [typeName: string]: Record<string, unknown> };
+  };
+};

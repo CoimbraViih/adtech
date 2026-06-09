@@ -1,12 +1,11 @@
 import type { Audience } from "@/types/database";
-import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
 import { createHash } from "crypto";
 import { createServiceClient } from "@/lib/supabase/service";
 
 /**
  * Returns audience IDs that match the given user.
- * TODO(M8-backend): query audience_segments WHERE user_id_hash = userIdHash
- * AND audience_id IN (SELECT id FROM audiences WHERE workspace_id = workspaceId)
+ * M8-DMP: real matching against audience_segments is planned.
+ * For now, returns all active audience IDs for the workspace.
  */
 export async function matchUserToSegments(
   userId: string,
@@ -24,30 +23,28 @@ export async function matchUserToSegments(
 
   if (optOut) return [];
 
-  // workspaceId reserved for future Supabase swap-in
-  void workspaceId;
+  if (!workspaceId) return [];
 
-  return MOCK_AUDIENCES.slice(0, 2).map((a) => a.id);
+  const { data: audiences } = await supabase
+    .from("audiences")
+    .select("id")
+    .eq("workspace_id", workspaceId);
+
+  return (audiences ?? []).map((a) => (a as { id: string }).id);
 }
 
 /**
  * Estimates audience size by evaluating rules against pixel_events.
- * TODO(M8-backend): COUNT pixel_events matching audience rules (lookback_days, event_type, etc.)
+ * M8-DMP: full COUNT query against pixel_events is planned.
  */
 export async function evaluateAudienceRules(
   audience: Audience,
   workspaceId: string
 ): Promise<number> {
-  // workspaceId reserved for future Supabase swap-in
   void workspaceId;
-
   return audience.rules.length * 3000 + audience.id.charCodeAt(0) * 100;
 }
 
-/**
- * Hashes a user identifier (cookie/fingerprint) for privacy-safe storage.
- * Uses SHA-256 via Node.js crypto module.
- */
 export function hashUserId(rawId: string): string {
   if (!rawId) return "";
   return createHash("sha256").update(rawId).digest("hex");
