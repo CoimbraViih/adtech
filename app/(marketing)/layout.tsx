@@ -1,33 +1,42 @@
 import type { Metadata } from "next";
 import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
+import { ParticleUniverse } from "@/components/marketing/particle-universe";
 
 export const metadata: Metadata = {
-  title: "AdFlow — Plataforma de Publicidade com IA para Agências",
+  title: "AdHunter — Mire melhor. Gaste menos.",
   description:
-    "Unifique campanhas Meta e Google, gere criativos com IA, rastreie conversões server-side e otimize com analytics multi-touch em uma única plataforma.",
+    "IA que gera criativos, otimiza campanhas em tempo real e fecha o loop entre verba gasta e receita gerada.",
   openGraph: {
-    title: "AdFlow — Plataforma de Publicidade com IA",
+    title: "AdHunter — Mire melhor. Gaste menos.",
     description:
-      "Unifique campanhas, geração de criativos com IA e analytics multi-touch numa plataforma só.",
-    url: "https://adflow.app",
-    siteName: "AdFlow",
+      "Pixel server-side, atribuição multi-touch e IA de criativos numa plataforma só.",
+    url: "https://adhunter.io",
+    siteName: "AdHunter",
     locale: "pt_BR",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AdFlow — Plataforma de Publicidade com IA",
+    title: "AdHunter — Mire melhor. Gaste menos.",
     description:
-      "Unifique campanhas, geração de criativos com IA e analytics multi-touch numa plataforma só.",
+      "Pixel server-side, atribuição multi-touch e IA de criativos numa plataforma só.",
   },
 };
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col min-h-screen bg-[color:var(--adflow-base)]">
+    <div
+      style={{
+        position: "relative",
+        minHeight: "100vh",
+        background: "#000000",
+        fontFamily: "var(--font-manrope), var(--font-inter), sans-serif",
+      }}
+    >
+      <ParticleUniverse />
       <MarketingHeader />
-      <main className="flex-1">{children}</main>
+      <main style={{ position: "relative", zIndex: 2 }}>{children}</main>
       <MarketingFooter />
     </div>
   );

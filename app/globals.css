@@ -117,5 +117,42 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
+}
+
+/* ── Marketing font variables ───────────────────────────────────────────────── */
+:root {
+  --font-display:    var(--font-space-grotesk, var(--font-inter));
+  --font-marketing:  var(--font-manrope, var(--font-inter));
+}
+
+/* ── Marketing nav hover ────────────────────────────────────────────────────── */
+.mkt-nav-link {
+  color: #475569;
+  transition: color 0.2s;
+}
+.mkt-nav-link:hover {
+  color: #E8390E;
+}
+
+/* ── Sci-fi / HUD keyframes ─────────────────────────────────────────────────── */
+@keyframes hud-scan {
+  0%   { top: -2px; }
+  100% { top: 100%; }
+}
+
+@keyframes hud-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+
+@keyframes neon-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(0,212,255,0.4); }
+  50%       { box-shadow: 0 0 20px rgba(0,212,255,0.8); }
+}
+
+@keyframes ember-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(232,57,14,0.4); }
+  50%       { box-shadow: 0 0 28px rgba(232,57,14,0.7); }
 }
