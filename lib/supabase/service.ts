@@ -5,11 +5,13 @@
  *          audience opt-out, integrations credentials.
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let _client: ReturnType<typeof createClient> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _client: SupabaseClient<any> | null = null;
 
-export function createServiceClient(): ReturnType<typeof createClient> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createServiceClient(): SupabaseClient<any> {
   if (_client) return _client;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,7 +23,8 @@ export function createServiceClient(): ReturnType<typeof createClient> {
     );
   }
 
-  _client = createClient(url, key, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  _client = createClient<any>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
