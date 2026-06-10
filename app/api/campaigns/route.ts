@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
+import { createServerSupabaseClient, requireServerSession } from "@/lib/supabase/server";
 import { canManageCampaigns } from "@/lib/auth/roles";
-import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
 import { syncCampaignsFromPlatform } from "@/lib/campaigns/sync";
 import { createCampaignOnPlatform } from "@/lib/campaigns/platform";
 import { createRateLimiter } from "@/lib/security/rate-limit";
@@ -41,19 +40,21 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status");
   const sync = searchParams.get("sync") === "true";
 
-  // TODO(M2-backend): replace with Supabase query
-  // const supabase = createServerClient();
-  // let query = supabase.from("campaigns").select("*").eq("workspace_id", session.workspace.id);
-  // if (platform) query = query.eq("platform", platform);
-  // if (status) query = query.eq("status", status);
-  // const { data, error } = await query.order("created_at", { ascending: false });
+  const supabase = await createServerSupabaseClient();
+  let query = supabase
+    .from("campaigns")
+    .select("*")
+    .eq("workspace_id", session.workspace.id)
+    .order("created_at", { ascending: false });
 
-  let campaigns = MOCK_CAMPAIGNS.filter(
-    (c) => c.workspace_id === "ws_demo"
-  );
+  if (platform) query = query.eq("platform", platform as string);
+  if (status) query = query.eq("status", status as string);
 
-  if (platform) campaigns = campaigns.filter((c) => c.platform === platform);
-  if (status) campaigns = campaigns.filter((c) => c.status === status);
+  const { data, error } = await query;
+  if (error) {
+    console.error("[campaigns/GET]", error.message);
+    return NextResponse.json({ error: "Erro ao buscar campanhas." }, { status: 500 });
+  }
 
   // Optional: sync from external platforms before returning
   if (sync) {
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json(campaigns);
+  return NextResponse.json(data ?? []);
 }
 
 // POST /api/campaigns — create a new campaign
@@ -126,31 +127,32 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 2. TODO(M2-backend): insert into Supabase
-  // const { data, error } = await supabase.from("campaigns").insert({
-  //   workspace_id: session.workspace.id,
-  //   external_id: externalId,
-  //   ...input,
-  // }).select().single();
+  // 2. Insert into Supabase
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("campaigns")
+    .insert({
+      workspace_id: session.workspace.id,
+      external_id: externalId,
+      status: "draft",
+      spend: 0,
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      revenue: 0,
+      cpa: null,
+      roas: null,
+      ctr: null,
+      cpc: null,
+      ...input,
+    })
+    .select()
+    .single();
 
-  const newCampaign = {
-    id: `cmp_${Date.now()}`,
-    workspace_id: session.workspace.id,
-    external_id: externalId,
-    status: "draft" as const,
-    spend: 0,
-    impressions: 0,
-    clicks: 0,
-    conversions: 0,
-    revenue: 0,
-    cpa: null,
-    roas: null,
-    ctr: null,
-    cpc: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    ...input,
-  };
+  if (error) {
+    console.error("[campaigns/POST]", error.message);
+    return NextResponse.json({ error: "Erro ao criar campanha." }, { status: 500 });
+  }
 
-  return NextResponse.json(newCampaign, { status: 201 });
+  return NextResponse.json(data, { status: 201 });
 }

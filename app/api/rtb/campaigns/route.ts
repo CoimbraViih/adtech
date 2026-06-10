@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
-import { MOCK_RTB_CAMPAIGNS } from "@/lib/rtb/mock-data";
+import { createServerSupabaseClient, requireServerSession } from "@/lib/supabase/server";
 import { z } from "zod";
 import type { RtbCampaignCreateInput } from "@/types/database";
 
@@ -32,13 +31,19 @@ export async function GET(req: NextRequest) {
   }
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { searchParams } = new URL(req.url);
-  const workspaceId = searchParams.get("workspace_id") ?? session.workspace.id;
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("rtb_campaigns")
+    .select("*")
+    .eq("workspace_id", session.workspace.id)
+    .order("created_at", { ascending: false });
 
-  // TODO(M8-backend): query rtb_campaigns WHERE workspace_id = workspaceId
-  const data = MOCK_RTB_CAMPAIGNS.filter(c => c.workspace_id === workspaceId || c.workspace_id === "ws_demo");
+  if (error) {
+    console.error("[rtb/campaigns/GET]", error.message);
+    return NextResponse.json({ error: "Erro ao buscar campanhas RTB." }, { status: 500 });
+  }
 
-  return NextResponse.json({ data });
+  return NextResponse.json({ data: data ?? [] });
 }
 
 // POST /api/rtb/campaigns — create a new RTB campaign
@@ -84,27 +89,27 @@ export async function POST(req: NextRequest) {
     end_date: parsed.data.end_date ?? null,
   };
 
-  // TODO(M8-backend): insert into Supabase
-  // const { data, error } = await supabase.from("rtb_campaigns").insert({
-  //   workspace_id: session.workspace.id,
-  //   ...input,
-  // }).select().single();
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("rtb_campaigns")
+    .insert({
+      workspace_id: session.workspace.id,
+      campaign_id: null,
+      status: "draft",
+      impressions: 0,
+      wins: 0,
+      spend: 0,
+      win_rate: null,
+      avg_cpm: null,
+      ...input,
+    })
+    .select()
+    .single();
 
-  const now = new Date().toISOString();
-  const newCampaign = {
-    id: `rtb_${Date.now()}`,
-    workspace_id: session.workspace.id,
-    campaign_id: null,
-    status: "draft" as const,
-    impressions: 0,
-    wins: 0,
-    spend: 0,
-    win_rate: null,
-    avg_cpm: null,
-    created_at: now,
-    updated_at: now,
-    ...input,
-  };
+  if (error) {
+    console.error("[rtb/campaigns/POST]", error.message);
+    return NextResponse.json({ error: "Erro ao criar campanha RTB." }, { status: 500 });
+  }
 
-  return NextResponse.json({ data: newCampaign }, { status: 201 });
+  return NextResponse.json({ data }, { status: 201 });
 }

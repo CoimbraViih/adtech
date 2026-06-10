@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
-import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
+import { createServerSupabaseClient, requireServerSession } from "@/lib/supabase/server";
 import { z } from "zod";
 import type { AudienceCreateInput } from "@/types/database";
 
@@ -32,12 +31,19 @@ export async function GET(req: NextRequest) {
   // Always use workspace from the authenticated session — never trust query param
   const workspaceId = session.workspace.id;
 
-  // TODO(M8-backend): replace with Supabase query
-  // const supabase = createServerSupabaseClient();
-  // const { data, error } = await supabase.from("audiences").select("*").eq("workspace_id", workspaceId);
-  const data = MOCK_AUDIENCES.filter((a) => a.workspace_id === workspaceId || a.workspace_id === "ws_demo");
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("audiences")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false });
 
-  return NextResponse.json({ data });
+  if (error) {
+    console.error("[audiences/GET]", error.message);
+    return NextResponse.json({ error: "Erro ao buscar audiências." }, { status: 500 });
+  }
+
+  return NextResponse.json({ data: data ?? [] });
 }
 
 // POST /api/audiences — create a new audience
@@ -73,21 +79,21 @@ export async function POST(req: NextRequest) {
     lookalike_source_id: parsed.data.lookalike_source_id ?? null,
   };
 
-  // TODO(M8-backend): insert into Supabase
-  // const { data, error } = await supabase.from("audiences").insert({
-  //   workspace_id: session.workspace.id,
-  //   ...input,
-  // }).select().single();
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("audiences")
+    .insert({
+      workspace_id: session.workspace.id,
+      size_estimate: 0,
+      ...input,
+    })
+    .select()
+    .single();
 
-  const now = new Date().toISOString();
-  const newAudience = {
-    id: `aud_${Date.now()}`,
-    workspace_id: session.workspace.id,
-    size_estimate: 0,
-    created_at: now,
-    updated_at: now,
-    ...input,
-  };
+  if (error) {
+    console.error("[audiences/POST]", error.message);
+    return NextResponse.json({ error: "Erro ao criar audiência." }, { status: 500 });
+  }
 
-  return NextResponse.json({ data: newAudience }, { status: 201 });
+  return NextResponse.json({ data }, { status: 201 });
 }
