@@ -1,6 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getSessionFromCookies } from "@/lib/auth/session";
-import { cookies } from "next/headers";
+import { createServerSupabaseClient, requireServerSession } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { DiagnosticCard } from "@/components/diagnostics/diagnostic-card";
 import { SeveritySummary } from "@/components/diagnostics/severity-summary";
@@ -10,9 +8,12 @@ import type { AiDiagnostic } from "@/types/database";
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, warning: 1, info: 2 };
 
 export default async function DiagnosticsPage() {
-  const cookieHeader = (await cookies()).get("adflow_session")?.value ?? null;
-  const session = await getSessionFromCookies(cookieHeader);
-  if (!session) redirect("/login");
+  let session;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
   const workspaceId = session.workspace.id;
 
   const supabase = await createServerSupabaseClient();

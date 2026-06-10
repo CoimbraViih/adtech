@@ -1,183 +1,85 @@
 "use server";
 
-/**
- * Server Actions for auth flows.
- *
- * These run server-side and manage the session cookie directly.
- * Forms call these via useTransition / router.refresh — no API route needed.
- *
- * TODO(M1-backend) markers show exactly what to replace for real Supabase.
- */
-
-import { cookies } from "next/headers";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import {
-  FAKE_SESSION,
-  buildSessionCookie,
-  clearSessionCookie,
-  encodeSession,
-} from "@/lib/auth/session";
-import type { SessionContext, OrgRole } from "@/types/database";
 
-// ── Login (magic link) ────────────────────────────────────────────────────────
-
-/**
- * Called by LoginForm after the user submits their e-mail.
- * In fake mode: always "succeeds" — returns the sentinel that triggers the
- * success state on the client.  No cookie is set yet; the real cookie is set
- * after the user clicks the link.
- *
- * TODO(M1-backend):
- *   const supabase = await createServerClientFromCookies();
- *   const { error } = await supabase.auth.signInWithOtp({
- *     email,
- *     options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback` },
- *   });
- *   if (error) return { error: error.message };
- *   return { ok: true };
- */
-export async function sendMagicLink(
-  email: string
-): Promise<{ ok: true } | { error: string }> {
-  // Simulate network latency
-  await delay(500);
-
-  if (!email.includes("@")) {
-    return { error: "E-mail inválido." };
+export async function loginWithPassword(
+  email: string,
+  password: string,
+  nextPath = "/dashboard"
+): Promise<{ error: string } | never> {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    return { error: "E-mail ou senha incorretos." };
   }
-
-  console.info("[fake-auth] magic link sent to:", email);
-  return { ok: true };
-}
-
-// ── Login (fake instant — for dev convenience) ────────────────────────────────
-
-/**
- * Dev-only action: set a fake session cookie immediately, skipping the e-mail
- * flow. Accessible via GET /api/auth/dev-login (see route below).
- * Removed in production builds automatically via NODE_ENV check in the route.
- */
-export async function devLogin(nextPath = "/dashboard") {
-  if (
-    process.env.NODE_ENV === "production" ||
-    process.env.ENABLE_DEV_LOGIN !== "true"
-  ) {
-    throw new Error("devLogin is not available in this environment");
-  }
-  const cookieStore = await cookies();
-  cookieStore.set({
-    name: "adflow_session",
-    value: encodeSession(FAKE_SESSION),
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 604800,
-  });
   redirect(nextPath);
 }
 
-// ── Signup ────────────────────────────────────────────────────────────────────
-
-/**
- * TODO(M1-backend):
- *   const supabase = await createServerClientFromCookies();
- *   const { error } = await supabase.auth.signInWithOtp({
- *     email,
- *     options: {
- *       data: { display_name: name },
- *       emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?onboarding=1`,
- *     },
- *   });
- */
 export async function signUp(
   name: string,
-  email: string
+  email: string,
+  password: string
 ): Promise<{ ok: true } | { error: string }> {
-  await delay(600);
-  console.info("[fake-auth] signup:", { name, email });
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { display_name: name },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/callback?onboarding=1`,
+    },
+  });
+  if (error) {
+    if (error.message.includes("already registered")) {
+      return { error: "Este e-mail já está cadastrado." };
+    }
+    return { error: "Erro ao criar conta. Tente novamente." };
+  }
   return { ok: true };
 }
 
-// ── Onboarding (create org + workspace) ──────────────────────────────────────
-
-type OnboardingInput = {
+export async function completeOnboarding(input: {
   orgName: string;
   orgType: "agency" | "advertiser" | "freelancer";
   workspaceName: string;
   workspaceDescription?: string;
-};
+}): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Sessão expirada." };
 
-/**
- * Creates the org + workspace and sets the session cookie.
- * Redirects to /dashboard on success.
- *
- * TODO(M1-backend):
- *   1. supabase.from("organizations").insert({ name, plan: "free" }) → org
- *   2. supabase.from("organization_members").insert({ org_id, user_id, role: "owner" })
- *   3. supabase.from("workspaces").insert({ org_id, name, description }) → ws
- *   4. supabase.from("workspace_members").insert({ ws_id, user_id, role: "owner" })
- *   5. Session is refreshed automatically via Supabase cookie.
- */
-export async function completeOnboarding(
-  input: OnboardingInput
-): Promise<{ ok: true } | { error: string }> {
-  await delay(800);
+  const { data: org, error: orgError } = await supabase
+    .from("organizations")
+    .insert({ name: input.orgName, plan: "free" })
+    .select()
+    .single();
+  if (orgError || !org) return { error: "Erro ao criar organização." };
 
-  const session: SessionContext = {
-    ...FAKE_SESSION,
-    organization: {
-      ...FAKE_SESSION.organization,
-      name: input.orgName,
-    },
-    workspace: {
-      ...FAKE_SESSION.workspace,
+  await supabase
+    .from("organization_members")
+    .insert({ organization_id: org.id, user_id: user.id, role: "owner" });
+
+  const { data: ws, error: wsError } = await supabase
+    .from("workspaces")
+    .insert({
+      organization_id: org.id,
       name: input.workspaceName,
       description: input.workspaceDescription ?? null,
-    },
-    role: "owner" as OrgRole,
-  };
+    })
+    .select()
+    .single();
+  if (wsError || !ws) return { error: "Erro ao criar workspace." };
 
-  const cookieStore = await cookies();
-  cookieStore.set({
-    name: "adflow_session",
-    value: encodeSession(session),
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 604800,
-  });
+  await supabase
+    .from("workspace_members")
+    .insert({ workspace_id: ws.id, user_id: user.id, role: "owner" });
 
-  console.info("[fake-auth] onboarding complete:", { org: input.orgName, ws: input.workspaceName });
   redirect("/dashboard");
 }
 
-// ── Logout ────────────────────────────────────────────────────────────────────
-
-/**
- * TODO(M1-backend):
- *   const supabase = await createServerClientFromCookies();
- *   await supabase.auth.signOut();
- *   // @supabase/ssr clears the cookie automatically
- */
 export async function logout() {
-  const cookieStore = await cookies();
-  cookieStore.set({
-    name: "adflow_session",
-    value: "",
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 0,
-  });
+  const supabase = await createServerSupabaseClient();
+  await supabase.auth.signOut();
   redirect("/login");
 }
-
-// ── Utils ─────────────────────────────────────────────────────────────────────
-
-function delay(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-// Keep import happy — used in buildSessionCookie JSDoc
-void clearSessionCookie;
-void buildSessionCookie;

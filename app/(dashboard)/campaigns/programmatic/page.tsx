@@ -7,7 +7,7 @@ import { MOCK_RTB_CAMPAIGNS, getMockRtbKpis } from "@/lib/rtb/mock-data";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
 import { canAccessProgrammatic } from "@/lib/stripe/plans";
 import { UpgradeBanner } from "@/components/billing/upgrade-banner";
-import { FAKE_SESSION } from "@/lib/auth/session";
+import { getServerSession } from "@/lib/supabase/server";
 
 function fmt(n: number, dec = 0) {
   return n.toLocaleString("pt-BR", {
@@ -21,7 +21,8 @@ export default async function ProgrammaticPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
 }) {
-  const plan = FAKE_SESSION.organization.plan;
+  const session = await getServerSession();
+  const plan = session?.organization.plan ?? "free";
   if (!canAccessProgrammatic(plan)) {
     return (
       <div className="space-y-4">

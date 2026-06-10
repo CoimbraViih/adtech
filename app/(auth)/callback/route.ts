@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { encodeSession, FAKE_SESSION } from "@/lib/auth/session";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
   const onboarding = searchParams.get("onboarding");
+
   // Sanitize redirect destination against open-redirect attacks
   const rawNext = searchParams.get("next") ?? "/dashboard";
   const next =
@@ -12,32 +13,20 @@ export async function GET(request: Request) {
       ? rawNext
       : "/dashboard";
 
-  // CSRF state validation — only reject if a state cookie was set AND it doesn't match.
-  // When no state cookie exists (fake-auth / magic-link flows), the check is skipped.
-  const cookieStore = await cookies();
-  const storedState = cookieStore.get("oauth_state")?.value;
-  const incomingState = searchParams.get("state");
-
-  if (storedState && incomingState && storedState !== incomingState) {
-    console.warn("[callback] CSRF state mismatch — aborting");
-    return NextResponse.redirect(`${origin}/login?error=invalid_state`);
+  if (!code) {
+    return NextResponse.redirect(`${origin}/login?error=no_code`);
   }
 
-  // Clear the state cookie after use (prevents replay)
-  if (storedState) {
-    cookieStore.delete("oauth_state");
+  const supabase = await createServerSupabaseClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.auth as any).exchangeCodeForSession(code);
+
+  if (error) {
+    console.error("[callback] PKCE exchange failed:", error.message);
+    return NextResponse.redirect(`${origin}/login?error=auth_failed`);
   }
 
-  cookieStore.set({
-    name: "adflow_session",
-    value: encodeSession(FAKE_SESSION),
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 604800,
-  });
-
+  // Supabase sets sb-*-auth-token cookies automatically via setAll in createServerSupabaseClient
   const destination = onboarding ? "/onboarding" : next;
   return NextResponse.redirect(`${origin}${destination}`);
 }

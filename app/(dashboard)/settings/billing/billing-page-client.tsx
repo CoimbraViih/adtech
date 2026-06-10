@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CreditCard, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
-import { FAKE_SESSION } from "@/lib/auth/session";
 import {
   PLANS,
   campaignLimit,
@@ -14,14 +13,16 @@ import {
 import { PlanBadge } from "@/components/billing/plan-badge";
 import { UsageMeter } from "@/components/billing/usage-meter";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
+import type { OrgPlan } from "@/types/database";
 
 // Mock usage — TODO(M9-backend): fetch from Supabase
 const MOCK_USAGE = { campaigns: 2, creatives: 7, pixels: 1 };
 
 export function BillingPageClient() {
   const params = useSearchParams();
-  const session = FAKE_SESSION;
-  const plan = session.organization.plan;
+  // TODO(real-session): fetch plan from server session once auth is fully wired
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+  const plan = "free" as OrgPlan;
   const planConfig = PLANS[plan];
 
   const checkoutStatus = params.get("checkout");
