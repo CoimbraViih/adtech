@@ -33,7 +33,7 @@ export async function Topbar({ breadcrumb }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <NotificationBell workspaceId="" />
+        <NotificationBell workspaceId={session?.workspace.id ?? ""} />
         <UserMenu
           name={session?.user.display_name ?? ""}
           email={session?.user.email ?? ""}

@@ -7,19 +7,20 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { signUp } from "@/lib/auth/actions";
 
-const schema = z.object({
-  name: z
-    .string()
-    .min(2, "Nome deve ter ao menos 2 caracteres")
-    .max(60, "Nome muito longo"),
-  email: z
-    .string()
-    .min(1, "E-mail é obrigatório")
-    .email("Digite um e-mail válido"),
-});
+const schema = z
+  .object({
+    name: z.string().min(2, "Nome deve ter ao menos 2 caracteres").max(60, "Nome muito longo"),
+    email: z.string().min(1, "E-mail é obrigatório").email("Digite um e-mail válido"),
+    password: z.string().min(8, "Senha deve ter ao menos 8 caracteres"),
+    confirmPassword: z.string().min(1, "Confirme sua senha"),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "As senhas não coincidem",
+    path: ["confirmPassword"],
+  });
 
 type FormData = z.infer<typeof schema>;
 
@@ -27,6 +28,8 @@ export function SignupForm() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const {
@@ -38,14 +41,11 @@ export function SignupForm() {
   function onSubmit(data: FormData) {
     setServerError(null);
     startTransition(async () => {
-      const result = await signUp(data.name, data.email);
+      const result = await signUp(data.name, data.email, data.password);
       if ("error" in result) {
         setServerError(result.error);
       } else {
         setSuccess(true);
-        // In fake mode: redirect to onboarding directly
-        // TODO(M1-backend): show "check your email" state instead;
-        //   onboarding happens after the user clicks the magic link.
         setTimeout(() => router.push("/onboarding"), 800);
       }
     });
@@ -58,9 +58,7 @@ export function SignupForm() {
           <CheckCircle2 className="h-5 w-5 text-[color:var(--adflow-success)]" />
         </div>
         <div>
-          <p className="text-sm font-medium text-[color:var(--adflow-fg)]">
-            Conta criada!
-          </p>
+          <p className="text-sm font-medium text-[color:var(--adflow-fg)]">Conta criada!</p>
           <p className="mt-1 text-xs text-[color:var(--adflow-fg-muted)]">
             Redirecionando para o onboarding…
           </p>
@@ -78,11 +76,9 @@ export function SignupForm() {
         </div>
       )}
 
+      {/* Nome */}
       <div className="space-y-1.5">
-        <label
-          htmlFor="signup-name"
-          className="text-xs font-medium text-[color:var(--adflow-fg-muted)]"
-        >
+        <label htmlFor="signup-name" className="text-xs font-medium text-[color:var(--adflow-fg-muted)]">
           Nome completo
         </label>
         <Input
@@ -92,11 +88,7 @@ export function SignupForm() {
           autoComplete="name"
           disabled={isPending}
           aria-invalid={!!errors.name}
-          className={
-            errors.name
-              ? "border-[color:var(--adflow-danger)] focus-visible:ring-[color:var(--adflow-danger)]/30"
-              : ""
-          }
+          className={errors.name ? "border-[color:var(--adflow-danger)] focus-visible:ring-[color:var(--adflow-danger)]/30" : ""}
           {...register("name")}
         />
         {errors.name && (
@@ -107,11 +99,9 @@ export function SignupForm() {
         )}
       </div>
 
+      {/* E-mail */}
       <div className="space-y-1.5">
-        <label
-          htmlFor="signup-email"
-          className="text-xs font-medium text-[color:var(--adflow-fg-muted)]"
-        >
+        <label htmlFor="signup-email" className="text-xs font-medium text-[color:var(--adflow-fg-muted)]">
           E-mail profissional
         </label>
         <Input
@@ -121,17 +111,89 @@ export function SignupForm() {
           autoComplete="email"
           disabled={isPending}
           aria-invalid={!!errors.email}
-          className={
-            errors.email
-              ? "border-[color:var(--adflow-danger)] focus-visible:ring-[color:var(--adflow-danger)]/30"
-              : ""
-          }
+          className={errors.email ? "border-[color:var(--adflow-danger)] focus-visible:ring-[color:var(--adflow-danger)]/30" : ""}
           {...register("email")}
         />
         {errors.email && (
           <p className="flex items-center gap-1.5 text-xs text-[color:var(--adflow-danger)]">
             <AlertCircle className="h-3 w-3 shrink-0" />
             {errors.email.message}
+          </p>
+        )}
+      </div>
+
+      {/* Senha */}
+      <div className="space-y-1.5">
+        <label htmlFor="signup-password" className="text-xs font-medium text-[color:var(--adflow-fg-muted)]">
+          Senha
+        </label>
+        <div className="relative">
+          <Input
+            id="signup-password"
+            type={showPassword ? "text" : "password"}
+            placeholder="Mínimo 8 caracteres"
+            autoComplete="new-password"
+            disabled={isPending}
+            aria-invalid={!!errors.password}
+            className={
+              errors.password
+                ? "pr-9 border-[color:var(--adflow-danger)] focus-visible:ring-[color:var(--adflow-danger)]/30"
+                : "pr-9"
+            }
+            {...register("password")}
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-fg)] transition-colors"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        {errors.password && (
+          <p className="flex items-center gap-1.5 text-xs text-[color:var(--adflow-danger)]">
+            <AlertCircle className="h-3 w-3 shrink-0" />
+            {errors.password.message}
+          </p>
+        )}
+      </div>
+
+      {/* Confirmar senha */}
+      <div className="space-y-1.5">
+        <label htmlFor="signup-confirm" className="text-xs font-medium text-[color:var(--adflow-fg-muted)]">
+          Confirmar senha
+        </label>
+        <div className="relative">
+          <Input
+            id="signup-confirm"
+            type={showConfirm ? "text" : "password"}
+            placeholder="••••••••"
+            autoComplete="new-password"
+            disabled={isPending}
+            aria-invalid={!!errors.confirmPassword}
+            className={
+              errors.confirmPassword
+                ? "pr-9 border-[color:var(--adflow-danger)] focus-visible:ring-[color:var(--adflow-danger)]/30"
+                : "pr-9"
+            }
+            {...register("confirmPassword")}
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={showConfirm ? "Ocultar senha" : "Mostrar senha"}
+            onClick={() => setShowConfirm((v) => !v)}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-fg)] transition-colors"
+          >
+            {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        {errors.confirmPassword && (
+          <p className="flex items-center gap-1.5 text-xs text-[color:var(--adflow-danger)]">
+            <AlertCircle className="h-3 w-3 shrink-0" />
+            {errors.confirmPassword.message}
           </p>
         )}
       </div>
