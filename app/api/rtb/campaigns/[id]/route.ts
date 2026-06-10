@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
-import { MOCK_RTB_CAMPAIGNS } from "@/lib/rtb/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
 const patchSchema = z.object({
@@ -23,9 +22,14 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 
   const { id } = await ctx.params;
 
-  // TODO(M8-backend): replace with Supabase query
-  const campaign = MOCK_RTB_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
+  const supabase = await createServerSupabaseClient();
+  const { data: campaign, error } = await supabase
+    .from("rtb_campaigns")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !campaign) {
     return NextResponse.json(
       { error: "Campanha RTB não encontrada." },
       { status: 404 }
@@ -61,20 +65,20 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     );
   }
 
-  // TODO(M8-backend): update in Supabase
-  const campaign = MOCK_RTB_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
+  const supabase = await createServerSupabaseClient();
+  const { data: updated, error } = await supabase
+    .from("rtb_campaigns")
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error || !updated) {
     return NextResponse.json(
       { error: "Campanha RTB não encontrada." },
       { status: 404 }
     );
   }
-
-  const updated = {
-    ...campaign,
-    ...parsed.data,
-    updated_at: new Date().toISOString(),
-  };
 
   return NextResponse.json({ data: updated });
 }
@@ -89,9 +93,13 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
 
   const { id } = await ctx.params;
 
-  // TODO(M8-backend): soft-delete (status = 'archived') in Supabase
-  const campaign = MOCK_RTB_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("rtb_campaigns")
+    .update({ status: "archived", updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
     return NextResponse.json(
       { error: "Campanha RTB não encontrada." },
       { status: 404 }

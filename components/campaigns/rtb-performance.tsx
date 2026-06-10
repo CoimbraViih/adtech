@@ -12,7 +12,6 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { getMockBidLandscape, getMockWinRateTimeSeries } from "@/lib/rtb/mock-data";
 
 const COLORS = {
   data: "var(--adflow-data)",
@@ -46,13 +45,62 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   );
 }
 
+// Deterministic seed helper
+function seedFromId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) {
+    h = (Math.imul(31, h) + id.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+// Bid landscape histogram (deterministic, no real-time data yet)
+function getBidLandscape(campaignId: string) {
+  const seed = seedFromId(campaignId);
+  const buckets = [2, 6, 10, 14, 18, 22, 26, 30, 34, 38];
+  const peaks = [(seed % 3) + 2, ((seed >> 4) % 3) + 5];
+  const baseCounts = [180, 320, 560, 740, 620, 480, 310, 190, 90, 40];
+  return buckets.map((cpm, i) => {
+    const boost = peaks.includes(i) ? 1 + ((seed >> (i * 2)) % 3) * 0.25 : 1;
+    return { cpm, count: Math.round(baseCounts[i] * boost) };
+  });
+}
+
+// Win-rate time series (deterministic, no real-time data yet)
+const WIN_RATE_BASE = [
+  { winRate: 0.38, bids: 4200 }, { winRate: 0.40, bids: 4350 }, { winRate: 0.37, bids: 4100 },
+  { winRate: 0.41, bids: 4500 }, { winRate: 0.43, bids: 4700 }, { winRate: 0.39, bids: 4250 },
+  { winRate: 0.42, bids: 4600 }, { winRate: 0.44, bids: 4800 }, { winRate: 0.36, bids: 4050 },
+  { winRate: 0.38, bids: 4200 }, { winRate: 0.41, bids: 4500 }, { winRate: 0.45, bids: 4900 },
+  { winRate: 0.43, bids: 4700 }, { winRate: 0.40, bids: 4400 }, { winRate: 0.38, bids: 4200 },
+  { winRate: 0.42, bids: 4600 }, { winRate: 0.46, bids: 5000 }, { winRate: 0.44, bids: 4800 },
+  { winRate: 0.41, bids: 4500 }, { winRate: 0.39, bids: 4300 }, { winRate: 0.43, bids: 4700 },
+  { winRate: 0.45, bids: 4900 }, { winRate: 0.47, bids: 5100 }, { winRate: 0.44, bids: 4800 },
+  { winRate: 0.42, bids: 4600 }, { winRate: 0.40, bids: 4400 }, { winRate: 0.43, bids: 4700 },
+  { winRate: 0.46, bids: 5000 }, { winRate: 0.48, bids: 5200 }, { winRate: 0.45, bids: 4900 },
+];
+
+function getWinRateTimeSeries(campaignId: string) {
+  const offset = seedFromId(campaignId) % 5;
+  const today = new Date();
+  return WIN_RATE_BASE.map((row, i) => {
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() - (29 - i));
+    return {
+      date: d.toISOString().slice(0, 10),
+      winRate: +(row.winRate + (offset - 2) * 0.01).toFixed(4),
+      bids: row.bids + (offset - 2) * 50,
+    };
+  });
+}
+
 type RtbPerformanceProps = {
   campaignId: string;
 };
 
 export function RtbPerformance({ campaignId }: RtbPerformanceProps) {
-  const landscape = getMockBidLandscape(campaignId);
-  const timeSeries = getMockWinRateTimeSeries(campaignId);
+  const landscape = getBidLandscape(campaignId);
+  const timeSeries = getWinRateTimeSeries(campaignId);
 
   const landscapeData = landscape.map((b) => ({
     cpm: `R$${b.cpm}–${b.cpm + 4}`,

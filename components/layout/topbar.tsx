@@ -2,12 +2,15 @@ import { OrgSwitcher } from "@/components/layout/org-switcher";
 import { UserMenu } from "@/components/auth/user-menu";
 import { MobileSidebarTrigger } from "@/components/layout/sidebar";
 import { NotificationBell } from "@/components/automation/notification-bell";
+import { getServerSession } from "@/lib/supabase/server";
 
 type TopbarProps = {
   breadcrumb?: string;
 };
 
-export function Topbar({ breadcrumb }: TopbarProps) {
+export async function Topbar({ breadcrumb }: TopbarProps) {
+  const session = await getServerSession();
+
   return (
     <header
       role="banner"
@@ -17,7 +20,7 @@ export function Topbar({ breadcrumb }: TopbarProps) {
         {/* Mobile hamburger — hidden on md+ */}
         <MobileSidebarTrigger />
 
-        <OrgSwitcher />
+        <OrgSwitcher orgName={session?.organization.name ?? session?.workspace.name ?? ""} />
 
         {breadcrumb && (
           <>
@@ -31,7 +34,11 @@ export function Topbar({ breadcrumb }: TopbarProps) {
 
       <div className="flex items-center gap-2">
         <NotificationBell workspaceId="" />
-        <UserMenu />
+        <UserMenu
+          name={session?.user.display_name ?? ""}
+          email={session?.user.email ?? ""}
+          plan={session?.organization.plan ?? "free"}
+        />
       </div>
     </header>
   );

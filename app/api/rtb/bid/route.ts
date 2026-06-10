@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { MOCK_RTB_CAMPAIGNS } from "@/lib/rtb/mock-data";
 import { selectBid, buildBidResponse } from "@/lib/rtb/bidder";
+import { createServiceClient } from "@/lib/supabase/service";
+import type { RtbCampaign } from "@/types/database";
 import { matchUserToSegments } from "@/lib/rtb/dmp";
 import { maskIp } from "@/lib/security/ip";
 import { createRateLimiter } from "@/lib/security/rate-limit";
@@ -118,7 +119,12 @@ export async function POST(request: Request): Promise<Response> {
 
     await matchUserToSegments(bidRequest.user?.id ?? "", "demo");
 
-    const campaigns = MOCK_RTB_CAMPAIGNS.filter((c) => c.status === "active");
+    const supabase = createServiceClient();
+    const { data: rtbCampaignsData } = await supabase
+      .from("rtb_campaigns")
+      .select("*")
+      .eq("status", "active");
+    const campaigns = (rtbCampaignsData ?? []) as RtbCampaign[];
 
     const bid = selectBid(campaigns, bidRequest, {
       todaySpend: new Map(),

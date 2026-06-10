@@ -2,11 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ComponentType } from "react";
 import { ChevronLeft, Activity, Target, TrendingUp, DollarSign, BarChart2 } from "lucide-react";
-import { MOCK_RTB_CAMPAIGNS, MOCK_BID_LOG } from "@/lib/rtb/mock-data";
 import { StatusBadge } from "@/components/campaigns/status-badge";
 import { RtbPerformance } from "@/components/campaigns/rtb-performance";
 import { RtbAssetsSection } from "@/components/campaigns/rtb-assets-section";
 import { getAssetsByRtbCampaign } from "@/lib/storage/creative-assets";
+import { getServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { BidOutcome } from "@/types/database";
 
@@ -68,16 +68,30 @@ type PageProps = {
 export default async function ProgrammaticDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  const campaign = MOCK_RTB_CAMPAIGNS.find((c) => c.id === id);
+  const session = await getServerSession();
+  const workspaceId = session?.workspace.id ?? "";
+
+  const supabase = await createServerSupabaseClient();
+
+  const [{ data: campaignData }, { data: bidLogData }, rtbAssets] = await Promise.all([
+    supabase
+      .from("rtb_campaigns")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("bid_requests_log")
+      .select("*")
+      .eq("rtb_campaign_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    getAssetsByRtbCampaign(id),
+  ]);
+
+  const campaign = campaignData;
   if (!campaign) notFound();
 
-  // TODO(M15-backend): replace with real session.workspace.id
-  const workspaceId = "ws_demo";
-  const rtbAssets = await getAssetsByRtbCampaign(id);
-
-  const bidLog = MOCK_BID_LOG.filter(
-    (b) => b.rtb_campaign_id === campaign.id
-  ).slice(0, 20);
+  const bidLog = bidLogData ?? [];
 
   const winRate =
     campaign.win_rate !== null ? fmt(campaign.win_rate * 100, 1) + "%" : "—";

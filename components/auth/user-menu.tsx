@@ -14,18 +14,24 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { logout } from "@/lib/auth/actions";
 
-// TODO(M1-backend): replace MOCK_USER with props derived from getServerSession()
-// passed down from the Server Component layout.
-const MOCK_USER = {
-  name: "Victor Coimbra",
-  email: "victor@agencia.com",
-  plan: "Agency",
-  initials: "VC",
+type UserMenuProps = {
+  name?: string;
+  email?: string;
+  plan?: string;
 };
 
-export function UserMenu() {
+export function UserMenu({ name = "", email = "", plan = "Free" }: UserMenuProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  const initials = name
+    ? name
+        .split(" ")
+        .map((p) => p[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "?";
 
   function handleLogout() {
     startTransition(async () => {
@@ -42,7 +48,7 @@ export function UserMenu() {
       >
         <Avatar className="w-7 h-7">
           <AvatarFallback className="bg-[color:var(--adflow-accent)]/20 text-[color:var(--adflow-accent)] text-xs font-semibold">
-            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : MOCK_USER.initials}
+            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : initials}
           </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
@@ -50,13 +56,13 @@ export function UserMenu() {
       <DropdownMenuContent className="w-60 bg-[color:var(--adflow-surface)] border-[color:var(--adflow-border)]">
         <DropdownMenuLabel className="font-normal pb-2">
           <p className="text-sm font-medium text-[color:var(--adflow-fg)]">
-            {MOCK_USER.name}
+            {name}
           </p>
           <p className="text-xs text-[color:var(--adflow-fg-muted)] mt-0.5">
-            {MOCK_USER.email}
+            {email}
           </p>
           <span className="mt-1.5 inline-block text-[10px] bg-[color:var(--adflow-accent)]/10 text-[color:var(--adflow-accent)] px-1.5 py-0.5 rounded font-medium uppercase tracking-wide">
-            {MOCK_USER.plan}
+            {plan}
           </span>
         </DropdownMenuLabel>
 

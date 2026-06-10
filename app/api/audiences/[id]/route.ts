@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
-import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
 const audienceRuleSchema = z.object({
@@ -28,9 +27,14 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 
   const { id } = await ctx.params;
 
-  // TODO(M8-backend): replace with Supabase query
-  const audience = MOCK_AUDIENCES.find((a) => a.id === id);
-  if (!audience) {
+  const supabase = await createServerSupabaseClient();
+  const { data: audience, error } = await supabase
+    .from("audiences")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !audience) {
     return NextResponse.json(
       { error: "Audiência não encontrada." },
       { status: 404 }
@@ -66,20 +70,20 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     );
   }
 
-  // TODO(M8-backend): update in Supabase
-  const audience = MOCK_AUDIENCES.find((a) => a.id === id);
-  if (!audience) {
+  const supabase = await createServerSupabaseClient();
+  const { data: updated, error } = await supabase
+    .from("audiences")
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error || !updated) {
     return NextResponse.json(
       { error: "Audiência não encontrada." },
       { status: 404 }
     );
   }
-
-  const updated = {
-    ...audience,
-    ...parsed.data,
-    updated_at: new Date().toISOString(),
-  };
 
   return NextResponse.json({ data: updated });
 }
@@ -94,9 +98,13 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
 
   const { id } = await ctx.params;
 
-  // TODO(M8-backend): delete from Supabase
-  const audience = MOCK_AUDIENCES.find((a) => a.id === id);
-  if (!audience) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("audiences")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
     return NextResponse.json(
       { error: "Audiência não encontrada." },
       { status: 404 }

@@ -4,7 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
-import type { DualDayPoint } from "@/lib/dashboard/mock-data";
+import type { DualDayPoint } from "@/lib/dashboard/types";
 
 const NUM = new Intl.NumberFormat("pt-BR");
 

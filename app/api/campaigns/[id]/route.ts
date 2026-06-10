@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireServerSession } from "@/lib/supabase/server";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { canManageCampaigns } from "@/lib/auth/roles";
-import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
 import { updateCampaignOnPlatform } from "@/lib/campaigns/platform";
 import { z } from "zod";
 import type { CampaignStatus } from "@/types/database";
@@ -25,9 +24,14 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 
   const { id } = await ctx.params;
 
-  // TODO(M2-backend): replace with Supabase query
-  const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
+  const supabase = await createServerSupabaseClient();
+  const { data: campaign, error } = await supabase
+    .from("campaigns")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !campaign) {
     return NextResponse.json({ error: "Campanha não encontrada." }, { status: 404 });
   }
 
@@ -65,9 +69,14 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     );
   }
 
-  // TODO(M2-backend): update in Supabase
-  const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
+  const supabase = await createServerSupabaseClient();
+  const { data: campaign, error: fetchError } = await supabase
+    .from("campaigns")
+    .select("id, platform, external_id, status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchError || !campaign) {
     return NextResponse.json({ error: "Campanha não encontrada." }, { status: 404 });
   }
 
@@ -86,7 +95,17 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     }
   }
 
-  const updated = { ...campaign, ...parsed.data, updated_at: new Date().toISOString() };
+  const { data: updated, error: updateError } = await supabase
+    .from("campaigns")
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (updateError || !updated) {
+    return NextResponse.json({ error: "Erro ao atualizar campanha." }, { status: 500 });
+  }
+
   return NextResponse.json(updated);
 }
 
@@ -105,9 +124,14 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
 
   const { id } = await ctx.params;
 
-  // TODO(M2-backend): soft-delete (status = 'archived') in Supabase
-  const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
-  if (!campaign) {
+  const supabase = await createServerSupabaseClient();
+  const { data: campaign, error: fetchError } = await supabase
+    .from("campaigns")
+    .select("id, platform, external_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (fetchError || !campaign) {
     return NextResponse.json({ error: "Campanha não encontrada." }, { status: 404 });
   }
 
@@ -122,6 +146,11 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
       console.error("[campaigns/delete] platform archive error:", err);
     }
   }
+
+  await supabase
+    .from("campaigns")
+    .update({ status: "archived", updated_at: new Date().toISOString() })
+    .eq("id", id);
 
   return NextResponse.json({ success: true });
 }

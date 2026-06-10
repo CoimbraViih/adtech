@@ -1,5 +1,4 @@
 import type { Audience } from "@/types/database";
-import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
 import { createHash } from "crypto";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -27,7 +26,8 @@ export async function matchUserToSegments(
   // workspaceId reserved for future Supabase swap-in
   void workspaceId;
 
-  return MOCK_AUDIENCES.slice(0, 2).map((a) => a.id);
+  // TODO(M8-backend): query audience_segments for real matching
+  return [];
 }
 
 /**

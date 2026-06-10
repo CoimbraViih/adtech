@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +19,7 @@ import {
   Shield,
   X,
 } from "lucide-react";
-import { MOCK_AUDIENCES } from "@/lib/rtb/mock-data";
+import type { Audience } from "@/types/database";
 
 // ── schema ─────────────────────────────────────────────────────────────────
 
@@ -282,8 +282,10 @@ function Step1Deal({
 
 function Step2Audience({
   form,
+  audiences,
 }: {
   form: ReturnType<typeof useForm<RtbFormValues>>;
+  audiences: Audience[];
 }) {
   const {
     register,
@@ -337,7 +339,7 @@ function Step2Audience({
           className="w-full px-3 py-2 text-sm bg-[color:var(--adflow-surface)] border border-[color:var(--adflow-border)] rounded-md text-[color:var(--adflow-fg)] focus:outline-none focus:ring-1 focus:ring-[color:var(--adflow-accent)] transition"
         >
           <option value="">Sem audiência</option>
-          {MOCK_AUDIENCES.map((aud) => (
+          {audiences.map((aud) => (
             <option key={aud.id} value={aud.id}>
               {aud.name}
             </option>
@@ -566,8 +568,10 @@ function Step3BidBudget({
 
 function Step4Review({
   form,
+  audiences,
 }: {
   form: ReturnType<typeof useForm<RtbFormValues>>;
+  audiences: Audience[];
 }) {
   const {
     register,
@@ -576,7 +580,7 @@ function Step4Review({
   } = form;
   const values = getValues();
 
-  const audience = MOCK_AUDIENCES.find((a) => a.id === values.audience_id);
+  const audience = audiences.find((a) => a.id === values.audience_id);
   const dealType = DEAL_TYPES.find((d) => d.value === values.deal_type);
 
   const sections: Array<{ heading: string; rows: { label: string; value: string }[] }> = [
@@ -685,6 +689,16 @@ export default function RtbCampaignForm() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [audiences, setAudiences] = useState<Audience[]>([]);
+
+  useEffect(() => {
+    fetch("/api/audiences")
+      .then((r) => r.json())
+      .then((d: { data?: Audience[] }) => {
+        if (Array.isArray(d.data)) setAudiences(d.data);
+      })
+      .catch(() => {/* silently ignore */});
+  }, []);
 
   const form = useForm<RtbFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -773,9 +787,9 @@ export default function RtbCampaignForm() {
 
         <div className="min-h-[360px]">
           {step === 1 && <Step1Deal form={form} />}
-          {step === 2 && <Step2Audience form={form} />}
+          {step === 2 && <Step2Audience form={form} audiences={audiences} />}
           {step === 3 && <Step3BidBudget form={form} />}
-          {step === 4 && <Step4Review form={form} />}
+          {step === 4 && <Step4Review form={form} audiences={audiences} />}
         </div>
 
         {serverError && (

@@ -2,14 +2,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, Clock, Link2 } from "lucide-react";
-import { MOCK_CREATIVES } from "@/lib/creatives/mock-data";
-import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
 import { CreativeTypeBadge } from "@/components/creatives/creative-type-badge";
 import { CreativeScore } from "@/components/creatives/creative-score";
 import { PolicyChecker } from "@/components/creatives/policy-checker";
 import { StatusBadge } from "@/components/campaigns/status-badge";
 import { AssetUploader } from "@/components/creatives/asset-uploader";
 import { getAssetsByCreative } from "@/lib/storage/creative-assets";
+import { getServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 type AnyStatus = Parameters<typeof StatusBadge>[0]["status"];
 
 export default async function CreativeDetailPage({
@@ -19,17 +18,33 @@ export default async function CreativeDetailPage({
 }) {
   const { id } = await params;
 
-  // TODO(M3-backend): replace with Supabase query
-  const creative = MOCK_CREATIVES.find((c) => c.id === id);
+  const session = await getServerSession();
+  const workspaceId = session?.workspace.id ?? "";
+
+  const supabase = await createServerSupabaseClient();
+
+  const [{ data: creativeData }, initialAssets] = await Promise.all([
+    supabase
+      .from("creatives")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle(),
+    getAssetsByCreative(id),
+  ]);
+
+  const creative = creativeData;
   if (!creative) notFound();
 
-  // TODO(M15-backend): replace with real session.workspace.id
-  const workspaceId = "ws_demo";
-  const initialAssets = await getAssetsByCreative(id);
-
-  const campaign = creative.campaign_id
-    ? MOCK_CAMPAIGNS.find((c) => c.id === creative.campaign_id)
-    : null;
+  // Fetch linked campaign if exists
+  let campaign: { id: string; name: string } | null = null;
+  if (creative.campaign_id) {
+    const { data } = await supabase
+      .from("campaigns")
+      .select("id, name")
+      .eq("id", creative.campaign_id)
+      .maybeSingle();
+    campaign = data ?? null;
+  }
 
   return (
     <div className="space-y-6">
@@ -231,7 +246,7 @@ export default async function CreativeDetailPage({
             {[
               { label: "Criado em", value: new Date(creative.created_at).toLocaleDateString("pt-BR") },
               { label: "Campanha", value: campaign?.name ?? "—" },
-              { label: "Workspace", value: creative.workspace_id },
+              { label: "Workspace", value: workspaceId },
               { label: "ID", value: creative.id },
             ].map(({ label, value }) => (
               <div key={label}>

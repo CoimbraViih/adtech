@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireServerSession } from "@/lib/supabase/server";
 import { generateCopyVariations } from "@/lib/ai/openai";
-import { MOCK_COPY_VARIATIONS } from "@/lib/creatives/mock-data";
 import { sanitizeBriefing } from "@/lib/security/sanitize";
 import { createRateLimiter } from "@/lib/security/rate-limit";
 import { z } from "zod";
@@ -49,10 +48,10 @@ export async function POST(req: NextRequest) {
   const safeBriefing = sanitizeBriefing(parsed.data.briefing);
 
   if (!process.env.OPENAI_API_KEY) {
-    await new Promise((r) => setTimeout(r, 800));
-    return NextResponse.json({
-      variations: MOCK_COPY_VARIATIONS.slice(0, parsed.data.count),
-    });
+    return NextResponse.json(
+      { error: "OPENAI_API_KEY não configurada." },
+      { status: 503 }
+    );
   }
 
   try {

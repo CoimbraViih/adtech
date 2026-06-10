@@ -3,11 +3,10 @@ import { Suspense } from "react";
 import type { ComponentType } from "react";
 import { Plus, Activity, TrendingUp, TrendingDown, DollarSign, BarChart2 } from "lucide-react";
 import { RtbCampaignsTable } from "@/components/campaigns/rtb-campaigns-table";
-import { MOCK_RTB_CAMPAIGNS, getMockRtbKpis } from "@/lib/rtb/mock-data";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
 import { canAccessProgrammatic } from "@/lib/stripe/plans";
 import { UpgradeBanner } from "@/components/billing/upgrade-banner";
-import { getServerSession } from "@/lib/supabase/server";
+import { getServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 
 function fmt(n: number, dec = 0) {
   return n.toLocaleString("pt-BR", {
@@ -42,7 +41,35 @@ export default async function ProgrammaticPage({
     ? (sp.compare as CompareMode)
     : "prev_period";
 
-  const kpis = getMockRtbKpis("ws_demo");
+  const supabase = await createServerSupabaseClient();
+  const workspaceId = session?.workspace.id ?? "";
+
+  const { data: rtbData } = await supabase
+    .from("rtb_campaigns")
+    .select("spend, impressions, wins")
+    .eq("workspace_id", workspaceId);
+
+  const campaigns = rtbData ?? [];
+  const totalSpend = campaigns.reduce((s, c) => s + (c.spend ?? 0), 0);
+  const impressions = campaigns.reduce((s, c) => s + (c.impressions ?? 0), 0);
+  const wins = campaigns.reduce((s, c) => s + (c.wins ?? 0), 0);
+
+  const kpis = {
+    totalBids: wins,
+    wins,
+    winRate: 0,
+    avgCpm: 0,
+    totalSpend,
+    impressions,
+  };
+
+  const { data: rtbCampaigns } = await supabase
+    .from("rtb_campaigns")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false });
+
+  const activeCampaigns = (rtbCampaigns ?? []).filter((c) => c.status === "active");
 
   return (
     <div className="space-y-6">
@@ -53,11 +80,9 @@ export default async function ProgrammaticPage({
             Campanhas Programáticas
           </h1>
           <p className="text-sm text-[color:var(--adflow-fg-muted)] mt-0.5">
-            {MOCK_RTB_CAMPAIGNS.filter((c) => c.status === "active").length} ativa
-            {MOCK_RTB_CAMPAIGNS.filter((c) => c.status === "active").length !== 1
-              ? "s"
-              : ""}{" "}
-            de {MOCK_RTB_CAMPAIGNS.length} no total
+            {activeCampaigns.length} ativa
+            {activeCampaigns.length !== 1 ? "s" : ""}{" "}
+            de {(rtbCampaigns ?? []).length} no total
           </p>
         </div>
         <Link
@@ -108,7 +133,7 @@ export default async function ProgrammaticPage({
 
       {/* Table */}
       <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4">
-        <RtbCampaignsTable campaigns={MOCK_RTB_CAMPAIGNS} />
+        <RtbCampaignsTable campaigns={rtbCampaigns ?? []} />
       </div>
     </div>
   );
