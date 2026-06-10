@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
 import { CampaignTable } from "@/components/campaigns/campaign-table";
-import { MOCK_CAMPAIGNS } from "@/lib/campaigns/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
 
 function fmt(n: number, dec = 0) {
@@ -17,6 +18,22 @@ export default async function CampaignsPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; compare?: string }>;
 }) {
+  let session;
+  try {
+    session = await requireServerSession();
+  } catch {
+    redirect("/login");
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data: campaigns } = await supabase
+    .from("campaigns")
+    .select("*")
+    .eq("workspace_id", session.workspace.id)
+    .order("created_at", { ascending: false });
+
+  const allCampaigns = campaigns ?? [];
+
   const sp = await searchParams;
   const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
   const dateTo = sp.to ?? new Date().toISOString().slice(0, 10);
@@ -24,11 +41,11 @@ export default async function CampaignsPage({
     ? (sp.compare as CompareMode)
     : "prev_period";
 
-  const active = MOCK_CAMPAIGNS.filter((c) => c.status === "active");
-  const totalSpend = MOCK_CAMPAIGNS.reduce((s, c) => s + c.spend, 0);
-  const totalRevenue = MOCK_CAMPAIGNS.reduce((s, c) => s + c.revenue, 0);
+  const active = allCampaigns.filter((c) => c.status === "active");
+  const totalSpend = allCampaigns.reduce((s, c) => s + (c.spend ?? 0), 0);
+  const totalRevenue = allCampaigns.reduce((s, c) => s + (c.revenue ?? 0), 0);
   const avgRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
-  const totalConversions = MOCK_CAMPAIGNS.reduce((s, c) => s + c.conversions, 0);
+  const totalConversions = allCampaigns.reduce((s, c) => s + (c.conversions ?? 0), 0);
   const avgCpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
 
   return (
@@ -38,7 +55,7 @@ export default async function CampaignsPage({
         <div>
           <h1 className="text-xl font-semibold text-[color:var(--adflow-fg)]">Campanhas</h1>
           <p className="text-sm text-[color:var(--adflow-fg-muted)] mt-0.5">
-            {active.length} ativa{active.length !== 1 ? "s" : ""} de {MOCK_CAMPAIGNS.length} no total
+            {active.length} ativa{active.length !== 1 ? "s" : ""} de {allCampaigns.length} no total
           </p>
         </div>
         <Link
@@ -85,7 +102,7 @@ export default async function CampaignsPage({
 
       {/* Table */}
       <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4">
-        <CampaignTable campaigns={MOCK_CAMPAIGNS} />
+        <CampaignTable campaigns={allCampaigns} />
       </div>
     </div>
   );

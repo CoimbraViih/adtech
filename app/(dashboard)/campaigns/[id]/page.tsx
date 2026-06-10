@@ -1,7 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { MOCK_CAMPAIGNS, MOCK_AD_SETS, getMockMetricSnapshots, getMockDiagnostics } from "@/lib/campaigns/mock-data";
+import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/campaigns/status-badge";
 import { PlatformIcon } from "@/components/campaigns/platform-icon";
 import { CampaignCharts } from "@/components/campaigns/campaign-charts";
@@ -28,17 +28,42 @@ export default async function CampaignDetailPage({
 }) {
   const { id } = await params;
 
-  // TODO(M2-backend): replace with Supabase query
-  const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id);
+  const session = await requireServerSession().catch(() => null);
+  if (!session) redirect("/login");
+  const supabase = await createServerSupabaseClient();
+
+  const { data: campaign } = await supabase
+    .from("campaigns")
+    .select("*")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
   if (!campaign) notFound();
 
-  // TODO(M2-backend): replace with Supabase query on ai_diagnostics
-  const workspaceId = "ws_demo";
-  const diagnostics = getMockDiagnostics(id);
+  const workspaceId = session.workspace.id;
   const campaignAssets = await getAssetsByCampaign(id);
 
-  const adSets = MOCK_AD_SETS.filter((a) => a.campaign_id === id);
-  const snapshots = getMockMetricSnapshots(id);
+  const { data: adSets } = await supabase
+    .from("ad_sets")
+    .select("*")
+    .eq("campaign_id", id);
+  const adSetsData = adSets ?? [];
+
+  const { data: snapshots } = await supabase
+    .from("campaign_metrics_daily")
+    .select("*")
+    .eq("campaign_id", id)
+    .order("date", { ascending: true })
+    .limit(30);
+  const snapshotsData = snapshots ?? [];
+
+  const { data: diagnostics } = await supabase
+    .from("ai_diagnostics")
+    .select("*")
+    .eq("campaign_id", id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const diagnosticsData = diagnostics ?? [];
 
   const ctr = campaign.impressions > 0
     ? ((campaign.clicks / campaign.impressions) * 100).toFixed(2)
@@ -126,15 +151,15 @@ export default async function CampaignDetailPage({
       </div>
 
       {/* Charts */}
-      <CampaignCharts snapshots={snapshots} />
+      <CampaignCharts snapshots={snapshotsData} />
 
       {/* Ad Sets */}
-      {adSets.length > 0 && (
+      {adSetsData.length > 0 && (
         <div className="rounded-xl border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-4">
           <h2 className="text-sm font-semibold text-[color:var(--adflow-fg)] mb-4">
-            Conjuntos de anúncios ({adSets.length})
+            Conjuntos de anúncios ({adSetsData.length})
           </h2>
-          <AdSetsTable adSets={adSets} />
+          <AdSetsTable adSets={adSetsData} />
         </div>
       )}
 
@@ -152,15 +177,15 @@ export default async function CampaignDetailPage({
           <RunDiagnosticsButton workspaceId={workspaceId} campaignId={id} />
         </div>
 
-        {diagnostics.length >= 2 && <SeveritySummary diagnostics={diagnostics} />}
+        {diagnosticsData.length >= 2 && <SeveritySummary diagnostics={diagnosticsData} />}
 
-        {diagnostics.length === 0 ? (
+        {diagnosticsData.length === 0 ? (
           <p className="text-sm text-[color:var(--adflow-fg-muted)] py-4 text-center">
             Nenhum problema detectado — rode uma análise para começar.
           </p>
         ) : (
           <div className="space-y-3">
-            {diagnostics.map((d) => (
+            {diagnosticsData.map((d) => (
               <DiagnosticCard key={d.id} diagnostic={d} />
             ))}
           </div>
