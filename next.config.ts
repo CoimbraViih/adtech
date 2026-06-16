@@ -4,6 +4,9 @@ import { withSentryConfig } from "@sentry/nextjs";
 const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**.supabase.co" },

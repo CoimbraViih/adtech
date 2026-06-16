@@ -38,6 +38,11 @@
   ],
   "exclude": [
     "node_modules",
-    "tests"
+    "tests",
+    "impeccable",
+    "brand",
+    "opensquad",
+    "superpowers",
+    "three.js"
   ]
 }
