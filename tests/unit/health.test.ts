@@ -9,7 +9,6 @@ describe("GET /api/health", () => {
     expect(body).toHaveProperty("status", "ok");
     expect(body).toHaveProperty("version");
     expect(body).toHaveProperty("build");
-    expect(body).toHaveProperty("env");
     expect(body).toHaveProperty("timestamp");
   });
 

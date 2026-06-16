@@ -18,7 +18,7 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-white mb-2">1. Quem somos</h2>
           <p>
             AdFlow é uma plataforma de gestão de anúncios e criativos desenvolvida e
-            operada por AdFlow Tecnologia Ltda. ("AdFlow", "nós", "nosso"), com sede no
+            operada por AdFlow Tecnologia Ltda. (&ldquo;AdFlow&rdquo;, &ldquo;nós&rdquo;, &ldquo;nosso&rdquo;), com sede no
             Brasil. Este documento descreve como coletamos, usamos, armazenamos e
             protegemos suas informações pessoais, em conformidade com a Lei Geral de
             Proteção de Dados (LGPD — Lei nº 13.709/2018).
