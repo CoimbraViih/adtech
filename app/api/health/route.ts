@@ -8,7 +8,6 @@ export async function GET() {
       status: "ok",
       version: process.env.npm_package_version ?? "unknown",
       build: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
-      env: process.env.NODE_ENV,
       timestamp: new Date().toISOString(),
     },
     { status: 200 }

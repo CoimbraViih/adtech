@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 const REQUIRED_IN_PRODUCTION: string[] = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -33,8 +35,8 @@ export function validateEnvVars(): void {
 
   const missingBilling = REQUIRED_FOR_BILLING.filter((k) => !process.env[k]);
   if (missingBilling.length > 0) {
-    console.warn(
-      `[config] Stripe env vars missing — billing features will be disabled: ${missingBilling.join(", ")}`
-    );
+    logger.warn("Stripe env vars missing — billing features will be disabled", {
+      missing: missingBilling,
+    });
   }
 }
