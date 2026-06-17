@@ -31,21 +31,35 @@ export async function signUp(
   password: string
 ): Promise<{ ok: true } | { error: string }> {
   try {
-    const supabase = await createServerSupabaseClient();
-    const { error } = await supabase.auth.signUp({
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const admin = createServiceClient();
+
+    // Create user with email pre-confirmed so no confirmation email is required
+    const { error: createError } = await admin.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: { display_name: name },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/callback?onboarding=1`,
-      },
+      email_confirm: true,
+      user_metadata: { display_name: name },
     });
-    if (error) {
-      if (error.message.includes("already registered")) {
+
+    if (createError) {
+      if (
+        createError.message.toLowerCase().includes("already registered") ||
+        createError.message.toLowerCase().includes("already been registered") ||
+        createError.message.toLowerCase().includes("user already exists")
+      ) {
         return { error: "Este e-mail já está cadastrado." };
       }
       return { error: "Erro ao criar conta. Tente novamente." };
     }
+
+    // Sign in immediately so the session cookies are set for the onboarding flow
+    const supabase = await createServerSupabaseClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) {
+      return { error: "Conta criada, mas não foi possível fazer login. Acesse /login." };
+    }
+
     return { ok: true };
   } catch {
     return { error: "Erro ao criar conta. Tente novamente." };
