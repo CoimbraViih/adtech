@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { MarketingHeader } from "@/components/marketing/header";
 import { MarketingFooter } from "@/components/marketing/footer";
 import { ParticleUniverse } from "@/components/marketing/particle-universe";
+import { ParticleUniverseBoundary } from "@/components/marketing/particle-universe-boundary";
 
 export const metadata: Metadata = {
   title: "AdFlow — Plataforma de AdTech para Agências",
@@ -34,7 +35,9 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         fontFamily: "var(--font-manrope), var(--font-inter), sans-serif",
       }}
     >
-      <ParticleUniverse />
+      <ParticleUniverseBoundary>
+        <ParticleUniverse />
+      </ParticleUniverseBoundary>
       <MarketingHeader />
       <main style={{ position: "relative", zIndex: 2 }}>{children}</main>
       <MarketingFooter />
