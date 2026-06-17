@@ -14,12 +14,13 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    // In production, Next.js 15 App Router loads all scripts as external files
-    // from the same origin — no inline scripts needed, so 'unsafe-inline' is safe
-    // to remove entirely, which restores CSP XSS protection.
-    // In development, 'unsafe-inline' + 'unsafe-eval' are still needed for HMR.
+    // Next.js 15 App Router generates inline RSC hydration scripts
+    // (self.__next_f.push(...)) that are inlined into the HTML. These are blocked
+    // by a strict 'self'-only script-src, causing React to never initialize on the
+    // client and producing a blank page. 'unsafe-inline' is required for production.
+    // In development, 'unsafe-eval' is additionally needed for HMR.
     const scriptSrc = isProd
-      ? "script-src 'self'"
+      ? "script-src 'self' 'unsafe-inline'"
       : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
     const headers = [
