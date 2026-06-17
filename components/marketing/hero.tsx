@@ -66,7 +66,11 @@ export function Hero() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const tl = gsap.timeline({ onComplete: () => setLoaded(true) });
+    const complete = () => setLoaded(true);
+    // Fallback: force complete after 3s in case GSAP fails silently
+    const fallback = setTimeout(complete, 3000);
+
+    const tl = gsap.timeline({ onComplete: () => { clearTimeout(fallback); complete(); } });
 
     gsap.set(preloaderRef.current, { opacity: 1 });
 
@@ -83,6 +87,8 @@ export function Hero() {
       }, "<")
       .to(preloaderRef.current, { opacity: 0, duration: 0.5, ease: "power2.in" })
       .set(preloaderRef.current, { display: "none" });
+
+    return () => clearTimeout(fallback);
   }, []);
 
   useGSAP(() => {
@@ -144,7 +150,7 @@ export function Hero() {
             textTransform: "uppercase",
             marginBottom: 8,
           }}>
-            <span style={{ color: "#E8390E" }}>AD</span>HUNTER
+            <span style={{ color: "#E8390E" }}>AD</span>FLOW
           </div>
           <div style={{
             fontFamily: "var(--font-jetbrains, monospace)",
@@ -209,7 +215,7 @@ export function Hero() {
             fontFamily: "var(--font-jetbrains, monospace)", fontSize: 9,
             color: "#00d4ff", letterSpacing: "0.15em", opacity: 0.7,
           }}>
-            SYS.ADHUNTER.v2.0 // TARGETING_ACTIVE
+            SYS.ADFLOW.v2.0 // TARGETING_ACTIVE
           </div>
           <div style={{
             position: "absolute", top: 12, right: 12,
