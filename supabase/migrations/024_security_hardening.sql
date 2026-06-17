@@ -52,44 +52,46 @@ END;
 $$;
 
 -- RBAC helper functions
+-- Return type is org_role (custom enum) — must match the existing signature
+-- exactly so CREATE OR REPLACE works without touching dependent RLS policies.
+-- Bodies verified from live DB (pg_get_functiondef) on 2026-06-17.
 
-CREATE OR REPLACE FUNCTION public.current_user_org_role(org_id UUID)
-  RETURNS TEXT
+CREATE OR REPLACE FUNCTION public.current_user_org_role(org_id uuid)
+  RETURNS public.org_role
   LANGUAGE sql
   STABLE
   SECURITY DEFINER
-  SET search_path = pg_catalog, public
+  SET search_path TO 'pg_catalog', 'public'
 AS $$
-  SELECT role::text
-  FROM public.organization_members
+  SELECT role FROM public.organization_members
   WHERE organization_id = org_id
-    AND user_id = (SELECT auth.uid());
+    AND user_id = auth.uid()
+  LIMIT 1;
 $$;
 
-CREATE OR REPLACE FUNCTION public.current_user_ws_role(ws_id UUID)
-  RETURNS TEXT
+CREATE OR REPLACE FUNCTION public.current_user_ws_role(ws_id uuid)
+  RETURNS public.org_role
   LANGUAGE sql
   STABLE
   SECURITY DEFINER
-  SET search_path = pg_catalog, public
+  SET search_path TO 'pg_catalog', 'public'
 AS $$
-  SELECT role::text
-  FROM public.workspace_members
+  SELECT role FROM public.workspace_members
   WHERE workspace_id = ws_id
-    AND user_id = (SELECT auth.uid());
+    AND user_id = auth.uid()
+  LIMIT 1;
 $$;
 
 CREATE OR REPLACE FUNCTION public.is_superadmin()
-  RETURNS BOOLEAN
+  RETURNS boolean
   LANGUAGE sql
   STABLE
   SECURITY DEFINER
-  SET search_path = pg_catalog, public
+  SET search_path TO 'pg_catalog', 'public'
 AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = (SELECT auth.uid())
-      AND is_superadmin = TRUE
+    SELECT 1 FROM public.organization_members
+    WHERE user_id = auth.uid() AND role = 'superadmin'
   );
 $$;
 
