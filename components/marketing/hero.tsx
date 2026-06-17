@@ -345,7 +345,7 @@ export function Hero() {
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} />
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
               <span style={{ marginLeft: 8, fontFamily: "var(--font-jetbrains, monospace)", fontSize: 9, color: "#334155" }}>
-                adhunter.io/dashboard
+                adflow.app/dashboard
               </span>
             </div>
 

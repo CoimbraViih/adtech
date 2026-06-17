@@ -26,8 +26,11 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "AdHunter",
-  description: "Mire melhor. Gaste menos.",
+  title: {
+    default: "AdFlow",
+    template: "%s | AdFlow",
+  },
+  description: "Plataforma unificada de gestão de campanhas, IA criativa e atribuição para agências brasileiras.",
 };
 
 export default function RootLayout({
