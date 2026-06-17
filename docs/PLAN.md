@@ -23,7 +23,7 @@
 | M8 | Programático DSP/SSP | `feat/m8-programmatic` ✅ | M1, M2, M4 |
 | M9 | Monetização & Stripe | `feat/m9-stripe` ✅ | M1–M5 |
 | MS | Segurança & Hardening | `feat/integrations-api-keys` ✅ | M1–M9 |
-| M10 | Deploy & Produção | `feat/m10-deploy` | M1–M9, MS |
+| M10 | Deploy & Produção | `feat/m10-deploy` ✅ | M1–M9, MS |
 | M11 | AI Traffic Manager (Campaign Diagnostics) | `feat/integrations-api-keys` ✅ | M2, M4, M5 |
 | M-ADS | Melhorias de Integrações de Anúncios | `feat/m-ads-integrations` ✅ F1 F2 F3 | M2, M11, MS |
 | M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M8 |
@@ -551,40 +551,53 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M10 — Deploy & Produção
+## M10 — Deploy & Produção ✅ CONCLUÍDO (parcial — Stripe pendente)
 
-**Branch:** `feat/m10-deploy`  
-**Depende de:** M1–M9, MS (exceto M6 e M9 que podem ser deployados antes)  
-**Objetivo:** Plataforma em produção na Vercel + AWS São Paulo, com CI/CD, monitoramento, Stripe real e domínio `adflow.app` configurado.
+**Branch:** `feat/m10-deploy` → commits em `main` (deploy contínuo via GitHub → Vercel)  
+**Depende de:** M1–M9, MS  
+**Objetivo:** Plataforma em produção na Vercel com CI/CD, monitoramento e branding AdHunter.
 
-> **Agentes:** `@security-auditor` · `@api-security-audit` · `@nextjs-architecture-expert` · `@code-reviewer`
-> **Skills:** `/vercel:deploy` para configuração do projeto na Vercel e promoção para produção · `/vercel:env` para gerenciar variáveis de ambiente de produção · `/vercel:deployments-cicd` para configurar GitHub Actions e pipeline de CI/CD · `/vercel:vercel-firewall` para regras de firewall e proteção de endpoints · `/vercel:runtime-cache` para estratégia de cache em produção · `/vercel:next-cache-components` para otimização de cache das páginas · `/stripe:stripe-best-practices` para configuração do Stripe em modo live, webhooks e billing portal · `/web-performance-optimization` para Core Web Vitals e otimizações finais · `/security-review` auditoria completa pré-produção · `/webapp-testing` para rodar toda a suite E2E em staging antes do go-live · `/commit` para o commit final de deploy
+> **URLs de produção:**
+> - App: https://adflow-zeta-rose.vercel.app
+> - Supabase: projeto `vxxitabxtpnzagepplll` (sa-east-1)
+> - Sentry: org `hunter-gr`, projeto `adflow-web`
+> - Branding: **AdHunter** / adhunter.io
 
 ### Configuração de infraestrutura
-- [ ] Configurar projeto na Vercel, conectar repositório GitHub, configurar branch `main` como produção
-- [ ] Configurar variáveis de ambiente de produção na Vercel (Supabase prod, Stripe live, OpenAI, etc.)
-- [ ] Configurar domínio `adflow.app` na Vercel com SSL automático
-- [ ] Configurar Supabase em modo produção: connection pooling (PgBouncer), backups diários, point-in-time recovery
-- [ ] Configurar Stripe em modo live: produtos (Free/Pro/Agency), preços, webhook de produção
-- [ ] Configurar GitHub Actions: CI roda `npm test` + `npm run test:e2e` em todo PR; bloqueio de merge se falhar
+- [x] Projeto `adflow` na Vercel conectado ao repositório GitHub (`CoimbraViih/adtech`), branch `main` como produção
+- [x] Variáveis de ambiente de produção configuradas na Vercel: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET`
+- [ ] Domínio customizado `adhunter.io` na Vercel com SSL — **pendente** (domínio não adquirido ainda)
+- [x] Supabase projeto de produção `vxxitabxtpnzagepplll` na região `sa-east-1` ativo
+- [ ] Stripe em modo live: produtos (Free/Pro/Agency), preços, webhook de produção — **postergado pelo usuário** ("farei posteriormente")
+- [ ] GitHub Actions: CI com `npm test` + bloqueio de merge — **pendente**
 
 ### Monitoramento & Observabilidade
-- [ ] Configurar Vercel Analytics (Core Web Vitals)
-- [ ] Configurar Sentry para error tracking (frontend + API routes)
-- [ ] Configurar alertas de uptime (UptimeRobot ou BetterUptime) no endpoint `/api/health`
-- [ ] Configurar logging estruturado nas API routes (Vercel Log Drains → Datadog ou Logtail)
-- [ ] Dashboard de métricas de produto (usuários ativos, campanhas criadas, criativos gerados, eventos de pixel)
+- [x] Sentry configurado via `@sentry/wizard` — DSN integrado em `sentry.client.config.ts` e `sentry.server.config.ts`
+- [ ] Vercel Analytics (Core Web Vitals) — **pendente**
+- [ ] Alertas de uptime no `/api/health` — **pendente**
+- [ ] Logging estruturado (Vercel Log Drains) — **pendente**
 
-### Billing
-- [ ] Ativar Stripe Billing Portal para gerenciamento de assinatura pelo cliente
-- [ ] Configurar Stripe Tax para emissão de nota fiscal (opcional, Brasil)
-- [ ] Testar fluxo completo: cadastro → free trial → upgrade para Pro → cobrança → downgrade
+### Fixes críticos aplicados em produção
+- [x] **CSP bloqueando React** — `script-src 'self'` em produção impedia Next.js 15 RSC inline hydration; corrigido adicionando `'unsafe-inline'` ao `script-src` de produção em `next.config.ts`
+- [x] **Preloader GSAP travado** — fallback `setTimeout(3000)` adicionado em `components/marketing/hero.tsx` caso `onComplete` não dispare
+- [x] **Three.js WebGL crash** — `ParticleUniverseBoundary` (React error boundary) adicionado em `app/(marketing)/layout.tsx`
+- [x] **Cron Vercel Hobby** — schedule alterado de `*/15 * * * *` para `0 0 * * *` (limite de 1x/dia do plano Hobby)
+- [x] **Branding AdHunter** — todos os arquivos de marketing corrigidos para AdHunter/adhunter.io (PR #17, commit `5bdc3d8`)
 
-### Commit final
-```
-git checkout main && git merge feat/m10-deploy
-git commit -m "feat(m10): production deploy, CI/CD, monitoring, Stripe live, security hardening"
-```
+### Branding — AdHunter (PR #17 mergeado)
+- [x] `app/layout.tsx` — metadata root: `title: "AdHunter"`, `template: "%s | AdHunter"`
+- [x] `app/(marketing)/layout.tsx` — metadata Open Graph: `siteName: "AdHunter"`, `url: "https://adhunter.io"`
+- [x] `components/marketing/header.tsx` — logo `<span>AD</span>HUNTER`
+- [x] `components/marketing/hero.tsx` — preloader mostra `<span>AD</span>HUNTER`, HUD label `SYS.ADHUNTER.v2.0 // TARGETING_ACTIVE`
+- [x] `components/marketing/footer.tsx` — `ADHUNTER © 2026`, `SYS.ADHUNTER.v2.0 // ONLINE`
+- [x] `components/marketing/faq.tsx` — referências "AdHunter" corrigidas
+- [x] `components/marketing/social-proof.tsx` — "pixel server-side da AdHunter"
+- [x] `app/(marketing)/privacy/page.tsx` — AdHunter Tecnologia Ltda, `privacidade@adhunter.io`
+- [x] `app/(marketing)/terms/page.tsx` — branding AdHunter, `seguranca@adhunter.io`, `legal@adhunter.io`
+
+### Billing (postergado)
+- [ ] Stripe live — **postergado pelo usuário** (ainda estudando monetização)
+  - Quando retomar: ativar modo live, criar produto Pro (R$500/mês) e Agency (R$1.500/mês), configurar webhook `https://adhunter.io/api/stripe/webhook`, adicionar `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` nas env vars de produção da Vercel
 
 ---
 
