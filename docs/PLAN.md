@@ -558,14 +558,15 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 **Objetivo:** Plataforma em produção na Vercel com CI/CD, monitoramento e branding AdHunter.
 
 > **URLs de produção:**
-> - App: https://adflow-zeta-rose.vercel.app
+> - App principal: https://adhunter-eta.vercel.app (projeto `adhunter`)
+> - App secundário: https://adflow-zeta-rose.vercel.app (projeto `adflow`)
 > - Supabase: projeto `vxxitabxtpnzagepplll` (sa-east-1)
 > - Sentry: org `hunter-gr`, projeto `adflow-web`
 > - Branding: **AdHunter** / adhunter.io
 
 ### Configuração de infraestrutura
-- [x] Projeto `adflow` na Vercel conectado ao repositório GitHub (`CoimbraViih/adtech`), branch `main` como produção
-- [x] Variáveis de ambiente de produção configuradas na Vercel: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET`
+- [x] Projetos `adhunter` e `adflow` na Vercel conectados ao repositório GitHub (`CoimbraViih/adtech`), branch `main` como produção
+- [x] Variáveis de ambiente configuradas no projeto `adhunter`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET`, `ENCRYPTION_KEY`
 - [ ] Domínio customizado `adhunter.io` na Vercel com SSL — **pendente** (domínio não adquirido ainda)
 - [x] Supabase projeto de produção `vxxitabxtpnzagepplll` na região `sa-east-1` ativo
 - [ ] Stripe em modo live: produtos (Free/Pro/Agency), preços, webhook de produção — **postergado pelo usuário** ("farei posteriormente")
@@ -583,6 +584,8 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 - [x] **Three.js WebGL crash** — `ParticleUniverseBoundary` (React error boundary) adicionado em `app/(marketing)/layout.tsx`
 - [x] **Cron Vercel Hobby** — schedule alterado de `*/15 * * * *` para `0 0 * * *` (limite de 1x/dia do plano Hobby)
 - [x] **Branding AdHunter** — todos os arquivos de marketing corrigidos para AdHunter/adhunter.io (PR #17, commit `5bdc3d8`)
+- [x] **"Application error" no signup** — Server Actions sem `try-catch`: quando env vars ausentes, `createServerSupabaseClient()` lançava `TypeError: Failed to parse URL from undefined` que vazava como client-side exception; corrigido com `try-catch` defensivo em `signUp`, `loginWithPassword`, `completeOnboarding` e `logout` (commit `c3bbbf3`)
+- [x] **Env vars ausentes no projeto `adhunter`** — adicionadas 6 env vars via Vercel CLI: Supabase URL/anon key/service role, APP_URL, CRON_SECRET, ENCRYPTION_KEY; deploy `dpl_Drkud8dnAg2evWLgD5Hdm8ue3X7a` READY
 
 ### Branding — AdHunter (PR #17 mergeado)
 - [x] `app/layout.tsx` — metadata root: `title: "AdHunter"`, `template: "%s | AdHunter"`
