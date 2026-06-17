@@ -35,6 +35,7 @@ export default async function CreativesPage({
   const campaignMap = Object.fromEntries((campaignsData ?? []).map((c) => [c.id, c.name]));
 
   const sp = await searchParams;
+  // eslint-disable-next-line react-hooks/purity -- async server component, executes once per request
   const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
   const dateTo = sp.to ?? new Date().toISOString().slice(0, 10);
   const compare: CompareMode = (["prev_period", "prev_year", "none"] as CompareMode[]).includes(sp.compare as CompareMode)

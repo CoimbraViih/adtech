@@ -8,3 +8,12 @@ export async function register() {
     await import("./sentry.edge.config");
   }
 }
+
+export async function onRequestError(
+  error: Error & { digest?: string },
+  request: { path: string; method: string; headers: Record<string, string | string[] | undefined> },
+  context: { routerKind: string; routePath: string; routeType: string }
+) {
+  const Sentry = await import("@sentry/nextjs");
+  Sentry.captureRequestError(error, request, context);
+}

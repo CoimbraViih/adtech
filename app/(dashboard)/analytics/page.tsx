@@ -7,7 +7,7 @@ import { FunnelChart } from "@/components/analytics/funnel-chart";
 import { ChannelTable } from "@/components/analytics/channel-table";
 import { AttributionModelSelector } from "@/components/analytics/attribution-model-selector";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
-import type { AttributionModel, KpiSummary, FunnelStep, ChannelAttribution } from "@/types/database";
+import type { AttributionModel } from "@/types/database";
 
 type SearchParams = { from?: string; to?: string; model?: string; compare?: string };
 
@@ -25,6 +25,7 @@ export default async function AnalyticsPage({
   const workspaceId = session.workspace.id;
 
   const sp = await searchParams;
+  // eslint-disable-next-line react-hooks/purity -- async server component, executes once per request
   const dateFrom = sp.from ?? new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
   const dateTo = sp.to ?? new Date().toISOString().slice(0, 10);
   const model: AttributionModel =

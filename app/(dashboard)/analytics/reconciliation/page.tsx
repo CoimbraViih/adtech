@@ -12,6 +12,7 @@ export default async function ReconciliationPage() {
   }
 
   const dateTo = new Date().toISOString().slice(0, 10);
+  // eslint-disable-next-line react-hooks/purity -- async server component, executes once per request
   const dateFrom = new Date(Date.now() - 30 * 86400_000)
     .toISOString()
     .slice(0, 10);
@@ -73,7 +74,7 @@ export default async function ReconciliationPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => {
+              {rows.map((row) => {
                 const pct = row.divergencePct;
                 const pctLabel =
                   pct == null ? "—" : `${(pct * 100).toFixed(0)}%`;

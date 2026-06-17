@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { IntegrationsGrid } from "@/components/settings/integrations-grid";
 import { requireServerSession } from "@/lib/supabase/server";
 import { listCredentialStatuses, getOAuthConnectedProviders, type OAuthConnectedInfo } from "@/lib/integrations/credentials";

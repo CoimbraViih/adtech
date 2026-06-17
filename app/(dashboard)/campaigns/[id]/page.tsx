@@ -19,7 +19,6 @@ function fmt(n: number, dec = 0) {
   });
 }
 
-const SEVERITY_ORDER: Record<string, number> = { critical: 0, warning: 1, info: 2 };
 
 export default async function CampaignDetailPage({
   params,
