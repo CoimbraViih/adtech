@@ -41,7 +41,7 @@ export function ParticleUniverse() {
     const colors = new Float32Array(count * 3);
     const velocities = new Float32Array(count * 3);
 
-    // AdFlow accent + neon cyans/purples
+    // AdHunter accent + neon cyans/purples
     const palette = [
       new THREE.Color(0xe8390e), // ember
       new THREE.Color(0x00d4ff), // neon cyan

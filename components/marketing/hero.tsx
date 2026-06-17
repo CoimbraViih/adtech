@@ -150,7 +150,7 @@ export function Hero() {
             textTransform: "uppercase",
             marginBottom: 8,
           }}>
-            <span style={{ color: "#E8390E" }}>AD</span>FLOW
+            <span style={{ color: "#E8390E" }}>AD</span>HUNTER
           </div>
           <div style={{
             fontFamily: "var(--font-jetbrains, monospace)",
@@ -215,7 +215,7 @@ export function Hero() {
             fontFamily: "var(--font-jetbrains, monospace)", fontSize: 9,
             color: "#00d4ff", letterSpacing: "0.15em", opacity: 0.7,
           }}>
-            SYS.ADFLOW.v2.0 // TARGETING_ACTIVE
+            SYS.ADHUNTER.v2.0 // TARGETING_ACTIVE
           </div>
           <div style={{
             position: "absolute", top: 12, right: 12,
@@ -351,7 +351,7 @@ export function Hero() {
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} />
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
               <span style={{ marginLeft: 8, fontFamily: "var(--font-jetbrains, monospace)", fontSize: 9, color: "#334155" }}>
-                adflow.app/dashboard
+                adhunter.io/dashboard
               </span>
             </div>
 

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Termos de Uso — AdFlow",
-  description: "Termos e condições de uso da plataforma AdFlow.",
+  title: "Termos de Uso — AdHunter",
+  description: "Termos e condições de uso da plataforma AdHunter.",
 };
 
 export default function TermsPage() {
@@ -17,7 +17,7 @@ export default function TermsPage() {
         <div>
           <h2 className="text-lg font-semibold text-white mb-2">1. Aceitação</h2>
           <p>
-            Ao criar uma conta ou usar o AdFlow, você concorda com estes Termos.
+            Ao criar uma conta ou usar o AdHunter, você concorda com estes Termos.
             Se representar uma empresa, confirma ter autoridade para vincular a empresa.
           </p>
         </div>
@@ -25,7 +25,7 @@ export default function TermsPage() {
         <div>
           <h2 className="text-lg font-semibold text-white mb-2">2. Descrição do serviço</h2>
           <p>
-            O AdFlow é uma plataforma SaaS para gestão de campanhas de anúncios,
+            O AdHunter é uma plataforma SaaS para gestão de campanhas de anúncios,
             geração de criativos com IA, rastreamento server-side e análise de atribuição.
             Oferecemos planos Free, Pro e Agency com diferentes limites e funcionalidades.
           </p>
@@ -36,15 +36,15 @@ export default function TermsPage() {
           <p>
             Você é responsável por manter a confidencialidade das credenciais da sua conta.
             Notifique-nos imediatamente sobre qualquer uso não autorizado em{" "}
-            <a href="mailto:seguranca@adflow.app" className="text-[--color-accent] underline">
-              seguranca@adflow.app
+            <a href="mailto:seguranca@adhunter.io" className="text-[--color-accent] underline">
+              seguranca@adhunter.io
             </a>.
           </p>
         </div>
 
         <div>
           <h2 className="text-lg font-semibold text-white mb-2">4. Uso aceitável</h2>
-          <p>É proibido usar o AdFlow para:</p>
+          <p>É proibido usar o AdHunter para:</p>
           <ul className="list-disc list-inside space-y-1 mt-2">
             <li>Veicular publicidade enganosa, ilegal ou que viole políticas das plataformas de anúncios.</li>
             <li>Fazer engenharia reversa ou tentar obter acesso não autorizado à infraestrutura.</li>
@@ -65,7 +65,7 @@ export default function TermsPage() {
         <div>
           <h2 className="text-lg font-semibold text-white mb-2">6. Propriedade intelectual</h2>
           <p>
-            O AdFlow e seus componentes são de propriedade da AdFlow Tecnologia Ltda.
+            O AdHunter e seus componentes são de propriedade da AdHunter Tecnologia Ltda.
             Os criativos e dados gerados pelos usuários pertencem aos respectivos usuários.
             Concedemos licença limitada, não exclusiva e não transferível para uso da plataforma.
           </p>
@@ -74,7 +74,7 @@ export default function TermsPage() {
         <div>
           <h2 className="text-lg font-semibold text-white mb-2">7. Limitação de responsabilidade</h2>
           <p>
-            O AdFlow não se responsabiliza por resultados de campanhas, decisões de
+            O AdHunter não se responsabiliza por resultados de campanhas, decisões de
             bidding das plataformas externas (Meta, Google etc.) ou perdas indiretas.
             Nossa responsabilidade total é limitada ao valor pago nos últimos 3 meses.
           </p>
@@ -99,8 +99,8 @@ export default function TermsPage() {
         <div>
           <h2 className="text-lg font-semibold text-white mb-2">10. Contato</h2>
           <p>
-            <a href="mailto:legal@adflow.app" className="text-[--color-accent] underline">
-              legal@adflow.app
+            <a href="mailto:legal@adhunter.io" className="text-[--color-accent] underline">
+              legal@adhunter.io
             </a>
           </p>
         </div>

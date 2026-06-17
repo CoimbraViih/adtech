@@ -5,21 +5,21 @@ import { ParticleUniverse } from "@/components/marketing/particle-universe";
 import { ParticleUniverseBoundary } from "@/components/marketing/particle-universe-boundary";
 
 export const metadata: Metadata = {
-  title: "AdFlow — Plataforma de AdTech para Agências",
+  title: "AdHunter — Plataforma de AdTech para Agências",
   description:
     "IA que gera criativos, otimiza campanhas em tempo real e fecha o loop entre verba gasta e receita gerada.",
   openGraph: {
-    title: "AdFlow — Plataforma de AdTech para Agências",
+    title: "AdHunter — Plataforma de AdTech para Agências",
     description:
       "Pixel server-side, atribuição multi-touch e IA de criativos numa plataforma só.",
-    url: "https://adflow.app",
-    siteName: "AdFlow",
+    url: "https://adhunter.io",
+    siteName: "AdHunter",
     locale: "pt_BR",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AdFlow — Plataforma de AdTech para Agências",
+    title: "AdHunter — Plataforma de AdTech para Agências",
     description:
       "Pixel server-side, atribuição multi-touch e IA de criativos numa plataforma só.",
   },

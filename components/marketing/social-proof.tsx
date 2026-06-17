@@ -12,7 +12,7 @@ const TESTIMONIALS = [
     metric: "−34%",
     metricLabel: "CPA em 30 dias",
     metricColor: "#10B981",
-    quote: "O pixel server-side da AdFlow recuperou 28% das conversões que o iOS estava bloqueando. O ROAS do nosso cliente dobrou numa semana.",
+    quote: "O pixel server-side da AdHunter recuperou 28% das conversões que o iOS estava bloqueando. O ROAS do nosso cliente dobrou numa semana.",
     author: "Mariana Costa",
     role: "Head de Performance · Agência Nexus",
     neon: "#10B981",

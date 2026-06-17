@@ -14,7 +14,7 @@ const FAQS = [
   },
   {
     q: "O pixel server-side substitui o pixel do navegador?",
-    a: "Sim. O pixel da AdFlow roda no servidor, então iOS 17, Safari ITP e bloqueadores de anúncio não conseguem interceptá-lo. Você recupera em média 28% das conversões que estava perdendo.",
+    a: "Sim. O pixel da AdHunter roda no servidor, então iOS 17, Safari ITP e bloqueadores de anúncio não conseguem interceptá-lo. Você recupera em média 28% das conversões que estava perdendo.",
   },
   {
     q: "Quanto tempo leva para integrar Meta e Google?",
@@ -30,7 +30,7 @@ const FAQS = [
   },
   {
     q: "Funciona com qualquer nicho ou tipo de negócio?",
-    a: "A plataforma é agnóstica de segmento. Agências, e-commerces, SaaS e negócios locais já usam. Desde que você rode campanhas pagas, a AdFlow é útil.",
+    a: "A plataforma é agnóstica de segmento. Agências, e-commerces, SaaS e negócios locais já usam. Desde que você rode campanhas pagas, a AdHunter é útil.",
   },
 ];
 

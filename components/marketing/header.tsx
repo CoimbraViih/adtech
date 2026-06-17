@@ -55,7 +55,7 @@ export function MarketingHeader() {
             letterSpacing: "0.05em",
             color: "#ffffff",
           }}>
-            <span style={{ color: "#E8390E" }}>AD</span>FLOW
+            <span style={{ color: "#E8390E" }}>AD</span>HUNTER
           </span>
         </Link>
 

@@ -38,7 +38,7 @@ export function MarketingFooter() {
             fontSize: 11, color: "#334155",
             letterSpacing: "0.15em",
           }}>
-            ADFLOW © 2026
+            ADHUNTER © 2026
           </span>
         </div>
 
@@ -67,7 +67,7 @@ export function MarketingFooter() {
           fontSize: 9, color: "#1E1E2E",
           letterSpacing: "0.1em",
         }}>
-          SYS.ADFLOW.v2.0 // ONLINE
+          SYS.ADHUNTER.v2.0 // ONLINE
         </div>
       </div>
     </footer>
