@@ -15,9 +15,36 @@ export async function loginWithPassword(
   try {
     const supabase = await createServerSupabaseClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+
     if (error) {
+      // Users created before the admin.createUser bypass (commit c575e92) used
+      // supabase.auth.signUp, which requires email confirmation. Auto-confirm
+      // them so they can log in without action on their part.
+      if (error.message?.toLowerCase().includes("email not confirmed")) {
+        const { createServiceClient } = await import("@/lib/supabase/service");
+        const admin = createServiceClient();
+        const { data: authUser } = await admin
+          .from("users")
+          .select("id")
+          .eq("email", email)
+          .schema("auth")
+          .maybeSingle();
+        if (authUser?.id) {
+          await admin.auth.admin.updateUserById(authUser.id, {
+            email_confirm: true,
+          });
+          const { error: retryError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (!retryError) {
+            redirect(nextPath);
+          }
+        }
+      }
       return { error: "E-mail ou senha incorretos." };
     }
+
     redirect(nextPath);
   } catch (err) {
     if (isRedirectError(err)) throw err;
