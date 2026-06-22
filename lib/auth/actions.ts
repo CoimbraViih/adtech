@@ -23,12 +23,14 @@ export async function loginWithPassword(
       if (error.message?.toLowerCase().includes("email not confirmed")) {
         const { createServiceClient } = await import("@/lib/supabase/service");
         const admin = createServiceClient();
-        const { data: authUser } = await admin
+        // auth schema is not in generated types — cast to any for this query
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: authUser } = await (admin as any)
+          .schema("auth")
           .from("users")
           .select("id")
           .eq("email", email)
-          .schema("auth")
-          .maybeSingle();
+          .maybeSingle() as { data: { id: string } | null };
         if (authUser?.id) {
           await admin.auth.admin.updateUserById(authUser.id, {
             email_confirm: true,
