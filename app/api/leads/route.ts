@@ -82,7 +82,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Erro ao salvar. Tente novamente." }, { status: 500 });
   }
 
-  // TODO(M6-email): send welcome email via Resend when RESEND_API_KEY is configured
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "AdFlow <noreply@adflow.com.br>",
+          to: [parsed.data.email],
+          subject: "Você está na lista de espera do AdFlow!",
+          html: `<p>Olá, ${parsed.data.name}! Obrigado por se inscrever na lista de espera do AdFlow. Em breve você receberá seu acesso.</p>`,
+        }),
+      });
+    } catch (emailErr) {
+      // Email failure must never block lead creation
+      console.error("[leads/POST] welcome email failed:", emailErr);
+    }
+  }
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }
