@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireServerSession } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { scoreCreative } from "@/lib/ai/openai";
 import { createRateLimiter } from "@/lib/security/rate-limit";
 import { z } from "zod";
@@ -56,11 +57,15 @@ export async function POST(req: NextRequest) {
   try {
     const result = await scoreCreative(session.organization.id, parsed.data);
 
-    // TODO(M3-backend): persist score to creatives table
-    // if (parsed.data.creative_id) {
-    //   await supabase.from("creatives").update({ score: result.score, score_breakdown: result.breakdown })
-    //     .eq("id", parsed.data.creative_id);
-    // }
+    if (parsed.data.creative_id) {
+      const supabase = await createServerSupabaseClient();
+      const { error } = await supabase
+        .from("creatives")
+        .update({ score: result.score, score_breakdown: result.breakdown })
+        .eq("id", parsed.data.creative_id)
+        .eq("workspace_id", session.workspace.id);
+      if (error) console.error("[creatives/score] persist error:", error.message);
+    }
 
     return NextResponse.json(result);
   } catch (err) {
