@@ -300,7 +300,7 @@ See `.env.local.example` for the full list.
 | M9 | Monetização & Stripe | 🚧 Parcial | — |
 | MS | Security & Hardening | ✅ Done | — |
 | M11 | AI Traffic Manager (Campaign Diagnostics) | ✅ Done | `docs/superpowers/plans/2026-05-29-m10-ai-traffic-manager.md` |
-| M-ADS | Ads Integrations Improvement (Meta/Google/TikTok/LinkedIn) | 🚧 Parcial (API sync feito; upserts DB pendentes) | `docs/superpowers/plans/2026-06-02-ads-integrations-improvement-plan.md` |
+| M-ADS | Ads Integrations Improvement (Meta/Google/TikTok/LinkedIn) | ✅ Done | `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` |
 | M14 | Pixel Observability & SLO | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
 | M13 | Event Data Layer (ClickHouse) | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
 | M22 | Monetização para Go-Live (usage-based + fiscal BR) | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
@@ -323,19 +323,21 @@ See `.env.local.example` for the full list.
 
 Four ad platform clients exist in `lib/meta/`, `lib/google/`, `lib/tiktok/`, `lib/linkedin/`. Multi-tenant credential storage is in `lib/integrations/` (AES-256-GCM, table `org_api_credentials`). Key function: `getCredentialField(orgId, provider, field, envFallback)`.
 
-**Completed (Fases 1–4):**
+**Completed (Fases 1–4 + backend M-ADS):**
 - Multi-tenant credential lookup via `getCredentialField` — no more `process.env` gates in sync
 - LinkedIn migrated to `/rest/adCampaigns` + `Linkedin-Version: 202506`
 - `fetchWithRetry` with exponential backoff on all 4 platform clients (`lib/integrations/fetch-retry.ts`)
-- Token refresh: Meta (`lib/meta/token-refresh.ts`), LinkedIn (`lib/linkedin/token-refresh.ts`), Google (inline in `lib/google/client.ts`)
+- Token refresh: Meta (`lib/meta/token-refresh.ts`), LinkedIn (`lib/linkedin/token-refresh.ts`), Google (inline in `lib/google/client.ts`), **TikTok** (`lib/tiktok/token-refresh.ts`) — wired in `commit 99c50b3`
 - Pagination on all list calls (Meta: cursor, Google: nextPageToken, TikTok: offset, LinkedIn: offset)
 - OAuth onboarding: `/api/integrations/[provider]/oauth/start` + `/callback` for all 4 providers
 - Pixel fanout wired with `organizationId` — Meta CAPI token in `Authorization: Bearer` header
 - `campaign_metrics_daily` populado pelo sync após cada sincronização das 4 plataformas
 - Skill `tracking-divergence` no AI Traffic Manager: dispara `warning` quando pixel < 50% das conversões da plataforma (spend >= R$100)
 - Página `/analytics/reconciliation` com tabela de divergência pixel × plataforma por campanha
+- **DB upserts de `campaigns`, `ad_sets` e `ads` em `sync.ts` — ativos e testados** (`commit 99c50b3`)
+- **Todos os mocks substituídos por queries Supabase reais** (`commit 08be84e`)
 
-**Pendente (M-ADS-backend):**
-- Upserts de `campaigns`, `ad_sets` e `ads` em `sync.ts` estão comentados — dados chegam das plataformas mas não persistem no banco local
-- TikTok não tem token refresh (`lib/tiktok/token-refresh.ts` não existe) — tokens expiram e causarão falha em produção
-- Nenhum milestone é "Done" sem persistência real + teste — ver plano `2026-06-22-codebase-audit-remediation-plan.md`
+**Pendente (Onda 0 — ações manuais externas):**
+- Configurar `META_APP_ID`/`META_APP_SECRET`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` nas envs da Vercel (produção)
+- Remover os 5 repositórios clonados da raiz (`everything-claude-code/`, `impeccable/`, `opensquad/`, `superpowers/`, `three.js/`) — ~2,3 GB, fora do git
+- Migration `025_fix_handle_new_user_safe.sql` aplicada? Confirmar no Supabase prod antes do go-live

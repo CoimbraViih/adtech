@@ -285,6 +285,8 @@
 **Branch:** `feat/m6-landing-v2` → mergeado em `main` via PR #16  
 **Objetivo:** Landing page pública de marketing da AdHunter — design sci-fi cinematográfico com Three.js WebGL, GSAP ScrollTrigger e glassmorphism. Converte visitantes em leads com waitlist capture e formulário server-side seguro.
 
+> **Atenção (auditoria 2026-06-22):** M6 entregou o **site de marketing** (`app/(marketing)/`), não um builder de LP. Existe um item **"Landing Pages"** no sidebar do dashboard apontando para `/landing-pages`, mas essa rota **não existe → 404**. O builder nunca foi construído. Ações pendentes no M10: remover o item do nav (`nav-items.ts`), remover a feature "Landing Pages sem código" de `components/marketing/features.tsx`, e limpar referências de M6/LP-builder da CLAUDE.md e do PRD.
+
 ### Interface (redesign sci-fi — PR #16)
 - [x] `components/marketing/particle-universe.tsx` — Three.js WebGL: 1800 partículas neon (ember/cyan/violet/magenta/green) + 3000 estrelas, mouse parallax, nebulae pulsando — background fixo em toda a landing
 - [x] `components/marketing/hero.tsx` — preloader GSAP (barra gradiente + contador 0→100%), HUD frame com cantos cyan + scan line animada + labels de coordenadas, entrada com `blur(8px)→0`, mockup dashboard com parallax no scroll
@@ -564,7 +566,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 **Branch:** `feat/integrations-api-keys` → mergeado em `main`  
 **Depende de:** M2 (campaigns), M4 (pixel), M5 (analytics)  
-**Plano detalhado:** `docs/superpowers/plans/2026-05-29-m10-ai-traffic-manager.md`  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md`  
 **Objetivo:** Motor de diagnóstico automático de campanhas. Detecta underperformance contra benchmarks com regras determinísticas e produz recomendações acionáveis escritas pelo GPT-4o. Human-in-the-loop: o usuário aprova ou descarta cada card — sem mutação automática de campanhas.
 
 > **Skills usadas:** `/brainstorming` · `/supabase` · `/supabase-postgres-best-practices` · `/claude-api` · `/frontend-design` · `/webapp-testing`
@@ -627,7 +629,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 **Branch:** `feat/m-ads-integrations` → mergeado em `main` via PR #10 (Fase 1 ✅)  
 **Depende de:** M2 (campanhas), M11 (AI Traffic Manager), MS (segurança)  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-02-ads-integrations-improvement-plan.md`  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md`  
 **Objetivo:** Tornar as integrações com Meta, Google, TikTok e LinkedIn funcionais e robustas em produção. Hoje os clients existem mas operam com bugs de multi-tenant, versões de API defasadas, sync ainda mockado e nenhum retry/refresh automático. Este milestone fecha essas lacunas em 4 fases sequenciais.
 
 > **Agentes:** `@backend-architect` · `@typescript-pro` · `@api-security-audit` · `@code-reviewer`  
@@ -812,8 +814,24 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 | 2 | `fetchWithRetry` cobrindo os 4 clients; LinkedIn/Meta com refresh automático; sync registra `sync_runs`; UI mostra status por plataforma | ✅ PR #11 mergeado (`d5d3395`) — 342/342 testes |
 | 3 | Botão OAuth conecta Meta, Google, LinkedIn; ad sets e ads sincronizados; pixel fan-out usa credenciais por org | ✅ PR #12 mergeado (`7c62ca2`) — 387/387 testes |
 | 4 | `campaign_metrics_daily` populado; skill `tracking-divergence` ativa no AI Traffic Manager; página de reconciliação visível | ✅ PR #13 mergeado (`19fdda4`) — 413/413 testes |
+| Backend | Upserts reais de `campaigns`/`ad_sets`/`ads` em `sync.ts`; TikTok token refresh wired; todos os mocks substituídos por queries Supabase | ✅ `commit 99c50b3` + `commit 08be84e` |
 
 `tsc --noEmit` zero erros e `vitest run` passando após cada fase.
+
+### Fixes pós-auditoria (2026-06-22)
+
+| Commit | O que foi feito |
+|--------|----------------|
+| `9bed850` | Security: middleware IDOR fixes, cron guard, env check |
+| `99c50b3` | Sync: DB upserts campaigns/ad_sets/ads ativos + TikTok token refresh |
+| `08be84e` | Mocks: todos os `MOCK_*` substituídos por queries Supabase reais |
+| `1cca082` | Alerts: evaluate-alerts resolve org por workspace + welcome email |
+| `0f894fa` | Cleanup: código morto removido, docs atualizados |
+
+**Pendente (ações manuais — fora do código):**
+- Configurar `META_APP_ID`/`META_APP_SECRET`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` nas envs Vercel
+- Remover 5 repos clonados na raiz (`everything-claude-code/`, `impeccable/`, `opensquad/`, `superpowers/`, `three.js/`) — ~2,3 GB
+- Aplicar migration `025_fix_handle_new_user_safe.sql` no Supabase de produção
 
 ---
 ---
@@ -830,7 +848,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 **Branch:** `feat/m14-pixel-observability`  
 **Depende de:** M4 (pixel)  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §4  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §4  
 **Objetivo:** Garantir que nenhum evento do pixel seja perdido silenciosamente e que `/api/pixel/[id]` tenha SLO medido antes do deploy de produção. Pré-requisito de M13 (não faz sentido escalar ingestão sem observabilidade do endpoint crítico).
 
 > **Skills:** `/supabase` · `/webapp-testing` · `/vercel:vercel-functions`
@@ -867,7 +885,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 **Branch:** `feat/m13-event-data-layer`  
 **Depende de:** M14  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §5  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §5  
 **Objetivo:** Mover eventos do pixel do Postgres para ClickHouse com ingestão event-driven (padrão transactional outbox). Pré-requisito do loop de IA (M19), data transparency (M18), DMP real (M8-DMP) e otimização preditiva.
 
 > **Skills:** `/supabase` · `/supabase-postgres-best-practices` · `/webapp-testing`
@@ -894,35 +912,50 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M22 — Monetização para Go-Live (usage-based billing + fiscal BR)
+## M22 — Monetização para Go-Live (% spend + fiscal BR)
 
 **Branch:** `feat/m22-monetization`  
 **Depende de:** M-ADS (`campaign_metrics_daily` já pronto)  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §6.1  
-**Objetivo:** Completar a monetização para cobrar de verdade. M9 entregou apenas assinatura fixa com price IDs de teste. Este milestone adiciona % do spend gerenciado (3–8%), fiscal BR (NFS-e, Pix/boleto) e dunning real. **É o gate de comercialização — sem este milestone, o produto não pode ser vendido.**
+**Objetivo:** Cobrar de verdade. M9 entregou assinatura fixa com price IDs de teste — descartado. O modelo de go-live é **sem mensalidade**, taxa marginal sobre o gasto gerenciado + piso R$197/conta ativa. **É o gate de comercialização — sem este milestone, o produto não pode ser vendido.**
 
 > **Skills:** `/stripe:stripe-best-practices` · `/supabase` · `/webapp-testing`  
-> **Decisão pendente:** Stripe puro vs. gateway BR (Iugu / Asaas / Vindi) para NFS-e + Pix — **definir antes de codar**.
+> **Decisão pendente (travar antes de codar):** Stripe puro vs. gateway BR (Iugu / Asaas / Vindi) para NFS-e + Pix.
+
+### Modelo de precificação (decisão travada)
+
+| Faixa de gasto/mês | Taxa marginal |
+|--------------------|---------------|
+| R$0 – R$2.000 | 10% |
+| R$2.001 – R$5.000 | 5% |
+| Acima de R$5.000 | 3% |
+
+**Piso:** `max(R$197, taxa_marginal)` quando `spend > 0` — nunca cobra de quem não gastou nada.  
+**Modelo:** pós-pago fee-only. Cliente paga a mídia na própria conta; AdHunter fatura só a taxa via Stripe.  
+**Custo de IA (OpenAI):** absorvido pela AdHunter e embutido na taxa/piso — o cliente **não** paga tokens à parte.  
+**Risco de margem:** medir custo de IA por conta/mês; alertar quando se aproximar da taxa cobrada.
 
 ### Database
 - [ ] `supabase/migrations/027_usage_billing.sql` — tabelas `usage_records`, `invoices`, `billing_periods`; multi-tenant + RLS
 
 ### Backend
-- [ ] `lib/billing/managed-spend.ts` — calcular spend gerenciado por org/período a partir de `campaign_metrics_daily`
-- [ ] `lib/stripe/metering.ts` — reportar usage records ao Stripe (fatura combinada: assinatura + % spend)
-- [ ] `lib/stripe/plans.ts` — adicionar componente usage-based (faixa de % do spend por plano)
-- [ ] `app/api/stripe/webhook/route.ts` — tratar invoices de usage, pagamento falho e dunning
-- [ ] `lib/billing/fiscal/` — emissão de NFS-e, Pix/boleto (gateway BR ou Stripe BR)
-- [ ] Substituir price IDs de teste por produtos/preços reais em BRL no Stripe
+- [ ] `lib/billing/managed-spend.ts` — `getManagedSpend(orgId, period)`: soma spend de `campaign_metrics_daily` por org/período
+- [ ] `lib/billing/fee-calculator.ts` — `calculateFee(spend)`: faixas marginais 10/5/3% + `max(R$197, fee)` quando spend > 0
+- [ ] `app/api/cron/close-billing-period/route.ts` — cron mensal: calcula fee → cria invoice no Stripe → cliente paga por link; dunning automático
+- [ ] `lib/stripe/plans.ts` — remover planos fixos Free/Pro/Agency; substituir por modelo de consumo
+- [ ] `app/api/stripe/webhook/route.ts` — tratar `invoice.paid`, `invoice.payment_failed` (dunning → `past_due`)
+- [ ] `lib/billing/fiscal/` — emissão de NFS-e, Pix/boleto (gateway BR ou Stripe BR — aguarda decisão)
+- [ ] Substituir price IDs de teste por produto de consumo real em BRL no Stripe
 
 ### Interface
-- [ ] `app/(dashboard)/settings/billing/page.tsx` — exibir consumo de % do spend, faturas, métodos de pagamento BR
+- [ ] `app/(dashboard)/settings/billing/page.tsx` — exibir gasto do período, fee calculada, histórico de faturas, métodos de pagamento BR
+- [ ] Remover UI de "planos" (Free/Pro/Agency) — substituir por medidor de spend + estimativa da taxa
 
 ### Entregáveis
-- Org com R$X de spend gera fatura = assinatura + Y% de X (testado em ciclo completo)
-- Pagamento falho → org vai para `past_due` e feature-gate é aplicado
+- `calculateFee(2000)` → R$197 (piso); `calculateFee(3000)` → R$200 + R$50 = R$250; `calculateFee(6000)` → R$200 + R$150 + R$30 = R$380 (testados unitariamente)
+- Cron fecha o ciclo → invoice gerada no Stripe → cliente recebe link de pagamento
+- Pagamento falho → org vai para `past_due` → feature-gate aplicado
 - NFS-e emitida automaticamente após pagamento confirmado
-- Zero price IDs de teste em produção (verificação no build)
+- Zero price IDs de teste em produção
 - `tsc --noEmit` zero erros; `vitest run` passando
 
 ---
@@ -935,7 +968,20 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 > **Distinção:** deploy ≠ comercialização. M10 pode subir em **beta gratuito**. Para cobrar clientes, **M22 é obrigatório** antes do go-live comercial.
 
-### O que falta
+### Enxugamento & UX (pré-go-live — Onda 1 do plano mestre)
+
+> Princípio: o usuário só deve ver caminhos que entregam. Zero menu que dá 404, zero tela meia-pronta.
+
+- [ ] **Remover `Landing Pages` do sidebar** (`nav-items.ts`) — rota `/landing-pages` não existe → 404 em produção
+- [ ] **Remover feature "Landing Pages sem código"** de `components/marketing/features.tsx` — não prometer o que não existe
+- [ ] **Esconder `campaigns/programmatic/` e `audiences/`** atrás de feature flag — RTB e DMP são Onda 2 (hoje stub); menu de go-live = Dashboard · Campanhas · Criativos · Pixel · Analytics · Automação · Configurações
+- [ ] **Empty state do dashboard:** "Conecte Meta/Google" como primeira ação quando não há integração ativa (estado vazio hoje mostra KPIs zerados sem orientação)
+- [ ] **Onboarding de conexão em destaque** — integração OAuth 1 clique + seletor de contas ad (sem token manual), conforme F5 de M-ADS
+- [ ] Configurar `META_APP_ID`/`META_APP_SECRET` e `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` nas envs Vercel de produção (sem isso, OAuth quebra)
+- [ ] Remover 5 repos clonados da raiz (`everything-claude-code/`, `impeccable/`, `opensquad/`, `superpowers/`, `three.js/`) — ~2,3 GB fora do git
+
+### Infra & CI
+
 - [ ] Domínio customizado `adhunter.io` na Vercel com SSL
 - [ ] GitHub Actions: CI com `npm test` + bloqueio de merge
 - [ ] Vercel Analytics (Core Web Vitals)
@@ -944,7 +990,6 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 - [ ] Rotação de secrets de produção (nunca reusar as de dev)
 - [ ] `npm audit` — corrigir vulnerabilidades `high` e `critical`
 - [ ] Headers de segurança validados com securityheaders.com — mínimo nota A
-- [ ] IaC com Terraform para AWS sa-east-1 (primário) + us-east-1 (secundário)
 - [ ] Pipeline CI: `npm test` + `npm run test:e2e` + lint + typecheck obrigatórios no merge
 - [ ] Smoke test pós-deploy (synthetic do M14) como gate de promoção
 - [ ] M13 (ClickHouse) sobe atrás de feature flag lendo Postgres como fallback
@@ -969,7 +1014,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 **Branch:** `feat/m17-consent-lgpd`  
 **Depende de:** M13 (para apagamento no event store)  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §7  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §7  
 **Objetivo:** Transformar o pixel server-side no argumento cookieless e fechar o gap de consentimento/LGPD que bloqueia venda no BR. Independente de outras features, mas deve ser concluído antes do go-live comercial.
 
 > **Skills:** `/supabase` · `/webapp-testing` · `/security-review`
@@ -998,7 +1043,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 **Branch:** `feat/m16-ecommerce`  
 **Depende de:** M10 (deploy), M13 (event store)  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §8  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §8  
 **Objetivo:** Wedge de go-to-market no Brasil — integrar plataformas de venda (não só de anúncio). Alimenta retargeting, DCO (M15) e atribuição com conversões reais.
 
 > **Skills:** `/brainstorming` · `/supabase` · `/webapp-testing`  
@@ -1033,7 +1078,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 **Branch:** `feat/m18-data-transparency`  
 **Depende de:** M13  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §9  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §9  
 **Objetivo:** Transformar "você é dono dos seus eventos, sem black-box" em feature de produto e de venda — posicionamento competitivo direto contra BMS.
 
 > **Skills:** `/supabase` · `/webapp-testing` · `/frontend-design`
@@ -1059,7 +1104,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 **Branch upload (concluído):** `feat/m15-creative-uploads` → mergeado via PR #14  
 **Branch DCO (planejado):** `feat/m15-dco`  
 **Depende de (DCO):** M16 (feed de produto), M13 (sinais de performance), M3 (geração AI)  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §10  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §10  
 **Objetivo:** Upload de assets já entregue (PR #14). DCO adiciona montagem/rotação de variantes por audiência e feed de produto, devolvendo vencedores ao loop.
 
 > `lib/storage/creative-assets.ts` e migration `023_creative_assets.sql` **já existem** — confirmar antes de codar o DCO.
@@ -1112,7 +1157,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 **Branch:** `feat/m19-predictive-optimization`  
 **Depende de:** M13, M16, M11  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §11  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §11  
 **Objetivo:** Evoluir o AI Traffic Manager de diagnóstico para previsão e ação — forecast de budget/pacing, previsão de ROAS/conversão, executor de ações nos clients M-ADS com trilha de auditoria.
 
 > **Skills:** `/claude-api` · `/supabase` · `/webapp-testing`  
@@ -1143,7 +1188,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 **Branch:** `feat/m20-whitelabel`  
 **Depende de:** M18  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §12  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §12  
 **Objetivo:** Atender agências BR — self-serve ou gerenciado, marca/domínio do cliente, billing flexível com markup de revenda. AdFlow já tem workspaces + RBAC + role `viewer`; falta marca/domínio e billing em cascata.
 
 > **Skills:** `/frontend-design` · `/stripe:stripe-best-practices` · `/supabase`
@@ -1170,7 +1215,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 **Branch:** `feat/m21-ai-assistant`  
 **Depende de:** M13 (parcial — pode iniciar em paralelo com mock do event store)  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §13  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §13  
 **Objetivo:** Reduzir subutilização e tickets de suporte com assistente in-app e onboarding guiado. Reusa OpenAI já no stack.
 
 > **Skills:** `/claude-api` · `/frontend-design` · `/webapp-testing`
