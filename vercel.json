@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/pixel-synthetic",
-      "schedule": "*/1 * * * *"
+      "schedule": "0 1 * * *"
     }
   ]
 }
