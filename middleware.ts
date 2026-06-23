@@ -10,12 +10,12 @@ const PUBLIC_PATHS = [
   "/api/pixel",
   "/api/leads",
   "/api/audiences/optout",
-  "/api/auth/dev-login",
+  // dev-login removed from public paths — the route guards itself with ENABLE_DEV_LOGIN
 ];
 
 const AUTH_ONLY_PATHS = ["/login", "/signup"];
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const { user, response } = await updateSession(request);
@@ -33,7 +33,9 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  if (pathname.startsWith("/superadmin") || pathname.startsWith("/(superadmin)")) {
+  // Superadmin routes: require authentication here. Role check is
+  // also enforced inside the superadmin layout for defense-in-depth.
+  if (pathname.startsWith("/superadmin")) {
     if (!isAuthenticated) {
       return NextResponse.redirect(new URL("/login", request.url));
     }

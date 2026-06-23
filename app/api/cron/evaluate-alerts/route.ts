@@ -3,10 +3,13 @@ import { fetchActiveRules, fetchCampaignMetrics, insertNotification, markRuleTri
 import { evaluateRule, buildNotificationMessage, getMetricValue } from "@/lib/automation/evaluator";
 import { sendAlertEmail } from "@/lib/automation/email";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+
+  // Require CRON_SECRET to be set — reject if missing or mismatched
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -27,6 +30,7 @@ export async function GET(request: Request) {
     ];
 
     let triggered = 0;
+    const serviceDb = createServiceClient();
 
     for (const workspaceId of workspaceIds) {
       const [rules, metrics] = await Promise.all([
@@ -34,7 +38,37 @@ export async function GET(request: Request) {
         fetchCampaignMetrics(workspaceId),
       ]);
 
-      const ownerEmail: string | null = null;
+      // Resolve organization_id and owner email for this workspace
+      let ownerEmail: string | null = null;
+      let organizationId = "";
+      try {
+        const { data: wsRow } = await serviceDb
+          .from("workspaces")
+          .select("organization_id")
+          .eq("id", workspaceId)
+          .single();
+
+        if (wsRow) {
+          organizationId = wsRow.organization_id as string;
+
+          const { data: ownerRow } = await serviceDb
+            .from("organization_members")
+            .select("user_id")
+            .eq("organization_id", organizationId)
+            .eq("role", "owner")
+            .limit(1)
+            .single();
+
+          if (ownerRow) {
+            const { data: { user } } = await serviceDb.auth.admin.getUserById(
+              ownerRow.user_id as string
+            );
+            ownerEmail = user?.email ?? null;
+          }
+        }
+      } catch (resolveErr) {
+        console.warn(`[cron/evaluate-alerts] failed to resolve owner for workspace ${workspaceId}:`, resolveErr);
+      }
 
       for (const rule of rules) {
         const applicableMetrics = rule.campaign_id
@@ -60,14 +94,16 @@ export async function GET(request: Request) {
           triggered++;
 
           if (ownerEmail) {
-            // TODO(M8-backend): resolve organizationId from workspaceId.
-            // Passing "" for now so Resend key falls back to env var.
-            await sendAlertEmail("", {
-              to: ownerEmail,
-              alertTitle: title,
-              alertBody: body,
-              workspaceName: workspaceId,
-            });
+            try {
+              await sendAlertEmail(organizationId, {
+                to: ownerEmail,
+                alertTitle: title,
+                alertBody: body,
+                workspaceName: workspaceId,
+              });
+            } catch (emailErr) {
+              console.warn(`[cron/evaluate-alerts] email send failed for workspace ${workspaceId}:`, emailErr);
+            }
           }
         }
       }
