@@ -4,6 +4,13 @@ vi.mock("@/lib/pixel/fanout", () => ({
   fanoutToPlatforms: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/lib/pixel/dead-letter", () => ({
+  writeToDeadLetter: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/lib/observability/metrics", () => ({
+  logPixelMetric: vi.fn(),
+}));
+
 const mockFrom = vi.fn();
 const mockSupabase = { from: mockFrom };
 vi.mock("@/lib/supabase/service", () => ({
@@ -12,6 +19,8 @@ vi.mock("@/lib/supabase/service", () => ({
 
 import { POST } from "@/app/api/pixel/[id]/route";
 import { NextRequest } from "next/server";
+import { writeToDeadLetter } from "@/lib/pixel/dead-letter";
+import { logPixelMetric } from "@/lib/observability/metrics";
 
 function makeRequest(pixelId: string, body: unknown, headers: Record<string, string> = {}) {
   return new NextRequest(`http://localhost/api/pixel/${pixelId}`, {
@@ -89,5 +98,78 @@ describe("POST /api/pixel/[id]", () => {
     });
     const res = await POST(req, { params: Promise.resolve({ id: PIXEL_ID }) });
     expect(res.status).toBe(400);
+  });
+
+  it("chama writeToDeadLetter com 'validation_failed' para evento com event_type inválido", async () => {
+    const req = makeRequest(PIXEL_ID, { event_type: "invalid_type" });
+    const res = await POST(req, { params: Promise.resolve({ id: PIXEL_ID }) });
+    expect(res.status).toBe(400);
+    expect(writeToDeadLetter).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "validation_failed" })
+    );
+  });
+
+  it("chama writeToDeadLetter com 'persistence_failed' quando insert no DB falha", async () => {
+    // Pixel lookup OK
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { id: PIXEL_ID, workspace_id: "ws_1", name: "Site", meta_pixel_id: null, google_tag_id: null, domain: null, created_at: "", updated_at: "" },
+        error: null,
+      }),
+    });
+    // Insert falha
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: "PGRST116", message: "connection refused" },
+      }),
+    });
+
+    const req = makeRequest(PIXEL_ID, { event_type: "page_view" }, {
+      "x-forwarded-for": "1.2.3.4",
+    });
+    const res = await POST(req, { params: Promise.resolve({ id: PIXEL_ID }) });
+    expect(res.status).toBe(500);
+    expect(writeToDeadLetter).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "persistence_failed" })
+    );
+  });
+
+  it("chama logPixelMetric com outcome 'accepted' no happy path", async () => {
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { id: PIXEL_ID, workspace_id: "ws_1", name: "Site", meta_pixel_id: null, google_tag_id: null, domain: null, created_at: "", updated_at: "" },
+        error: null,
+      }),
+    });
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { id: "ev_1", pixel_id: PIXEL_ID, event_type: "purchase", received_at: new Date().toISOString() },
+        error: null,
+      }),
+    });
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { organization_id: "org_1" },
+        error: null,
+      }),
+    });
+
+    const req = makeRequest(PIXEL_ID, { event_type: "purchase" }, { "x-forwarded-for": "1.2.3.4" });
+    await POST(req, { params: Promise.resolve({ id: PIXEL_ID }) });
+
+    expect(logPixelMetric).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "accepted", eventType: "purchase" })
+    );
   });
 });
