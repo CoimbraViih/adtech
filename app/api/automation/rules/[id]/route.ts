@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireServerSession } from "@/lib/supabase/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const patchRuleSchema = z.object({
@@ -16,9 +17,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createServerSupabaseClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
+  try {
+    session = await requireServerSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   let body: unknown;
   try { body = await request.json(); } catch {
@@ -34,14 +39,19 @@ export async function PATCH(
     );
   }
 
+  const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("alert_rules")
     .update(parsed.data)
     .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: "Failed to update rule" }, { status: 500 });
+  if (error) {
+    if (error.code === "PGRST116") return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Failed to update rule" }, { status: 500 });
+  }
   return NextResponse.json(data);
 }
 
@@ -50,9 +60,25 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  let session: Awaited<ReturnType<typeof requireServerSession>>;
+  try {
+    session = await requireServerSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const supabase = await createServerSupabaseClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Verify ownership before deleting
+  const { data: existing } = await supabase
+    .from("alert_rules")
+    .select("id")
+    .eq("id", id)
+    .eq("workspace_id", session.workspace.id)
+    .single();
+
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { error } = await supabase.from("alert_rules").delete().eq("id", id);
   if (error) return NextResponse.json({ error: "Failed to delete rule" }, { status: 500 });

@@ -297,29 +297,47 @@ See `.env.local.example` for the full list.
 | M6 | Landing Page AdFlow | ✅ Done | — |
 | M7 | Automation & Alerts | ✅ Done | — |
 | M8 | Programmatic DSP/SSP | ✅ Done | — |
-| M9 | Monetização & Stripe | ✅ Done | — |
+| M9 | Monetização & Stripe | 🚧 Parcial | — |
 | MS | Security & Hardening | ✅ Done | — |
 | M11 | AI Traffic Manager (Campaign Diagnostics) | ✅ Done | `docs/superpowers/plans/2026-05-29-m10-ai-traffic-manager.md` |
-| M-ADS | Ads Integrations Improvement (Meta/Google/TikTok/LinkedIn) | ✅ Done (Fases 1–4) | `docs/superpowers/plans/2026-06-02-ads-integrations-improvement-plan.md` |
+| M-ADS | Ads Integrations Improvement (Meta/Google/TikTok/LinkedIn) | ✅ Done | `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` |
+| M14 | Pixel Observability & SLO | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
+| M13 | Event Data Layer (ClickHouse) | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
+| M22 | Monetização para Go-Live (usage-based + fiscal BR) | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
 | M10 | Deploy & Production | Planned | — |
+| M17 | Consent & LGPD / Cookieless | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
+| M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
+| M18 | Data Transparency (event explorer + export) | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
+| M15 | Creative Asset Uploads + DCO | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
+| M19 | Predictive & Autonomous Optimization | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
+| M20 | White-label Agency Portal | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
+| M21 | In-app AI Assistant & Guided Onboarding | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
 | M8-DMP | DMP Completion (real audience rule evaluation) | Planned | — |
-| M12 | PMP & Deal Enforcement | Planned | — |
-| M15 | Creative Asset Uploads (images) | Planned | — |
+| M12 | PMP & Deal Enforcement | Planned (adiado — pós-M19) | — |
 
-**Recommended execution order:** M10 (deploy) → M8-DMP → M12 / M15
+**Recommended execution order:** M14 → M13 → M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)
+
+> **Nota:** M10 (deploy) pode subir em beta sem M22, mas **comercializar exige M22** (usage-based billing + fiscal BR). M12 (PMP/Deal Enforcement) deliberadamente adiado para depois de M19 — ver plano de expansão competitiva.
 
 ### M-ADS — Integrations Architecture (current state, post Fase 4)
 
 Four ad platform clients exist in `lib/meta/`, `lib/google/`, `lib/tiktok/`, `lib/linkedin/`. Multi-tenant credential storage is in `lib/integrations/` (AES-256-GCM, table `org_api_credentials`). Key function: `getCredentialField(orgId, provider, field, envFallback)`.
 
-**Completed (Fases 1–4):**
+**Completed (Fases 1–4 + backend M-ADS):**
 - Multi-tenant credential lookup via `getCredentialField` — no more `process.env` gates in sync
 - LinkedIn migrated to `/rest/adCampaigns` + `Linkedin-Version: 202506`
-- `fetchWithRetry` with exponential backoff, token refresh for Meta/LinkedIn/TikTok, pagination on all list calls
+- `fetchWithRetry` with exponential backoff on all 4 platform clients (`lib/integrations/fetch-retry.ts`)
+- Token refresh: Meta (`lib/meta/token-refresh.ts`), LinkedIn (`lib/linkedin/token-refresh.ts`), Google (inline in `lib/google/client.ts`), **TikTok** (`lib/tiktok/token-refresh.ts`) — wired in `commit 99c50b3`
+- Pagination on all list calls (Meta: cursor, Google: nextPageToken, TikTok: offset, LinkedIn: offset)
 - OAuth onboarding: `/api/integrations/[provider]/oauth/start` + `/callback` for all 4 providers
-- Ad sets and ads synced in `sync.ts` for all 4 platforms
 - Pixel fanout wired with `organizationId` — Meta CAPI token in `Authorization: Bearer` header
 - `campaign_metrics_daily` populado pelo sync após cada sincronização das 4 plataformas
 - Skill `tracking-divergence` no AI Traffic Manager: dispara `warning` quando pixel < 50% das conversões da plataforma (spend >= R$100)
 - Página `/analytics/reconciliation` com tabela de divergência pixel × plataforma por campanha
-- No retry/backoff, no token refresh for Meta/LinkedIn/TikTok, no pagination on list calls
+- **DB upserts de `campaigns`, `ad_sets` e `ads` em `sync.ts` — ativos e testados** (`commit 99c50b3`)
+- **Todos os mocks substituídos por queries Supabase reais** (`commit 08be84e`)
+
+**Pendente (Onda 0 — ações manuais externas):**
+- Configurar `META_APP_ID`/`META_APP_SECRET`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` nas envs da Vercel (produção)
+- Remover os 5 repositórios clonados da raiz (`everything-claude-code/`, `impeccable/`, `opensquad/`, `superpowers/`, `three.js/`) — ~2,3 GB, fora do git
+- Migration `025_fix_handle_new_user_safe.sql` aplicada? Confirmar no Supabase prod antes do go-live

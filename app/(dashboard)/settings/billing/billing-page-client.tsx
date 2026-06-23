@@ -15,14 +15,12 @@ import { UsageMeter } from "@/components/billing/usage-meter";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
 import type { OrgPlan } from "@/types/database";
 
-// Mock usage — TODO(M9-backend): fetch from Supabase
-const MOCK_USAGE = { campaigns: 2, creatives: 7, pixels: 1 };
+type Usage = { campaigns: number; creatives: number; pixels: number };
 
-export function BillingPageClient() {
+type Props = { plan: OrgPlan; usage: Usage };
+
+export function BillingPageClient({ plan, usage }: Props) {
   const params = useSearchParams();
-  // TODO(real-session): fetch plan from server session once auth is fully wired
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-  const plan = "free" as OrgPlan;
   const planConfig = PLANS[plan];
 
   const checkoutStatus = params.get("checkout");
@@ -114,17 +112,17 @@ export function BillingPageClient() {
           </p>
           <UsageMeter
             label="Campanhas"
-            current={MOCK_USAGE.campaigns}
+            current={usage.campaigns}
             limit={campaignLimit(plan)}
           />
           <UsageMeter
             label="Criativos"
-            current={MOCK_USAGE.creatives}
+            current={usage.creatives}
             limit={creativeLimit(plan)}
           />
           <UsageMeter
             label="Pixels"
-            current={MOCK_USAGE.pixels}
+            current={usage.pixels}
             limit={pixelLimit(plan)}
           />
         </div>

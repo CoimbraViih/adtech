@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireServerSession } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { z } from "zod";
-import type { Pixel } from "@/types/database";
 
 const createSchema = z.object({
   name: z.string().min(1).max(100),
@@ -18,11 +18,19 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
-  // TODO(M4-backend): replace with Supabase query
-  const pixels: Pixel[] = [];
-  void session;
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("pixels")
+    .select("*")
+    .eq("workspace_id", session.workspace.id)
+    .order("created_at", { ascending: false });
 
-  return NextResponse.json(pixels);
+  if (error) {
+    console.error("[api/pixels] GET error:", error);
+    return NextResponse.json({ error: "Erro ao buscar pixels." }, { status: 500 });
+  }
+
+  return NextResponse.json(data);
 }
 
 // POST /api/pixels — create a new pixel
@@ -50,17 +58,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // TODO(M4-backend): replace with Supabase insert
-  const newPixel: Pixel = {
-    id: `px_${Date.now()}`,
-    workspace_id: session.workspace.id,
-    name: parsed.data.name,
-    meta_pixel_id: parsed.data.meta_pixel_id ?? null,
-    google_tag_id: parsed.data.google_tag_id ?? null,
-    domain: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("pixels")
+    .insert({
+      workspace_id: session.workspace.id,
+      name: parsed.data.name,
+      meta_pixel_id: parsed.data.meta_pixel_id ?? null,
+      google_tag_id: parsed.data.google_tag_id ?? null,
+    })
+    .select()
+    .single();
 
-  return NextResponse.json(newPixel, { status: 201 });
+  if (error) {
+    console.error("[api/pixels] POST error:", error);
+    return NextResponse.json({ error: "Erro ao criar pixel." }, { status: 500 });
+  }
+
+  return NextResponse.json(data, { status: 201 });
 }

@@ -15,9 +15,38 @@ export async function loginWithPassword(
   try {
     const supabase = await createServerSupabaseClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+
     if (error) {
+      // Users created before the admin.createUser bypass (commit c575e92) used
+      // supabase.auth.signUp, which requires email confirmation. Auto-confirm
+      // them so they can log in without action on their part.
+      if (error.message?.toLowerCase().includes("email not confirmed")) {
+        const { createServiceClient } = await import("@/lib/supabase/service");
+        const admin = createServiceClient();
+        // auth schema is not in generated types — cast to any for this query
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: authUser } = await (admin as any)
+          .schema("auth")
+          .from("users")
+          .select("id")
+          .eq("email", email)
+          .maybeSingle() as { data: { id: string } | null };
+        if (authUser?.id) {
+          await admin.auth.admin.updateUserById(authUser.id, {
+            email_confirm: true,
+          });
+          const { error: retryError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (!retryError) {
+            redirect(nextPath);
+          }
+        }
+      }
       return { error: "E-mail ou senha incorretos." };
     }
+
     redirect(nextPath);
   } catch (err) {
     if (isRedirectError(err)) throw err;
@@ -73,35 +102,94 @@ export async function completeOnboarding(input: {
   workspaceDescription?: string;
 }): Promise<{ ok: true } | { error: string }> {
   try {
+    // Use service client to bypass RLS — this is a trusted server action.
+    // The anon client would block the org SELECT because the user isn't yet
+    // in organization_members for the newly inserted row at read-back time.
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const db = createServiceClient();
+
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Sessão expirada." };
 
-    const { data: org, error: orgError } = await supabase
-      .from("organizations")
-      .insert({ name: input.orgName, plan: "free" })
-      .select()
-      .single();
-    if (orgError || !org) return { error: "Erro ao criar organização." };
-
-    await supabase
+    // The handle_new_user() trigger already created an org for this user on signup.
+    // Find it instead of creating a duplicate.
+    const { data: membership, error: memberError } = await db
       .from("organization_members")
-      .insert({ organization_id: org.id, user_id: user.id, role: "owner" });
-
-    const { data: ws, error: wsError } = await supabase
-      .from("workspaces")
-      .insert({
-        organization_id: org.id,
-        name: input.workspaceName,
-        description: input.workspaceDescription ?? null,
-      })
-      .select()
+      .select("organization_id")
+      .eq("user_id", user.id)
+      .limit(1)
       .single();
-    if (wsError || !ws) return { error: "Erro ao criar workspace." };
 
-    await supabase
+    let orgId: string;
+
+    if (memberError || !membership) {
+      // Trigger didn't fire (edge case) — create the org manually.
+      const { data: newOrg, error: orgError } = await db
+        .from("organizations")
+        .insert({ name: input.orgName, plan: "free" })
+        .select("id")
+        .single();
+      if (orgError || !newOrg) return { error: "Erro ao criar organização." };
+
+      orgId = newOrg.id;
+
+      await db
+        .from("organization_members")
+        .insert({ organization_id: orgId, user_id: user.id, role: "owner" });
+    } else {
+      orgId = membership.organization_id;
+
+      // Update the org name the user chose in the wizard.
+      const { error: orgError } = await db
+        .from("organizations")
+        .update({ name: input.orgName })
+        .eq("id", orgId);
+      if (orgError) return { error: "Erro ao criar organização." };
+    }
+
+    // Find or create the workspace for this org.
+    const { data: existingWs } = await db
+      .from("workspaces")
+      .select("id")
+      .eq("organization_id", orgId)
+      .limit(1)
+      .single();
+
+    let wsId: string;
+
+    if (existingWs) {
+      // Update the default workspace with the user's chosen name.
+      const { error: wsError } = await db
+        .from("workspaces")
+        .update({
+          name: input.workspaceName,
+          description: input.workspaceDescription ?? null,
+        })
+        .eq("id", existingWs.id);
+      if (wsError) return { error: "Erro ao criar workspace." };
+      wsId = existingWs.id;
+    } else {
+      const { data: newWs, error: wsError } = await db
+        .from("workspaces")
+        .insert({
+          organization_id: orgId,
+          name: input.workspaceName,
+          description: input.workspaceDescription ?? null,
+        })
+        .select("id")
+        .single();
+      if (wsError || !newWs) return { error: "Erro ao criar workspace." };
+      wsId = newWs.id;
+    }
+
+    // Ensure the user has a workspace_members entry (the trigger omits this).
+    await db
       .from("workspace_members")
-      .insert({ workspace_id: ws.id, user_id: user.id, role: "owner" });
+      .upsert(
+        { workspace_id: wsId, user_id: user.id, role: "owner" },
+        { onConflict: "workspace_id,user_id", ignoreDuplicates: true }
+      );
 
     redirect("/dashboard");
   } catch (err) {

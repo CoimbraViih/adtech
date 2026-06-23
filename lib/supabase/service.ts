@@ -6,6 +6,10 @@
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { assertSecretsNotPublic } from "@/lib/security/env-check";
+
+// Verify no secret keys are accidentally exposed as NEXT_PUBLIC_ variables
+assertSecretsNotPublic();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _client: SupabaseClient<any> | null = null;

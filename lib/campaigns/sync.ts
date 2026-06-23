@@ -1,26 +1,22 @@
 /**
  * Campaign sync: pulls campaigns + metrics from Meta, Google, TikTok and LinkedIn,
- * upserts into the local `campaigns` table.
+ * upserts into the local `campaigns`, `ad_sets`, and `ads` tables.
  *
  * Called on-demand via GET /api/campaigns?sync=true or by a cron job.
- * Real Supabase upsert is wired in M-ADS-backend (currently stubbed with
- * TODO(M-ADS-backend) comments inline — DB write path is a no-op until then).
+ * Uses service client (bypasses RLS) — all writes are workspace-scoped.
  *
- * Onda 3E: batch insights — each platform is synced with 1 insights call
- * instead of N (one per campaign).  sync_runs are recorded after every
- * platform sync attempt.
+ * LinkedIn has no ad-set level; LinkedIn creatives are not synced into `ads`
+ * because the schema requires ad_set_id NOT NULL.
  */
 
 import { listMetaCampaigns, getMetaAccountInsights, listMetaAdSets, listMetaAds } from "@/lib/meta/client";
 import { listGoogleCampaigns, getGoogleAccountMetrics, listGoogleAdGroups, listGoogleAds } from "@/lib/google/client";
 import { listTikTokCampaigns, getTikTokBatchInsights, listTikTokAdGroups, listTikTokAds } from "@/lib/tiktok/client";
-import { listLinkedInCampaigns, getLinkedInAccountInsights, listLinkedInCreatives } from "@/lib/linkedin/client";
+import { listLinkedInCampaigns, getLinkedInAccountInsights } from "@/lib/linkedin/client";
 import { getCredentialField } from "@/lib/integrations/credentials";
 import { createServiceClient } from "@/lib/supabase/service";
 import { normalizeCampaignMetrics, upsertDailyMetrics } from "@/lib/analytics/cross-platform";
 import type { CampaignStatus } from "@/types/database";
-
-// TODO(M-ADS-backend): extract per-platform ad set/ads sync into a shared helper before wiring real Supabase upserts — currently 4 near-identical blocks
 
 // ── status mapping ─────────────────────────────────────────────────────────
 
@@ -91,9 +87,6 @@ function todayIso(): string {
 // ── credential guard ────────────────────────────────────────────────────────
 
 async function hasCredentials(organizationId: string, provider: string): Promise<boolean> {
-  // Google uses refresh_token (OAuth2), all other providers use access_token.
-  // NOTE: credentials are stored per-organization, not per-workspace —
-  // always pass organizationId here, not workspaceId.
   const fields: Record<string, string> = {
     meta:     "access_token",
     google:   "refresh_token",
@@ -103,6 +96,75 @@ async function hasCredentials(organizationId: string, provider: string): Promise
   const field = fields[provider] ?? "access_token";
   const val = await getCredentialField(organizationId, provider, field, undefined);
   return !!val;
+}
+
+// ── DB upsert helpers ──────────────────────────────────────────────────────
+// All use service client — RLS bypassed, workspace_id enforced explicitly.
+
+type Db = ReturnType<typeof createServiceClient>;
+
+type CampaignRow = {
+  workspace_id: string;
+  external_id: string;
+  platform: "meta" | "google" | "tiktok" | "linkedin" | "programmatic";
+  name: string;
+  status: CampaignStatus;
+  daily_budget: number;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  roas: number | null;
+  cpa: number | null;
+  ctr: number | null;
+  cpc: number | null;
+};
+
+type AdSetRow = {
+  workspace_id: string;
+  external_id: string;
+  campaign_id: string;
+  name: string;
+  status: AdSetStatus;
+  daily_budget: number | null;
+  bid_amount: number | null;
+  targeting: Record<string, unknown>;
+};
+
+type AdRow = {
+  workspace_id: string;
+  external_id: string;
+  ad_set_id: string;
+  name: string;
+  status: AdStatus;
+};
+
+async function upsertCampaign(db: Db, row: CampaignRow): Promise<string> {
+  const { data, error } = await db
+    .from("campaigns")
+    .upsert(row, { onConflict: "workspace_id,external_id" })
+    .select("id")
+    .single();
+  if (error) throw new Error(`upsertCampaign failed: ${error.message}`);
+  return data.id;
+}
+
+async function upsertAdSet(db: Db, row: AdSetRow): Promise<string> {
+  const { data, error } = await db
+    .from("ad_sets")
+    .upsert(row, { onConflict: "workspace_id,external_id" })
+    .select("id")
+    .single();
+  if (error) throw new Error(`upsertAdSet failed: ${error.message}`);
+  return data.id;
+}
+
+async function upsertAd(db: Db, row: AdRow): Promise<void> {
+  const { error } = await db
+    .from("ads")
+    .upsert(row, { onConflict: "workspace_id,external_id" });
+  if (error) throw new Error(`upsertAd failed: ${error.message}`);
 }
 
 // ── sync_runs recorder ──────────────────────────────────────────────────────
@@ -131,8 +193,6 @@ async function recordSyncRun(
       finished_at: new Date().toISOString(),
     });
   } catch (err) {
-    // Recording a sync_run failure must never surface to the caller —
-    // the underlying sync outcome is already captured in the return value.
     console.error("[sync/record_sync_run] failed to write sync_runs row:", err);
   }
 }
@@ -144,12 +204,12 @@ export async function syncCampaignsFromPlatform(
   organizationId: string
 ): Promise<{ platform: string; synced: number; error: string | null }[]> {
   const results: { platform: string; synced: number; error: string | null }[] = [];
+  const db = createServiceClient();
 
   // ── Meta ────────────────────────────────────────────────────────────────
   if (await hasCredentials(organizationId, "meta")) {
     const startedAt = new Date();
     try {
-      // 1 call for campaign list + 1 call for all insights (batch).
       const [metaCampaigns, insightsByid] = await Promise.all([
         listMetaCampaigns(organizationId),
         getMetaAccountInsights(organizationId, { datePreset: "last_30d" }),
@@ -157,7 +217,6 @@ export async function syncCampaignsFromPlatform(
 
       for (const mc of metaCampaigns) {
         const ins = insightsByid[mc.id];
-
         const spend = ins ? parseFloat(ins.spend) : 0;
         const impressions = ins ? parseInt(ins.impressions, 10) : 0;
         const clicks = ins ? parseInt(ins.clicks, 10) : 0;
@@ -166,67 +225,58 @@ export async function syncCampaignsFromPlatform(
         const roasEntry = ins?.purchase_roas?.[0];
         const roas = roasEntry ? parseFloat(roasEntry.value) : null;
         const cpa = conversions > 0 ? spend / conversions : null;
+        const ctr = impressions > 0 ? clicks / impressions : null;
+        const cpc = clicks > 0 ? spend / clicks : null;
 
-        const _upsertData = {
+        const campaignId = await upsertCampaign(db, {
           workspace_id: workspaceId,
           external_id: mc.id,
-          platform: "meta" as const,
+          platform: "meta",
           name: mc.name,
           status: metaStatusToLocal(mc.status),
           daily_budget: mc.daily_budget ? parseInt(mc.daily_budget, 10) / 100 : 0,
-          spend, impressions, clicks, conversions, roas, cpa,
-          updated_at: new Date().toISOString(),
-        };
+          spend, impressions, clicks, conversions,
+          revenue: (roas ?? 0) * spend,
+          roas, cpa, ctr, cpc,
+        });
 
-        // TODO(M-ADS-backend): wire real Supabase upsert
-        // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
-        void _upsertData;
-      }
-
-      // ── Meta ad sets & ads sync (opt-in, errors do not fail campaign sync) ──
-      for (const mc of metaCampaigns) {
         const mcStatus = metaStatusToLocal(mc.status);
-        if (mcStatus !== "active" && mcStatus !== "paused") continue;
-        try {
-          const adSets = await listMetaAdSets(organizationId, mc.id);
-          for (const as_ of adSets) {
-            const _adSetData = {
-              workspace_id: workspaceId,
-              external_id: as_.id,
-              name: as_.name,
-              status: normalizeAdSetStatus(as_.status),
-              daily_budget: as_.daily_budget ? parseInt(as_.daily_budget, 10) / 100 : null,
-              targeting: as_.targeting ?? {},
-              updated_at: new Date().toISOString(),
-            };
-            // TODO(M-ADS-backend): wire real Supabase upsert
-            // await supabase.from("ad_sets").upsert(_adSetData, { onConflict: "workspace_id,external_id" });
-            void _adSetData;
+        if (mcStatus === "active" || mcStatus === "paused") {
+          try {
+            const adSets = await listMetaAdSets(organizationId, mc.id);
+            for (const as_ of adSets) {
+              const adSetId = await upsertAdSet(db, {
+                workspace_id: workspaceId,
+                external_id: as_.id,
+                campaign_id: campaignId,
+                name: as_.name,
+                status: normalizeAdSetStatus(as_.status),
+                daily_budget: as_.daily_budget ? parseInt(as_.daily_budget, 10) / 100 : null,
+                bid_amount: null,
+                targeting: as_.targeting ?? {},
+              });
 
-            try {
-              const ads = await listMetaAds(organizationId, as_.id);
-              for (const ad of ads) {
-                const _adData = {
-                  workspace_id: workspaceId,
-                  external_id: ad.id,
-                  name: ad.name,
-                  status: normalizeAdStatus(ad.status),
-                  updated_at: new Date().toISOString(),
-                };
-                // TODO(M-ADS-backend): wire real Supabase upsert
-                // await supabase.from("ads").upsert(_adData, { onConflict: "workspace_id,external_id" });
-                void _adData;
+              try {
+                const ads = await listMetaAds(organizationId, as_.id);
+                for (const ad of ads) {
+                  await upsertAd(db, {
+                    workspace_id: workspaceId,
+                    external_id: ad.id,
+                    ad_set_id: adSetId,
+                    name: ad.name,
+                    status: normalizeAdStatus(ad.status),
+                  });
+                }
+              } catch (adErr) {
+                console.warn(`[sync/meta] ads sync error for adSet ${as_.id}:`, adErr);
               }
-            } catch (adErr) {
-              console.warn(`[sync/meta] ads sync error for adSet ${as_.id}:`, adErr);
             }
+          } catch (asErr) {
+            console.warn(`[sync/meta] ad_sets sync error for campaign ${mc.id}:`, asErr);
           }
-        } catch (asErr) {
-          console.warn(`[sync/meta] ad_sets sync error for campaign ${mc.id}:`, asErr);
         }
       }
 
-      // Upsert daily metrics snapshot — errors must not fail the campaign sync.
       if (metaCampaigns.length > 0) {
         try {
           const metricsInput = metaCampaigns.map((mc) => {
@@ -268,7 +318,6 @@ export async function syncCampaignsFromPlatform(
   if (await hasCredentials(organizationId, "google")) {
     const startedAt = new Date();
     try {
-      // 1 GAQL query for campaign list + 1 GAQL query for all metrics (batch).
       const [googleCampaigns, metricsByid] = await Promise.all([
         listGoogleCampaigns(organizationId),
         getGoogleAccountMetrics(organizationId),
@@ -277,7 +326,6 @@ export async function syncCampaignsFromPlatform(
       for (const gc of googleCampaigns) {
         const row = metricsByid[gc.id];
         const m = row?.metrics;
-
         const spend = m ? parseInt(m.costMicros, 10) / 1_000_000 : 0;
         const impressions = m ? parseInt(m.impressions, 10) : 0;
         const clicks = m ? parseInt(m.clicks, 10) : 0;
@@ -285,66 +333,56 @@ export async function syncCampaignsFromPlatform(
         const revenue = m ? parseFloat(m.conversionsValue) : 0;
         const roas = spend > 0 ? revenue / spend : null;
         const cpa = conversions > 0 ? spend / conversions : null;
+        const ctr = impressions > 0 ? clicks / impressions : null;
+        const cpc = clicks > 0 ? spend / clicks : null;
 
-        const _upsertData = {
+        const campaignId = await upsertCampaign(db, {
           workspace_id: workspaceId,
           external_id: gc.id,
-          platform: "google" as const,
+          platform: "google",
           name: gc.name,
           status: googleStatusToLocal(gc.status),
-          spend, impressions, clicks, conversions, revenue, roas, cpa,
-          updated_at: new Date().toISOString(),
-        };
+          daily_budget: 0,
+          spend, impressions, clicks, conversions, revenue, roas, cpa, ctr, cpc,
+        });
 
-        // TODO(M-ADS-backend): wire real Supabase upsert
-        // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
-        void _upsertData;
-      }
-
-      // ── Google ad groups & ads sync (opt-in, errors do not fail campaign sync) ─
-      for (const gc of googleCampaigns) {
         const gcStatus = googleStatusToLocal(gc.status);
-        if (gcStatus !== "active" && gcStatus !== "paused") continue;
-        try {
-          const adGroups = await listGoogleAdGroups(organizationId, gc.id);
-          for (const ag of adGroups) {
-            const _adGroupData = {
-              workspace_id: workspaceId,
-              external_id: ag.id,
-              name: ag.name,
-              status: normalizeAdSetStatus(ag.status),
-              bid_amount: ag.cpcBidMicros ? parseInt(ag.cpcBidMicros, 10) / 1_000_000 : null,
-              targeting: {},
-              updated_at: new Date().toISOString(),
-            };
-            // TODO(M-ADS-backend): wire real Supabase upsert
-            // await supabase.from("ad_sets").upsert(_adGroupData, { onConflict: "workspace_id,external_id" });
-            void _adGroupData;
+        if (gcStatus === "active" || gcStatus === "paused") {
+          try {
+            const adGroups = await listGoogleAdGroups(organizationId, gc.id);
+            for (const ag of adGroups) {
+              const adGroupId = await upsertAdSet(db, {
+                workspace_id: workspaceId,
+                external_id: ag.id,
+                campaign_id: campaignId,
+                name: ag.name,
+                status: normalizeAdSetStatus(ag.status),
+                daily_budget: null,
+                bid_amount: ag.cpcBidMicros ? parseInt(ag.cpcBidMicros, 10) / 1_000_000 : null,
+                targeting: {},
+              });
 
-            try {
-              const ads = await listGoogleAds(organizationId, ag.id);
-              for (const ad of ads) {
-                const _adData = {
-                  workspace_id: workspaceId,
-                  external_id: ad.id,
-                  name: ad.name ?? "",
-                  status: normalizeAdStatus(ad.status),
-                  updated_at: new Date().toISOString(),
-                };
-                // TODO(M-ADS-backend): wire real Supabase upsert
-                // await supabase.from("ads").upsert(_adData, { onConflict: "workspace_id,external_id" });
-                void _adData;
+              try {
+                const ads = await listGoogleAds(organizationId, ag.id);
+                for (const ad of ads) {
+                  await upsertAd(db, {
+                    workspace_id: workspaceId,
+                    external_id: ad.id,
+                    ad_set_id: adGroupId,
+                    name: ad.name ?? "",
+                    status: normalizeAdStatus(ad.status),
+                  });
+                }
+              } catch (adErr) {
+                console.warn(`[sync/google] ads sync error for adGroup ${ag.id}:`, adErr);
               }
-            } catch (adErr) {
-              console.warn(`[sync/google] ads sync error for adGroup ${ag.id}:`, adErr);
             }
+          } catch (agErr) {
+            console.warn(`[sync/google] ad_groups sync error for campaign ${gc.id}:`, agErr);
           }
-        } catch (agErr) {
-          console.warn(`[sync/google] ad_groups sync error for campaign ${gc.id}:`, agErr);
         }
       }
 
-      // Upsert daily metrics snapshot — errors must not fail the campaign sync.
       if (googleCampaigns.length > 0) {
         try {
           const metricsInput = googleCampaigns.map((gc) => {
@@ -386,8 +424,6 @@ export async function syncCampaignsFromPlatform(
     const startedAt = new Date();
     try {
       const tiktokCampaigns = await listTikTokCampaigns(organizationId);
-
-      // Batch: collect all campaign IDs, fetch insights in one call.
       const ids = tiktokCampaigns.map((tc) => tc.id);
       const insightsByid = await getTikTokBatchInsights(organizationId, ids);
 
@@ -397,11 +433,13 @@ export async function syncCampaignsFromPlatform(
       for (const tc of tiktokCampaigns) {
         const ins = insightsByid[tc.id] ?? { spend: 0, impressions: 0, clicks: 0, conversions: 0 };
         const cpa = ins.conversions > 0 ? ins.spend / ins.conversions : null;
+        const ctr = ins.impressions > 0 ? ins.clicks / ins.impressions : null;
+        const cpc = ins.clicks > 0 ? ins.spend / ins.clicks : null;
 
-        const _upsertData = {
+        const campaignId = await upsertCampaign(db, {
           workspace_id: workspaceId,
           external_id: tc.id,
-          platform: "tiktok" as const,
+          platform: "tiktok",
           name: tc.name,
           status: tiktokStatusToLocal(tc.status),
           daily_budget: tc.budget,
@@ -409,15 +447,47 @@ export async function syncCampaignsFromPlatform(
           impressions: ins.impressions,
           clicks: ins.clicks,
           conversions: ins.conversions,
+          revenue: 0,
           roas: null,
-          cpa,
-          updated_at: new Date().toISOString(),
-        };
-
-        // TODO(M-ADS-backend): wire real Supabase upsert
-        // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
-        void _upsertData;
+          cpa, ctr, cpc,
+        });
         syncedCount++;
+
+        const tcStatus = tiktokStatusToLocal(tc.status);
+        if (tcStatus === "active" || tcStatus === "paused") {
+          try {
+            const adGroups = await listTikTokAdGroups(organizationId, tc.id);
+            for (const ag of adGroups) {
+              const adGroupId = await upsertAdSet(db, {
+                workspace_id: workspaceId,
+                external_id: ag.id,
+                campaign_id: campaignId,
+                name: ag.name,
+                status: normalizeAdSetStatus(ag.status),
+                daily_budget: ag.budget > 0 ? ag.budget : null,
+                bid_amount: null,
+                targeting: {},
+              });
+
+              try {
+                const ads = await listTikTokAds(organizationId, ag.id);
+                for (const ad of ads) {
+                  await upsertAd(db, {
+                    workspace_id: workspaceId,
+                    external_id: ad.id,
+                    ad_set_id: adGroupId,
+                    name: ad.name,
+                    status: normalizeAdStatus(ad.status),
+                  });
+                }
+              } catch (adErr) {
+                console.warn(`[sync/tiktok] ads sync error for adGroup ${ag.id}:`, adErr);
+              }
+            }
+          } catch (agErr) {
+            console.warn(`[sync/tiktok] ad_groups sync error for campaign ${tc.id}:`, agErr);
+          }
+        }
       }
 
       const campaignsWithoutInsights = tiktokCampaigns.filter((tc) => !insightsByid[tc.id]).length;
@@ -425,50 +495,6 @@ export async function syncCampaignsFromPlatform(
         partialError = `${campaignsWithoutInsights} campanha(s) sem dados de insights`;
       }
 
-      // ── TikTok ad groups & ads sync (opt-in, errors do not fail campaign sync) ─
-      for (const tc of tiktokCampaigns) {
-        const tcStatus = tiktokStatusToLocal(tc.status);
-        if (tcStatus !== "active" && tcStatus !== "paused") continue;
-        try {
-          const adGroups = await listTikTokAdGroups(organizationId, tc.id);
-          for (const ag of adGroups) {
-            const _adGroupData = {
-              workspace_id: workspaceId,
-              external_id: ag.id,
-              name: ag.name,
-              status: normalizeAdSetStatus(ag.status),
-              daily_budget: ag.budget > 0 ? ag.budget : null,
-              targeting: {},
-              updated_at: new Date().toISOString(),
-            };
-            // TODO(M-ADS-backend): wire real Supabase upsert
-            // await supabase.from("ad_sets").upsert(_adGroupData, { onConflict: "workspace_id,external_id" });
-            void _adGroupData;
-
-            try {
-              const ads = await listTikTokAds(organizationId, ag.id);
-              for (const ad of ads) {
-                const _adData = {
-                  workspace_id: workspaceId,
-                  external_id: ad.id,
-                  name: ad.name,
-                  status: normalizeAdStatus(ad.status),
-                  updated_at: new Date().toISOString(),
-                };
-                // TODO(M-ADS-backend): wire real Supabase upsert
-                // await supabase.from("ads").upsert(_adData, { onConflict: "workspace_id,external_id" });
-                void _adData;
-              }
-            } catch (adErr) {
-              console.warn(`[sync/tiktok] ads sync error for adGroup ${ag.id}:`, adErr);
-            }
-          }
-        } catch (agErr) {
-          console.warn(`[sync/tiktok] ad_groups sync error for campaign ${tc.id}:`, agErr);
-        }
-      }
-
-      // Upsert daily metrics snapshot — errors must not fail the campaign sync.
       if (tiktokCampaigns.length > 0) {
         try {
           const metricsInput = tiktokCampaigns.map((tc) => {
@@ -501,10 +527,11 @@ export async function syncCampaignsFromPlatform(
   }
 
   // ── LinkedIn ─────────────────────────────────────────────────────────────
+  // LinkedIn creatives are not synced into `ads` — the schema requires
+  // ad_set_id NOT NULL but LinkedIn has no ad-set level hierarchy.
   if (await hasCredentials(organizationId, "linkedin")) {
     const startedAt = new Date();
     try {
-      // 1 call for campaign list + 1 call for all account insights (batch).
       const [linkedinCampaigns, insightsByid] = await Promise.all([
         listLinkedInCampaigns(organizationId),
         getLinkedInAccountInsights(organizationId),
@@ -516,11 +543,13 @@ export async function syncCampaignsFromPlatform(
       for (const lc of linkedinCampaigns) {
         const ins = insightsByid[lc.id] ?? { spend: 0, impressions: 0, clicks: 0, conversions: 0 };
         const cpa = ins.conversions > 0 ? ins.spend / ins.conversions : null;
+        const ctr = ins.impressions > 0 ? ins.clicks / ins.impressions : null;
+        const cpc = ins.clicks > 0 ? ins.spend / ins.clicks : null;
 
-        const _upsertData = {
+        await upsertCampaign(db, {
           workspace_id: workspaceId,
           external_id: lc.id,
-          platform: "linkedin" as const,
+          platform: "linkedin",
           name: lc.name,
           status: linkedinStatusToLocal(lc.status),
           daily_budget: lc.budget,
@@ -528,14 +557,10 @@ export async function syncCampaignsFromPlatform(
           impressions: ins.impressions,
           clicks: ins.clicks,
           conversions: ins.conversions,
+          revenue: 0,
           roas: null,
-          cpa,
-          updated_at: new Date().toISOString(),
-        };
-
-        // TODO(M-ADS-backend): wire real Supabase upsert
-        // await supabase.from("campaigns").upsert(_upsertData, { onConflict: "workspace_id,external_id" });
-        void _upsertData;
+          cpa, ctr, cpc,
+        });
         syncedCount++;
       }
 
@@ -544,31 +569,6 @@ export async function syncCampaignsFromPlatform(
         partialError = `${campaignsWithoutInsights} campanha(s) sem dados de insights`;
       }
 
-      // ── LinkedIn creatives sync (opt-in, errors do not fail campaign sync) ───
-      // LinkedIn has no ad-set level — creatives map directly to ads.
-      for (const lc of linkedinCampaigns) {
-        const lcStatus = linkedinStatusToLocal(lc.status);
-        if (lcStatus !== "active" && lcStatus !== "paused") continue;
-        try {
-          const creatives = await listLinkedInCreatives(organizationId, lc.id);
-          for (const creative of creatives) {
-            const _adData = {
-              workspace_id: workspaceId,
-              external_id: creative.id,
-              name: creative.reference ?? `Creative ${creative.id}`,
-              status: normalizeAdStatus(creative.status),
-              updated_at: new Date().toISOString(),
-            };
-            // TODO(M-ADS-backend): wire real Supabase upsert
-            // await supabase.from("ads").upsert(_adData, { onConflict: "workspace_id,external_id" });
-            void _adData;
-          }
-        } catch (creativeErr) {
-          console.warn(`[sync/linkedin] creatives sync error for campaign ${lc.id}:`, creativeErr);
-        }
-      }
-
-      // Upsert daily metrics snapshot — errors must not fail the campaign sync.
       if (linkedinCampaigns.length > 0) {
         try {
           const metricsInput = linkedinCampaigns.map((lc) => {
