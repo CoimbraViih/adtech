@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
   if (bodyText.length > PIXEL_PAYLOAD_LIMIT) {
-    logPixelMetric({ pixelId, organizationId: null, outcome: "rejected_rate_limit", latencyMs: Date.now() - startMs });
+    logPixelMetric({ pixelId, organizationId: null, outcome: "rejected_payload_too_large", latencyMs: Date.now() - startMs });
     return NextResponse.json({ error: "Payload too large." }, { status: 413 });
   }
 

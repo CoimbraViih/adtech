@@ -9,12 +9,13 @@ export async function writeToDeadLetter(params: {
 }): Promise<void> {
   try {
     const supabase = createServiceClient();
-    await supabase.from("pixel_dead_letter").insert({
+    const { error } = await supabase.from("pixel_dead_letter").insert({
       pixel_id: params.pixelId,
       organization_id: params.organizationId,
       rejection_reason: params.reason,
       event_payload: params.eventPayload,
     });
+    if (error) console.error("[pixel/dead-letter] insert error:", error.message);
   } catch (err) {
     console.error("[pixel/dead-letter] write failed:", (err as Error).message);
   }

@@ -1,6 +1,7 @@
 export type PixelOutcome =
   | "accepted"
   | "rejected_validation"
+  | "rejected_payload_too_large"
   | "rejected_rate_limit"
   | "rejected_not_found"
   | "rejected_cors"
