@@ -697,3 +697,26 @@ export type CreativeAsset = {
   alt_text: string | null;
   created_at: string;
 };
+
+// ─── M14: Pixel Dead-Letter ───────────────────────────────────────────────────
+
+export type DeadLetterReason =
+  | "validation_failed"
+  | "persistence_failed"
+  | "synthetic_check_failed";
+
+export type PixelDeadLetter = {
+  id: string;
+  pixel_id: string;
+  organization_id: string | null;
+  rejection_reason: DeadLetterReason | string;
+  event_payload: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export type PixelDeadLetterInsert = {
+  pixel_id: string;
+  organization_id: string | null;
+  rejection_reason: DeadLetterReason;
+  event_payload: unknown;
+};
