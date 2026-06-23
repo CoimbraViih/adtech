@@ -12,10 +12,15 @@
 import type { CampaignObjective, CampaignStatus } from "@/types/database";
 import { getCredentialField } from "@/lib/integrations/credentials";
 import { fetchWithRetry } from "@/lib/integrations/fetch-retry";
+import { refreshTikTokTokenIfNeeded } from "@/lib/tiktok/token-refresh";
 
 const BASE_URL = "https://business-api.tiktok.com/open_api/v1.3";
 
 async function getTikTokCredentials(organizationId: string) {
+  await refreshTikTokTokenIfNeeded(organizationId).catch((err) => {
+    console.warn("[tiktok/client] token refresh failed (continuing with stored token):", err);
+  });
+
   const [token, advertiserId] = await Promise.all([
     getCredentialField(organizationId, "tiktok", "access_token", "TIKTOK_ACCESS_TOKEN"),
     getCredentialField(organizationId, "tiktok", "advertiser_id", "TIKTOK_ADVERTISER_ID"),
