@@ -23,12 +23,21 @@
 | M8 | Programático DSP/SSP | `feat/m8-programmatic` ✅ | M1, M2, M4 |
 | M9 | Monetização & Stripe | `feat/m9-stripe` ✅ | M1–M5 |
 | MS | Segurança & Hardening | `feat/integrations-api-keys` ✅ | M1–M9 |
-| M10 | Deploy & Produção | `feat/m10-deploy` ✅ | M1–M9, MS |
 | M11 | AI Traffic Manager (Campaign Diagnostics) | `feat/integrations-api-keys` ✅ | M2, M4, M5 |
-| M-ADS | Melhorias de Integrações de Anúncios | `feat/m-ads-integrations` ✅ F1 F2 F3 | M2, M11, MS |
-| M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M8 |
-| M12 | PMP & Deal Enforcement | `feat/m12-pmp` | M8, M8-DMP |
-| M15 | Upload de Criativos (imagens) | `feat/m15-creative-uploads` ✅ | M2, M3, M8 |
+| M-ADS | Melhorias de Integrações de Anúncios | `feat/m-ads-integrations` ✅ F1 F2 F3 F4 | M2, M11, MS |
+| M14 | Pixel Observability & SLO | `feat/m14-pixel-observability` | M4 |
+| M13 | Event Data Layer (ClickHouse) | `feat/m13-event-data-layer` | M14 |
+| M22 | Monetização para Go-Live (usage-based + fiscal BR) | `feat/m22-monetization` | M-ADS (campaign_metrics_daily) |
+| M10 | Deploy & Produção | `feat/m10-deploy` | M14, M13 |
+| M17 | Consent & LGPD / Cookieless | `feat/m17-consent-lgpd` | M13 |
+| M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | `feat/m16-ecommerce` | M10, M13 |
+| M18 | Data Transparency (event explorer + export) | `feat/m18-data-transparency` | M13 |
+| M15 | Creative Asset Uploads + DCO | `feat/m15-dco` | M16, M13, M3 |
+| M19 | Predictive & Autonomous Optimization | `feat/m19-predictive-optimization` | M13, M16, M11 |
+| M20 | White-label Agency Portal | `feat/m20-whitelabel` | M18 |
+| M21 | In-app AI Assistant & Guided Onboarding | `feat/m21-ai-assistant` | M13 (parcial) |
+| M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M13, M16 |
+| M12 | PMP & Deal Enforcement (adiado) | `feat/m12-pmp` | M19 |
 
 ---
 
@@ -551,60 +560,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M10 — Deploy & Produção ✅ CONCLUÍDO (parcial — Stripe pendente)
-
-**Branch:** `feat/m10-deploy` → commits em `main` (deploy contínuo via GitHub → Vercel)  
-**Depende de:** M1–M9, MS  
-**Objetivo:** Plataforma em produção na Vercel com CI/CD, monitoramento e branding AdHunter.
-
-> **URLs de produção:**
-> - App principal: https://adhunter-eta.vercel.app (projeto `adhunter`)
-> - App secundário: https://adflow-zeta-rose.vercel.app (projeto `adflow`)
-> - Supabase: projeto `vxxitabxtpnzagepplll` (sa-east-1)
-> - Sentry: org `hunter-gr`, projeto `adflow-web`
-> - Branding: **AdHunter** / adhunter.io
-
-### Configuração de infraestrutura
-- [x] Projetos `adhunter` e `adflow` na Vercel conectados ao repositório GitHub (`CoimbraViih/adtech`), branch `main` como produção
-- [x] Variáveis de ambiente configuradas no projeto `adhunter`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET`, `ENCRYPTION_KEY`
-- [ ] Domínio customizado `adhunter.io` na Vercel com SSL — **pendente** (domínio não adquirido ainda)
-- [x] Supabase projeto de produção `vxxitabxtpnzagepplll` na região `sa-east-1` ativo
-- [ ] Stripe em modo live: produtos (Free/Pro/Agency), preços, webhook de produção — **postergado pelo usuário** ("farei posteriormente")
-- [ ] GitHub Actions: CI com `npm test` + bloqueio de merge — **pendente**
-
-### Monitoramento & Observabilidade
-- [x] Sentry configurado via `@sentry/wizard` — DSN integrado em `sentry.client.config.ts` e `sentry.server.config.ts`
-- [ ] Vercel Analytics (Core Web Vitals) — **pendente**
-- [ ] Alertas de uptime no `/api/health` — **pendente**
-- [ ] Logging estruturado (Vercel Log Drains) — **pendente**
-
-### Fixes críticos aplicados em produção
-- [x] **CSP bloqueando React** — `script-src 'self'` em produção impedia Next.js 15 RSC inline hydration; corrigido adicionando `'unsafe-inline'` ao `script-src` de produção em `next.config.ts`
-- [x] **Preloader GSAP travado** — fallback `setTimeout(3000)` adicionado em `components/marketing/hero.tsx` caso `onComplete` não dispare
-- [x] **Three.js WebGL crash** — `ParticleUniverseBoundary` (React error boundary) adicionado em `app/(marketing)/layout.tsx`
-- [x] **Cron Vercel Hobby** — schedule alterado de `*/15 * * * *` para `0 0 * * *` (limite de 1x/dia do plano Hobby)
-- [x] **Branding AdHunter** — todos os arquivos de marketing corrigidos para AdHunter/adhunter.io (PR #17, commit `5bdc3d8`)
-- [x] **"Application error" no signup** — Server Actions sem `try-catch`: quando env vars ausentes, `createServerSupabaseClient()` lançava `TypeError: Failed to parse URL from undefined` que vazava como client-side exception; corrigido com `try-catch` defensivo em `signUp`, `loginWithPassword`, `completeOnboarding` e `logout` (commit `c3bbbf3`)
-- [x] **Env vars ausentes no projeto `adhunter`** — adicionadas 6 env vars via Vercel CLI: Supabase URL/anon key/service role, APP_URL, CRON_SECRET, ENCRYPTION_KEY; deploy `dpl_Drkud8dnAg2evWLgD5Hdm8ue3X7a` READY
-
-### Branding — AdHunter (PR #17 mergeado)
-- [x] `app/layout.tsx` — metadata root: `title: "AdHunter"`, `template: "%s | AdHunter"`
-- [x] `app/(marketing)/layout.tsx` — metadata Open Graph: `siteName: "AdHunter"`, `url: "https://adhunter.io"`
-- [x] `components/marketing/header.tsx` — logo `<span>AD</span>HUNTER`
-- [x] `components/marketing/hero.tsx` — preloader mostra `<span>AD</span>HUNTER`, HUD label `SYS.ADHUNTER.v2.0 // TARGETING_ACTIVE`
-- [x] `components/marketing/footer.tsx` — `ADHUNTER © 2026`, `SYS.ADHUNTER.v2.0 // ONLINE`
-- [x] `components/marketing/faq.tsx` — referências "AdHunter" corrigidas
-- [x] `components/marketing/social-proof.tsx` — "pixel server-side da AdHunter"
-- [x] `app/(marketing)/privacy/page.tsx` — AdHunter Tecnologia Ltda, `privacidade@adhunter.io`
-- [x] `app/(marketing)/terms/page.tsx` — branding AdHunter, `seguranca@adhunter.io`, `legal@adhunter.io`
-
-### Billing (postergado)
-- [ ] Stripe live — **postergado pelo usuário** (ainda estudando monetização)
-  - Quando retomar: ativar modo live, criar produto Pro (R$500/mês) e Agency (R$1.500/mês), configurar webhook `https://adhunter.io/api/stripe/webhook`, adicionar `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` nas env vars de produção da Vercel
-
----
-
-## M11 — AI Traffic Manager (Campaign Diagnostics) ✅ CONCLUÍDO
+## M11 — AI Traffic Manager (Diagnósticos de Campanha) ✅ CONCLUÍDO
 
 **Branch:** `feat/integrations-api-keys` → mergeado em `main`  
 **Depende de:** M2 (campaigns), M4 (pixel), M5 (analytics)  
@@ -860,19 +816,395 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 `tsc --noEmit` zero erros e `vitest run` passando após cada fase.
 
 ---
+---
 
-## M8-DMP — DMP Completion
+# PLANEJADOS
+
+> Sequência de execução: **M14 → M13 → M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
+>
+> M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
+
+---
+
+## M14 — Pixel Observability & SLO
+
+**Branch:** `feat/m14-pixel-observability`  
+**Depende de:** M4 (pixel)  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §4  
+**Objetivo:** Garantir que nenhum evento do pixel seja perdido silenciosamente e que `/api/pixel/[id]` tenha SLO medido antes do deploy de produção. Pré-requisito de M13 (não faz sentido escalar ingestão sem observabilidade do endpoint crítico).
+
+> **Skills:** `/supabase` · `/webapp-testing` · `/vercel:vercel-functions`
+
+### Database
+- [ ] `supabase/migrations/025_pixel_dead_letter.sql` — tabela `pixel_dead_letter` com motivo de rejeição/falha, `organization_id`, `event_payload JSONB`, `created_at`; RLS service role only
+
+### Backend / Observabilidade
+- [ ] `app/api/pixel/[id]/route.ts` — instrumentar latência, taxa de erro e contagem de eventos aceitos/rejeitados por org (OpenTelemetry ou console estruturado)
+- [ ] `app/api/health/route.ts` — expandir para health check profundo: DB, fila de eventos, storage; retorna 503 quando indisponível
+- [ ] `lib/observability/metrics.ts` — wrapper de métricas (latência, taxa de aceite, contagem por tipo)
+- [ ] `lib/observability/synthetic.ts` — ping sintético: envia evento de teste e valida persistência
+- [ ] `app/api/cron/pixel-synthetic/route.ts` — cron 1x/min (plano Pro Vercel) que dispara ping sintético e alerta se falhar 2x seguidas
+- [ ] Dead-letter: evento que falha validação/persistência vai para `pixel_dead_letter` em vez de ser descartado
+
+### SLOs definidos
+- Disponibilidade `/api/pixel` ≥ 99,9%
+- p95 de latência < 200ms
+- Perda de evento < 0,1%
+
+### Testes
+- [ ] `tests/e2e/pixel-ingestion.spec.ts` — E2E de ingestão fim-a-fim (evento entra, aparece no log)
+- [ ] `tests/unit/pixel-dead-letter.test.ts` — evento inválido vai para dead-letter com motivo correto
+- [ ] Teste de carga (k6 ou autocannon) com relatório de p95
+
+### Entregáveis
+- Evento sintético sumindo > 2 min → alerta disparado (testado com fila parada)
+- 100% dos eventos rejeitados aparecem em `pixel_dead_letter` com motivo
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M13 — Event Data Layer (ClickHouse)
+
+**Branch:** `feat/m13-event-data-layer`  
+**Depende de:** M14  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §5  
+**Objetivo:** Mover eventos do pixel do Postgres para ClickHouse com ingestão event-driven (padrão transactional outbox). Pré-requisito do loop de IA (M19), data transparency (M18), DMP real (M8-DMP) e otimização preditiva.
+
+> **Skills:** `/supabase` · `/supabase-postgres-best-practices` · `/webapp-testing`
+
+### Database / Infra
+- [ ] `supabase/migrations/026_events_outbox.sql` — tabela `events_outbox` (outbox transacional): `id`, `organization_id`, `workspace_id`, `payload JSONB`, `processed_at TIMESTAMPTZ NULL`, `created_at`; RLS service role
+- [ ] `infra/clickhouse/schema.sql` — DDL tabela `events` particionada por dia, ordenada por `(organization_id, workspace_id, event_time)`
+- [ ] `infra/clickhouse/materialized_views.sql` — rollups: conversões por campanha/dia, funil por etapa
+
+### Backend
+- [ ] `lib/events/schema.ts` — tipos de evento unificados com campo `consent_state`
+- [ ] `lib/events/ingest.ts` — produtor: grava em `events_outbox` (Postgres) e responde 200; não acopla ao ClickHouse
+- [ ] `lib/events/clickhouse.ts` — client ClickHouse (ClickHouse Cloud sa-east-1)
+- [ ] `lib/events/consumer.ts` — worker que drena outbox → ClickHouse em batch
+- [ ] `lib/events/query.ts` — camada de consulta segura sobre ClickHouse (RLS lógica por org)
+- [ ] `app/api/pixel/[id]/route.ts` — usar `ingest.ts` em vez de INSERT direto no Postgres
+- [ ] Script de backfill: reprocessa eventos históricos Postgres → ClickHouse
+
+### Entregáveis
+- Pixel responde 200 mesmo com ClickHouse indisponível (outbox acumula e drena depois)
+- Latência de consulta "conversões por campanha (90 dias)" < 1s para 50M+ eventos
+- Reconciliação: contagem outbox == contagem ClickHouse após drain
+- `tsc --noEmit` zero erros; `vitest run` passando; teste de resiliência documentado
+
+---
+
+## M22 — Monetização para Go-Live (usage-based billing + fiscal BR)
+
+**Branch:** `feat/m22-monetization`  
+**Depende de:** M-ADS (`campaign_metrics_daily` já pronto)  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §6.1  
+**Objetivo:** Completar a monetização para cobrar de verdade. M9 entregou apenas assinatura fixa com price IDs de teste. Este milestone adiciona % do spend gerenciado (3–8%), fiscal BR (NFS-e, Pix/boleto) e dunning real. **É o gate de comercialização — sem este milestone, o produto não pode ser vendido.**
+
+> **Skills:** `/stripe:stripe-best-practices` · `/supabase` · `/webapp-testing`  
+> **Decisão pendente:** Stripe puro vs. gateway BR (Iugu / Asaas / Vindi) para NFS-e + Pix — **definir antes de codar**.
+
+### Database
+- [ ] `supabase/migrations/027_usage_billing.sql` — tabelas `usage_records`, `invoices`, `billing_periods`; multi-tenant + RLS
+
+### Backend
+- [ ] `lib/billing/managed-spend.ts` — calcular spend gerenciado por org/período a partir de `campaign_metrics_daily`
+- [ ] `lib/stripe/metering.ts` — reportar usage records ao Stripe (fatura combinada: assinatura + % spend)
+- [ ] `lib/stripe/plans.ts` — adicionar componente usage-based (faixa de % do spend por plano)
+- [ ] `app/api/stripe/webhook/route.ts` — tratar invoices de usage, pagamento falho e dunning
+- [ ] `lib/billing/fiscal/` — emissão de NFS-e, Pix/boleto (gateway BR ou Stripe BR)
+- [ ] Substituir price IDs de teste por produtos/preços reais em BRL no Stripe
+
+### Interface
+- [ ] `app/(dashboard)/settings/billing/page.tsx` — exibir consumo de % do spend, faturas, métodos de pagamento BR
+
+### Entregáveis
+- Org com R$X de spend gera fatura = assinatura + Y% de X (testado em ciclo completo)
+- Pagamento falho → org vai para `past_due` e feature-gate é aplicado
+- NFS-e emitida automaticamente após pagamento confirmado
+- Zero price IDs de teste em produção (verificação no build)
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M10 — Deploy & Produção
+
+**Branch:** `feat/m10-deploy`  
+**Depende de:** M14 (observabilidade), M13 (event data layer atrás de flag), M1–M9, MS  
+**Objetivo:** Plataforma em produção na Vercel com CI/CD, monitoramento, branding AdHunter e smoke test verde como gate de promoção.
+
+> **Distinção:** deploy ≠ comercialização. M10 pode subir em **beta gratuito**. Para cobrar clientes, **M22 é obrigatório** antes do go-live comercial.
+
+### O que falta
+- [ ] Domínio customizado `adhunter.io` na Vercel com SSL
+- [ ] GitHub Actions: CI com `npm test` + bloqueio de merge
+- [ ] Vercel Analytics (Core Web Vitals)
+- [ ] Alertas de uptime no `/api/health`
+- [ ] Logging estruturado (Vercel Log Drains)
+- [ ] Rotação de secrets de produção (nunca reusar as de dev)
+- [ ] `npm audit` — corrigir vulnerabilidades `high` e `critical`
+- [ ] Headers de segurança validados com securityheaders.com — mínimo nota A
+- [ ] IaC com Terraform para AWS sa-east-1 (primário) + us-east-1 (secundário)
+- [ ] Pipeline CI: `npm test` + `npm run test:e2e` + lint + typecheck obrigatórios no merge
+- [ ] Smoke test pós-deploy (synthetic do M14) como gate de promoção
+- [ ] M13 (ClickHouse) sobe atrás de feature flag lendo Postgres como fallback
+
+### Já feito
+
+> **URLs de produção:** https://adhunter-eta.vercel.app · Supabase `vxxitabxtpnzagepplll` (sa-east-1) · Sentry org `hunter-gr`
+
+- [x] Vercel conectado ao GitHub (`CoimbraViih/adtech`), branch `main` como produção
+- [x] Env vars configuradas: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `CRON_SECRET` etc.
+- [x] Sentry configurado (`sentry.client.config.ts` + `sentry.server.config.ts`)
+- [x] CSP, GSAP preloader fallback, Three.js error boundary, cron schedule corrigidos em produção
+- [x] Branding AdHunter completo — PR #17 mergeado (`5bdc3d8`)
+- [x] Signup fix: `try-catch` defensivo nas Server Actions (`c3bbbf3`)
+
+### Billing (postergado)
+- [ ] Stripe live — aguarda M22
+
+---
+
+## M17 — Consent & LGPD / Cookieless
+
+**Branch:** `feat/m17-consent-lgpd`  
+**Depende de:** M13 (para apagamento no event store)  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §7  
+**Objetivo:** Transformar o pixel server-side no argumento cookieless e fechar o gap de consentimento/LGPD que bloqueia venda no BR. Independente de outras features, mas deve ser concluído antes do go-live comercial.
+
+> **Skills:** `/supabase` · `/webapp-testing` · `/security-review`
+
+### Database
+- [ ] `supabase/migrations/028_consent.sql` — registro de consentimento por evento/usuário; campo `consent_state` em `events_outbox`
+
+### Backend
+- [ ] `public/adflow.js` — respeitar sinais de consentimento antes de disparar; modo "consent denied" envia evento sem PII
+- [ ] `lib/consent/mode.ts` — Google Consent Mode v2 mapping
+- [ ] `lib/consent/cmp.ts` — integração CMP (AdOpt como primeira opção no ecossistema BR)
+- [ ] TTL configurável + endpoint de apagamento por usuário (LGPD art. 18) — remove do Postgres E do ClickHouse em < 24h
+- [ ] Anonimização/hashing de PII em repouso no event store
+
+### Interface
+- [ ] `app/(dashboard)/settings/privacy/page.tsx` — configuração de CMP, retenção de dados e regiões
+
+### Entregáveis
+- Com consentimento negado, nenhum identificador pessoal sai do navegador nem entra no event store
+- Pedido de apagamento remove usuário do Postgres E ClickHouse em < 24h
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M16 — E-commerce Integrations (Nuvemshop / VTEX / Shopify)
+
+**Branch:** `feat/m16-ecommerce`  
+**Depende de:** M10 (deploy), M13 (event store)  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §8  
+**Objetivo:** Wedge de go-to-market no Brasil — integrar plataformas de venda (não só de anúncio). Alimenta retargeting, DCO (M15) e atribuição com conversões reais.
+
+> **Skills:** `/brainstorming` · `/supabase` · `/webapp-testing`  
+> **Decisão build-vs-buy:** construir os 3 clients à mão (são o diferencial BR); avaliar Windsor.ai para cauda longa de plataformas.
+
+### Database
+- [ ] `supabase/migrations/029_commerce.sql` — tabelas `product_catalogs`, `products`, `commerce_orders`; multi-tenant + RLS
+
+### TypeScript
+- [ ] `lib/commerce/types.ts` — modelo canônico de produto e pedido (abstrai as 3 plataformas)
+- [ ] `lib/commerce/nuvemshop/` — `client.ts`, `catalog.ts`, `orders.ts`, `webhooks.ts`
+- [ ] `lib/commerce/vtex/` — idem
+- [ ] `lib/commerce/shopify/` — idem
+
+### API Routes
+- [ ] `app/api/commerce/[provider]/webhook/route.ts` — recebe eventos de pedido/conversão → injeta como conversão no pixel (com `organization_id`)
+- [ ] Reaproveitar padrão OAuth de `/api/integrations/[provider]/oauth` do M-ADS
+
+### Interface
+- [ ] `app/(dashboard)/settings/integrations/commerce/page.tsx` — OAuth/conexão por plataforma
+- [ ] Estender `/analytics/reconciliation` — conciliação pedido × conversão do pixel
+
+### Entregáveis
+- Conectar loja Nuvemshop importa catálogo e registra conversões reais no event store
+- Pedido criado na loja aparece como conversão atribuída em < 5 min
+- Catálogo disponível como feed para criativos dinâmicos (M15)
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M18 — Data Transparency (event explorer + export)
+
+**Branch:** `feat/m18-data-transparency`  
+**Depende de:** M13  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §9  
+**Objetivo:** Transformar "você é dono dos seus eventos, sem black-box" em feature de produto e de venda — posicionamento competitivo direto contra BMS.
+
+> **Skills:** `/supabase` · `/webapp-testing` · `/frontend-design`
+
+### Backend
+- [ ] `lib/export/bigquery.ts`, `snowflake.ts`, `s3.ts` — destinos de data share
+- [ ] `app/api/export/events/route.ts` — export bruto (CSV/Parquet), autenticado por workspace, RBAC (`viewer` só lê)
+
+### Interface
+- [ ] `app/(dashboard)/analytics/events/page.tsx` — explorador de eventos (filtros por tipo, campanha, período, paginação, download)
+- [ ] Export agendado (diário/horário) para warehouse do cliente com log de execução
+
+### Entregáveis
+- Cliente exporta eventos crus de 90 dias sem suporte humano
+- Export agendado entrega no destino do cliente
+- Zero vazamento cross-tenant (teste de isolamento por org)
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M15 — Creative Asset Uploads ✅ + DCO (planejado)
+
+**Branch upload (concluído):** `feat/m15-creative-uploads` → mergeado via PR #14  
+**Branch DCO (planejado):** `feat/m15-dco`  
+**Depende de (DCO):** M16 (feed de produto), M13 (sinais de performance), M3 (geração AI)  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §10  
+**Objetivo:** Upload de assets já entregue (PR #14). DCO adiciona montagem/rotação de variantes por audiência e feed de produto, devolvendo vencedores ao loop.
+
+> `lib/storage/creative-assets.ts` e migration `023_creative_assets.sql` **já existem** — confirmar antes de codar o DCO.
+
+### Parte 1 — Upload de assets ✅ CONCLUÍDO (PR #14)
+
+#### Database
+- [x] Migration `023_creative_assets.sql` — tabela `creative_assets` (`workspace_id`, `creative_id`, `campaign_id`, `rtb_campaign_id`, `storage_path`, `public_url`, `mime_type`, `size_bytes`, `width_px`, `height_px`); RLS completo
+- [x] Supabase Storage bucket `creative-assets` — max 10 MB; MIME allowlist: jpeg/png/webp/gif
+
+#### TypeScript & API
+- [x] `types/database.ts` — `CreativeAsset` type
+- [x] `lib/storage/creative-assets.ts` — `uploadCreativeAsset`, `deleteCreativeAsset`, getters por criativo/campanha/RTB/workspace
+- [x] `app/api/creative-assets/route.ts` — GET (filtros) + POST (upload multipart, 10 MB guard)
+- [x] `app/api/creative-assets/[id]/route.ts` — DELETE (RBAC member+)
+
+#### Interface
+- [x] `components/creatives/asset-uploader.tsx` — dropzone, XHR progress, blob preview, galeria com remoção
+- [x] Seção "Assets do criativo" em `creatives/[id]/page.tsx`
+- [x] Seção "Imagens da campanha" em `campaigns/[id]/page.tsx`
+- [x] Seção "Banners display" (IAB sizes) em `campaigns/programmatic/[id]/page.tsx`
+
+#### Entregáveis
+- PR #14 mergeado: https://github.com/CoimbraViih/adtech/pull/14
+- `vitest run` 425/425 passando · Upload PNG/JPEG/WebP funcional nos 3 contextos
+- Arquivo > 10 MB rejeitado inline no dropzone
+
+### Parte 2 — DCO (Dynamic Creative Optimization) — planejado
+
+#### Database
+- [ ] `supabase/migrations/031_dco.sql` — tabelas `creative_templates`, `creative_variants`, `variant_performance`; RLS completo
+
+#### Backend
+- [ ] `lib/creatives/dco/templates.ts` — template engine com placeholders ligados ao feed de produto M16
+- [ ] `lib/creatives/dco/assembler.ts` — monta criativo a partir de template + feed (preço, imagem, título)
+- [ ] `lib/creatives/dco/rotation.ts` — rotação por bandit (epsilon-greedy/Thompson) usando conversões do event store M13
+
+#### Interface
+- [ ] `app/(dashboard)/creatives/dco/page.tsx` — editor de templates dinâmicos
+
+#### Entregáveis DCO
+- Um template + feed gera N variantes automaticamente
+- Rotação realoca impressões para variante de maior conversão
+- Métrica do loop exposta: "ganho de conversão por ciclo"
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M19 — Predictive & Autonomous Optimization (estende M11)
+
+**Branch:** `feat/m19-predictive-optimization`  
+**Depende de:** M13, M16, M11  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §11  
+**Objetivo:** Evoluir o AI Traffic Manager de diagnóstico para previsão e ação — forecast de budget/pacing, previsão de ROAS/conversão, executor de ações nos clients M-ADS com trilha de auditoria.
+
+> **Skills:** `/claude-api` · `/supabase` · `/webapp-testing`  
+> **Nota:** Windsor.ai disponível no ambiente pode pausar campanhas e ajustar budget — útil como validação do executor.
+
+### Database
+- [ ] `supabase/migrations/030_optimization_actions.sql` — log de ações sugeridas/executadas + outcome (before/after + resultado medido em D+7)
+
+### Backend
+- [ ] `lib/ai/predict/pacing.ts` — forecast de budget/pacing sobre rollups do M13
+- [ ] `lib/ai/predict/roas.ts` — previsão de ROAS/conversão por campanha (baseline estatístico)
+- [ ] `lib/ai/actions/executor.ts` — aplica ações (pausar, ajustar budget/bid) via clients M-ADS; sempre com trilha de auditoria
+
+### Interface
+- [ ] `app/(dashboard)/automation/` — adicionar regras preditivas e modo "autônomo com aprovação"
+- [ ] Dois modos: "sugerir" (humano aprova) e "autônomo" (executa dentro de guardrails)
+- [ ] Guardrails configuráveis: limites de variação de budget, blacklist de campanhas, kill switch
+
+### Entregáveis
+- Forecast de pacing com erro médio reportado e backtestado contra histórico
+- Ação executada registra antes/depois e resultado medido em D+7
+- Modo autônomo respeita 100% dos guardrails (testado com casos de borda)
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M20 — White-label Agency Portal
+
+**Branch:** `feat/m20-whitelabel`  
+**Depende de:** M18  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §12  
+**Objetivo:** Atender agências BR — self-serve ou gerenciado, marca/domínio do cliente, billing flexível com markup de revenda. AdFlow já tem workspaces + RBAC + role `viewer`; falta marca/domínio e billing em cascata.
+
+> **Skills:** `/frontend-design` · `/stripe:stripe-best-practices` · `/supabase`
+
+### Backend
+- [ ] `lib/whitelabel/theme.ts` — tokens por tenant (logo, cores)
+- [ ] `lib/whitelabel/domains.ts` — domínio custom + verificação CNAME
+- [ ] `middleware.ts` — resolver tenant por domínio custom
+- [ ] `lib/stripe/plans.ts` — markup de revenda (agência cobra cliente final)
+- [ ] `app/api/stripe/webhook/route.ts` — billing em cascata (agência → cliente)
+
+### Interface
+- [ ] `app/(dashboard)/settings/branding/page.tsx` — logo, cores, domínio custom por workspace
+
+### Entregáveis
+- Agência configura logo/cor/domínio; cliente vê painel com a marca da agência
+- Isolamento total entre tenants white-label (teste cross-tenant)
+- Markup de revenda refletido na cobrança
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M21 — In-app AI Assistant & Guided Onboarding
+
+**Branch:** `feat/m21-ai-assistant`  
+**Depende de:** M13 (parcial — pode iniciar em paralelo com mock do event store)  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` §13  
+**Objetivo:** Reduzir subutilização e tickets de suporte com assistente in-app e onboarding guiado. Reusa OpenAI já no stack.
+
+> **Skills:** `/claude-api` · `/frontend-design` · `/webapp-testing`
+
+### Backend
+- [ ] `lib/ai/assistant/agent.ts` — orquestração do agente (contexto da tela atual + event store M13)
+- [ ] `lib/ai/assistant/tools.ts` — ações in-app: criar campanha, explicar métrica (com confirmação obrigatória)
+- [ ] `lib/ai/assistant/rag.ts` — contexto de docs (base de conhecimento)
+- [ ] `app/api/assistant/route.ts` — endpoint do agente (streaming)
+
+### Interface
+- [ ] `components/assistant/assistant-panel.tsx` — painel lateral do assistente
+- [ ] `components/assistant/assistant-context.tsx` — contexto da tela atual
+- [ ] Onboarding guiado: fluxos passo-a-passo com checklists por milestone de produto
+
+### Entregáveis
+- Assistente responde perguntas sobre dados reais do workspace com citação da fonte
+- Toda ação do agente exige confirmação e fica auditada
+- `tsc --noEmit` zero erros; `vitest run` passando
+
+---
+
+## M8-DMP — DMP Completion (reposicionado — depende de M13)
 
 **Branch:** `feat/m8-dmp-complete`  
-**Depende de:** M8 (programático)  
-**Objetivo:** Completar a avaliação real de regras de audiência contra pixel events. Sem isso, PMP/CTV/DOOH não têm targeting real — `evaluateAudienceRules` é atualmente um stub que retorna estimativas hardcoded.
+**Depende de:** M13 (event store), M16 (sinais de catálogo/conversão)  
+**Objetivo:** Completar avaliação real de regras de audiência. `evaluateAudienceRules` é atualmente stub com estimativas hardcoded. Com M13, a segmentação roda sobre eventos no ClickHouse — sem M13, o DMP repetiria o problema de "dado inacessível".
 
 > **Skills:** `/supabase` · `/supabase-postgres-best-practices` · `/webapp-testing`
 
 ### Backend
 - [ ] `lib/rtb/dmp.ts` — `evaluateAudienceRules(rules, userId)`: substituir estimativa hardcoded por query real em `pixel_events` filtrada por `user_id_hash` + `lookback_days`
 - [ ] `lib/rtb/dmp.ts` — `buildAudienceMemberships(workspaceId)`: job que popula `audience_segments` com memberships calculados
-- [ ] Migration `016_audience_membership.sql`: schedule ou trigger em `pixel_events` para manter `audience_segments` atualizado
+- [ ] Migration `032_audience_membership.sql`: schedule ou trigger em `pixel_events` para manter `audience_segments` atualizado
 
 ### Entregáveis
 - `evaluateAudienceRules` retorna resultado real baseado em pixel events do usuário
@@ -881,10 +1213,11 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M12 — PMP: Deal Enforcement & Programmatic Guaranteed
+## M12 — PMP: Deal Enforcement & Programmatic Guaranteed (adiado)
 
 **Branch:** `feat/m12-pmp`  
-**Depende de:** M8, M8-DMP  
+**Depende de:** M8, M8-DMP, **M19 (estável)**  
+**Status:** Deliberadamente adiado para depois de M19. O moat defensável no BR é dado first-party + loop de IA + commerce + LGPD — não infra de deal RTB contra DSPs estabelecidas. Reavaliar após M19 estável ou se houver contrato/cliente que exija PMP.  
 **Objetivo:** Fechar o ciclo programático privado. Atualmente campanhas `private`/`preferred`/`guaranteed` competem em todo leilão aberto porque `selectBid` não filtra por deal_id. PMP real exige que deal IDs sejam negociados e enforced no bid path.
 
 > **Skills:** `/supabase` · `/webapp-testing` · `/frontend-design`
@@ -926,77 +1259,33 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M15 — Upload de Criativos (Imagens) ✅ CONCLUÍDO
-
-**Branch:** `feat/m15-creative-uploads` → mergeado em `main` via PR #14  
-**Depende de:** M2 (campanhas), M3 (AI Creative Studio), M8 (programático)  
-**Objetivo:** Gestor de tráfego consegue fazer upload de imagens de criativos (banners, thumbnails, assets de campanha) diretamente na plataforma. Imagens vinculadas a criativos no AI Creative Studio, a ads em campanhas sociais e a anúncios display em campanhas programáticas.
-
-### Database
-- [x] Migration `023_creative_assets.sql`:
-  - Tabela `creative_assets`: `id UUID PK`, `workspace_id UUID`, `creative_id UUID NULLABLE → creatives.id`, `campaign_id UUID NULLABLE → campaigns.id`, `rtb_campaign_id UUID NULLABLE → rtb_campaigns.id`, `storage_path TEXT NOT NULL`, `public_url TEXT NOT NULL`, `filename TEXT`, `mime_type TEXT`, `size_bytes INT`, `width_px INT`, `height_px INT`, `alt_text TEXT`, `created_at TIMESTAMPTZ`
-  - RLS: workspace members leem e criam; owners/admins deletam; service role full access
-  - Índices filtrados em `workspace_id`, `creative_id`, `campaign_id`, `rtb_campaign_id`
-- [x] Supabase Storage bucket `creative-assets` — público para leitura, autenticado para escrita (via service role); max 10 MB; tipos aceitos: `image/jpeg`, `image/png`, `image/webp`, `image/gif`
-
-### TypeScript
-- [x] `types/database.ts` — `CreativeAsset` type
-- [x] `lib/storage/creative-assets.ts` — `uploadCreativeAsset`, `deleteCreativeAsset`, `getAssetsByCreative`, `getAssetsByCampaign`, `getAssetsByRtbCampaign`, `getAssetsByWorkspace` (stubs com `TODO(M15-backend)`)
-
-### API Routes
-- [x] `app/api/creative-assets/route.ts` — GET (lista por workspace, filtra por `creative_id` / `campaign_id` / `rtb_campaign_id`) + POST (upload multipart, allowlist MIME, 10 MB guard, `try/catch` auth)
-- [x] `app/api/creative-assets/[id]/route.ts` — DELETE (RBAC member+, chama `deleteCreativeAsset`)
-
-### Interface — AI Creative Studio (M3)
-- [x] `components/creatives/asset-uploader.tsx` — react-dropzone, XHR progress (90% upload + 10% server), `<img>` nativo para blob preview, `revokeObjectURL` ao completar, galeria com overlay, remover por asset
-- [x] `app/(dashboard)/creatives/[id]/page.tsx` — seção "Assets do criativo" abaixo do grid de copy+score
-
-### Interface — Gestão de Campanhas (M2)
-- [x] `components/campaigns/campaign-assets-section.tsx` — wrapper do `AssetUploader` com `campaignId`
-- [x] `app/(dashboard)/campaigns/[id]/page.tsx` — seção "Imagens da campanha" acima dos Diagnósticos
-
-### Interface — Programático (M8)
-- [x] `components/campaigns/rtb-assets-section.tsx` — badges IAB (300×250/728×90/320×50/160×600/300×600), galeria agrupada por formato, DELETE chama API (não só state local)
-- [x] `app/(dashboard)/campaigns/programmatic/[id]/page.tsx` — seção "Banners display" ao final da página
-
-### Testes
-- [x] `tests/unit/creative-assets.test.ts` — 12 testes: MIME allowlist, tamanho máximo, campos de upload, delete stub, getters
-- [x] `tests/e2e/creative-uploads.spec.ts` — 4 testes: AI Studio, campanha social, campanha RTB; dropzone visível; rejeição de arquivo > 10 MB
-
-### Entregáveis
-- PR #14 mergeado: https://github.com/CoimbraViih/adtech/pull/14
-- `tsc --noEmit` zero erros
-- `vitest run` 425/425 passando (12 novos testes de M15)
-- Upload de PNG/JPEG/WebP funcional nos três contextos (criativo, campanha, RTB)
-- Arquivo > 10 MB rejeitado inline no dropzone, sem chamada à API
-- Assets visíveis e removíveis nas páginas de detalhe
-- Dados gateados atrás de `TODO(M15-backend)` para swap-in Supabase Storage real
-
----
-
 ## Ordem de execução recomendada
 
 ```
-M0 (setup)
-  └─ M1 (auth + shell)
-       ├─ M2 (campanhas)
-       │    └─ M3 (criativos AI)   ← paralelo com M4
-       ├─ M4 (pixel)
-       │    ├─ M5 (analytics)
-       │    │    └─ M11 (AI traffic manager) ← depende M2 + M4 + M5
-       │    │         └─ M-ADS (integrações de anúncios — 4 fases)
-       │    │              └─ Fase 1: multi-tenant fix + sync real
-       │    │              └─ Fase 2: robustez (retry, refresh, paginação)
-       │    │              └─ Fase 3: OAuth + ad sets + CAPI
-       │    │              └─ Fase 4: reconciliação pixel × plataforma
-       │    ├─ M7 (automação)      ← depende M2 + M4 + M5
-       │    └─ M8 (programático)   ← depende M2 + M4
-       │         └─ M8-DMP (completar avaliação real de regras)
-       │              └─ M12 (PMP deal enforcement)
-       ├─ M6 (landing page AdFlow) ← paralelo, depende só M1
-       └─ M9 (monetização Stripe)  ← depende M1–M5
-            └─ MS (segurança)
-                 └─ M10 (deploy)
+M0–M9, MS, M11, M-ADS (F1–F4) ← CONCLUÍDOS
+  │
+  ├─ M14 (Pixel Observability & SLO)     ← primeiro: observar antes de escalar
+  │    └─ M13 (Event Data Layer / ClickHouse)
+  │         ├─ M22 (Monetização Go-Live)      ← gate de comercialização
+  │         │    └─ [go-live comercial liberado]
+  │         ├─ M10 (Deploy & Produção)        ← smoke test M14 como gate
+  │         │    ├─ M17 (Consent & LGPD / Cookieless)   ← independente, pré-venda BR
+  │         │    └─ M16 (E-commerce: Nuvemshop/VTEX/Shopify)
+  │         │         ├─ M18 (Data Transparency — event explorer + export)
+  │         │         │    └─ M20 (White-label Agency Portal)
+  │         │         └─ M15 (Creative Uploads + DCO)
+  │         │              └─ M19 (Predictive & Autonomous Optimization)
+  │         │                   └─ M21 (In-app AI Assistant)  ← paralelo, pode iniciar em M13
+  │         │                        └─ M8-DMP (avaliação real de audiências)
+  │         │                             └─ M12 (PMP — adiado pós-M19)
+  │         └─ M21 pode iniciar em paralelo com M16 (com mock do event store)
 ```
 
-**Regra:** Interface mockada sempre antes do backend. Cada milestone deve estar demonstrável com dados reais antes de iniciar o próximo. M-ADS Fase 1 é pré-requisito de M10 (deploy) pois o sync precisa funcionar de verdade antes de ir a produção. M15 pode ser desenvolvido em paralelo com M12 — não há dependência entre upload de assets e deal enforcement.
+**Sequência linear recomendada:** M14 → M13 → M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)
+
+**Regras:**
+- Interface mockada sempre antes do backend — cada milestone demonstrável com dados reais antes do próximo.
+- M10 pode subir em **beta gratuito** sem M22; cobrar clientes exige M22 verde primeiro.
+- M12 (PMP/Deal Enforcement) deliberadamente adiado: o moat defensável no BR é dado first-party + loop de IA + commerce + LGPD, não infra de deal RTB. Reavaliar após M19 estável.
+- M15 neste plano inclui DCO (Dynamic Creative Optimization) além do upload de assets já implementado.
+- M21 pode começar em paralelo com M16 usando mocks do event store, mas precisa de M13 para dados reais.
