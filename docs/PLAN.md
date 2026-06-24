@@ -27,7 +27,7 @@
 | M-ADS | Melhorias de Integrações de Anúncios | `feat/m-ads-integrations` ✅ F1 F2 F3 F4 | M2, M11, MS |
 | M14 | Pixel Observability & SLO | `feat/m14-pixel-observability` ✅ | M4 |
 | M13 | Event Data Layer (ClickHouse) | `feat/m13-event-data-layer` ✅ | M14 |
-| M22 | Monetização para Go-Live (usage-based + fiscal BR) | `feat/m22-monetization` | M-ADS (campaign_metrics_daily) |
+| M22 | Monetização para Go-Live (usage-based + fiscal BR) | `feat/m22-monetization` ✅ | M-ADS (campaign_metrics_daily) |
 | M10 | Deploy & Produção | `feat/m10-deploy` | M14, M13 |
 | M17 | Consent & LGPD / Cookieless | `feat/m17-consent-lgpd` | M13 |
 | M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | `feat/m16-ecommerce` | M10, M13 |
@@ -884,9 +884,9 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 # PLANEJADOS
 
-> Sequência de execução: ~~M13~~ ✅ → **M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
+> Sequência de execução: ~~M13~~ ✅ → ~~M22~~ ✅ → **M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
 >
-> M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
+> M22 ✅ — gate de comercialização entregue. Cobrar clientes agora é possível. M10 (deploy) é o próximo passo. M12 (PMP) deliberadamente adiado para depois de M19.
 
 ---
 
@@ -941,16 +941,15 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M22 — Monetização para Go-Live (% spend + fiscal BR)
+## M22 — Monetização para Go-Live (% spend + fiscal BR) ✅ CONCLUÍDO
 
-**Branch:** `feat/m22-monetization`  
+**Branch:** `feat/m22-monetization` → mergeado em `main` (PR #20)  
 **Depende de:** M-ADS (`campaign_metrics_daily` já pronto)  
-**Objetivo:** Cobrar de verdade. M9 entregou assinatura fixa com price IDs de teste — descartado. O modelo de go-live é **sem mensalidade**, taxa marginal sobre o gasto gerenciado + piso R$197/conta ativa. **É o gate de comercialização — sem este milestone, o produto não pode ser vendido.**
+**Objetivo:** Cobrar de verdade. Modelo pós-pago fee-only — taxa marginal sobre gasto gerenciado + piso R$197/conta ativa. Gate de comercialização entregue.
 
-> **Skills:** `/stripe:stripe-best-practices` · `/supabase` · `/webapp-testing`  
-> **Decisão pendente (travar antes de codar):** Stripe puro vs. gateway BR (Iugu / Asaas / Vindi) para NFS-e + Pix.
+> **Fiscal BR (NFS-e/Pix):** bloqueado deliberadamente. Decisão Stripe BR vs. gateway BR (Iugu/Asaas/Vindi) pendente. Stub provider criado — plugar quando decisão for tomada.
 
-### Modelo de precificação (decisão travada)
+### Modelo de precificação (implementado)
 
 | Faixa de gasto/mês | Taxa marginal |
 |--------------------|---------------|
@@ -959,33 +958,40 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 | Acima de R$5.000 | 3% |
 
 **Piso:** `max(R$197, taxa_marginal)` quando `spend > 0` — nunca cobra de quem não gastou nada.  
-**Modelo:** pós-pago fee-only. Cliente paga a mídia na própria conta; AdHunter fatura só a taxa via Stripe.  
-**Custo de IA (OpenAI):** absorvido pela AdHunter e embutido na taxa/piso — o cliente **não** paga tokens à parte.  
-**Risco de margem:** medir custo de IA por conta/mês; alertar quando se aproximar da taxa cobrada.
+**Modelo:** pós-pago fee-only, `collection_method: "send_invoice"`, `days_until_due: 7`.
 
 ### Database
-- [ ] `supabase/migrations/027_usage_billing.sql` — tabelas `usage_records`, `invoices`, `billing_periods`; multi-tenant + RLS
+- [x] `supabase/migrations/029_usage_billing.sql` — tabelas `billing_periods`, `usage_records`, `invoices`; `billing_status` em `organizations`; multi-tenant + RLS
+- [x] `supabase/migrations/030_invoice_status_payment_failed.sql` — adiciona `payment_failed` ao CHECK constraint de `invoices.status`
 
 ### Backend
-- [ ] `lib/billing/managed-spend.ts` — `getManagedSpend(orgId, period)`: soma spend de `campaign_metrics_daily` por org/período
-- [ ] `lib/billing/fee-calculator.ts` — `calculateFee(spend)`: faixas marginais 10/5/3% + `max(R$197, fee)` quando spend > 0
-- [ ] `app/api/cron/close-billing-period/route.ts` — cron mensal: calcula fee → cria invoice no Stripe → cliente paga por link; dunning automático
-- [ ] `lib/stripe/plans.ts` — remover planos fixos Free/Pro/Agency; substituir por modelo de consumo
-- [ ] `app/api/stripe/webhook/route.ts` — tratar `invoice.paid`, `invoice.payment_failed` (dunning → `past_due`)
-- [ ] `lib/billing/fiscal/` — emissão de NFS-e, Pix/boleto (gateway BR ou Stripe BR — aguarda decisão)
-- [ ] Substituir price IDs de teste por produto de consumo real em BRL no Stripe
+- [x] `lib/billing/managed-spend.ts` — `getManagedSpend(orgId, start, end)` + `getCurrentBillingPeriod()`
+- [x] `lib/billing/fee-calculator.ts` — `calculateFee(spend)`: faixas 10/5/3% + piso R$197; `TIERS`, `FLOOR_BRL`, `formatFeeBRL`
+- [x] `app/api/cron/close-billing-period/route.ts` — cron `0 8 1 * *`: calcula fee → cria invoice Stripe (`send_invoice`) → grava em `invoices` → fecha `billing_periods`; inclui orgs `past_due`
+- [x] `lib/stripe/plans.ts` — planos fixos Free/Pro/Agency removidos; re-exporta funções do fee-calculator
+- [x] `app/api/stripe/webhook/route.ts` — `invoice.paid` (marca pago, ativa org, fecha período) + `invoice.payment_failed` (marca `past_due`, status `payment_failed`); error handling em todos os writes Supabase
+- [x] `lib/auth/roles.ts` — `isOrgBillingBlocked(orgId)`: gate de inadimplência, fail-open; wired em `app/api/campaigns/route.ts` (HTTP 402)
+- [ ] `lib/billing/fiscal/` — NFS-e/Pix bloqueado (decisão gateway pendente)
 
 ### Interface
-- [ ] `app/(dashboard)/settings/billing/page.tsx` — exibir gasto do período, fee calculada, histórico de faturas, métodos de pagamento BR
-- [ ] Remover UI de "planos" (Free/Pro/Agency) — substituir por medidor de spend + estimativa da taxa
+- [x] `app/(dashboard)/settings/billing/page.tsx` — Server Component: busca spend/fee/invoices/billing_status
+- [x] `app/(dashboard)/settings/billing/billing-page-client.tsx` — SpendMeter, tabela de faturas, banner de inadimplência, portal Stripe
+- [x] `components/billing/usage-meter.tsx` — reescrito como `SpendMeter` (medidor de spend com tiers visuais)
+- [x] Removidos: `plan-card.tsx`, `upgrade-modal.tsx`, `plan-badge.tsx`, `upgrade-banner.tsx`
 
-### Entregáveis
-- `calculateFee(2000)` → R$197 (piso); `calculateFee(3000)` → R$200 + R$50 = R$250; `calculateFee(6000)` → R$200 + R$150 + R$30 = R$380 (testados unitariamente)
-- Cron fecha o ciclo → invoice gerada no Stripe → cliente recebe link de pagamento
-- Pagamento falho → org vai para `past_due` → feature-gate aplicado
-- NFS-e emitida automaticamente após pagamento confirmado
-- Zero price IDs de teste em produção
-- `tsc --noEmit` zero erros; `vitest run` passando
+### Landing page
+- [x] `components/marketing/pricing.tsx` — layout fee-only com tabela de tiers + 3 cards informativos; GSAP mantido
+- [x] `components/marketing/faq.tsx` — resposta atualizada para modelo fee-only
+- [x] `app/(marketing)/page.tsx` — copy da waitlist atualizada ("3 meses sem cobrança")
+- [x] `app/(marketing)/terms/page.tsx` — referências a planos fixos removidas
+
+### Entregáveis verificados
+- [x] `calculateFee(2000)` → 200; `calculateFee(3000)` → 250; `calculateFee(6000)` → 380 (94 testes passando)
+- [x] Cron fecha ciclo → invoice Stripe (send_invoice) → cliente recebe link de pagamento
+- [x] Pagamento falho → org `past_due` → gate HTTP 402 em criação de campanhas
+- [x] `tsc --noEmit` zero erros; `vitest run` 94/94 M22 tests passing
+- [ ] NFS-e após pagamento — pendente decisão fiscal BR
+- [ ] Price IDs de produção — pendente configuração nas env vars Vercel
 
 ---
 
