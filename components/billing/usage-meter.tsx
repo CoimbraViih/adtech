@@ -1,5 +1,8 @@
 import { cn } from "@/lib/utils";
-import { formatLimit } from "@/lib/stripe/plans";
+
+function formatLimit(limit: number): string {
+  return limit === -1 ? "Ilimitado" : String(limit);
+}
 
 type UsageMeterProps = {
   label: string;

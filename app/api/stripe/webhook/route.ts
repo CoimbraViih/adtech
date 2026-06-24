@@ -6,7 +6,6 @@ import {
   handleSubscriptionDeleted,
   handlePaymentFailed,
 } from "@/lib/stripe/webhooks";
-import { getPlanByPriceId } from "@/lib/stripe/plans";
 import type { SubscriptionStatus } from "@/types/database";
 import {
   upsertSubscription,
@@ -15,6 +14,7 @@ import {
   logBillingEvent,
   isEventAlreadyProcessed,
 } from "@/lib/stripe/subscription-service";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +115,6 @@ export async function POST(request: Request) {
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
         const firstItem = sub.items.data[0];
-        const priceId = firstItem?.price?.id ?? "";
         const rawStatus = sub.status as string;
         const status: SubscriptionStatus = VALID_STATUSES.includes(rawStatus as SubscriptionStatus)
           ? (rawStatus as SubscriptionStatus)
@@ -135,11 +134,15 @@ export async function POST(request: Request) {
         const subCustomerId =
           typeof sub.customer === "string" ? sub.customer : (sub.customer?.id ?? "");
 
+        // Resolve plan from subscription metadata (set at checkout time)
+        const plan =
+          (sub.metadata?.plan as "free" | "pro" | "agency" | undefined) ?? "free";
+
         const payload = handleSubscriptionUpdated({
           organizationId: sub.metadata?.organization_id ?? "",
           stripeCustomerId: subCustomerId,
           stripeSubscriptionId: sub.id,
-          plan: getPlanByPriceId(priceId),
+          plan,
           status,
           currentPeriodStart: periodStart,
           currentPeriodEnd: periodEnd,
@@ -173,6 +176,57 @@ export async function POST(request: Request) {
         break;
       }
 
+      case "invoice.paid": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const stripeInvoiceId = invoice.id;
+
+        const supabase = createServiceClient();
+
+        // 1. Look up our internal invoice by stripe_invoice_id
+        const { data: internalInvoice } = await supabase
+          .from("invoices")
+          .select("id, organization_id, billing_period_id")
+          .eq("stripe_invoice_id", stripeInvoiceId)
+          .maybeSingle();
+
+        if (!internalInvoice) {
+          // Not a fee invoice (could be a legacy subscription invoice) — skip
+          break;
+        }
+
+        const { id: invoiceId, organization_id: orgId, billing_period_id: billingPeriodId } =
+          internalInvoice as { id: string; organization_id: string; billing_period_id: string | null };
+
+        // 2. Mark invoice as paid
+        await supabase
+          .from("invoices")
+          .update({ status: "paid", paid_at: new Date().toISOString() })
+          .eq("id", invoiceId);
+
+        // 3. Unblock the org
+        await supabase
+          .from("organizations")
+          .update({ billing_status: "active" })
+          .eq("id", orgId);
+
+        // 4. Close the billing period
+        if (billingPeriodId) {
+          await supabase
+            .from("billing_periods")
+            .update({ status: "paid" })
+            .eq("id", billingPeriodId);
+        }
+
+        // 5. Log the event
+        await logBillingEvent(
+          orgId,
+          event.id,
+          event.type,
+          event.data.object as unknown as Record<string, unknown>
+        );
+        break;
+      }
+
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
         // In this Stripe SDK version, subscription metadata lives under invoice.parent.subscription_details.metadata
@@ -194,6 +248,23 @@ export async function POST(request: Request) {
         if (invoiceSubId) {
           await markSubscriptionPastDue(invoiceSubId);
         }
+
+        // Also block the org when this is a fee invoice (M22 usage-based billing)
+        const supabase = createServiceClient();
+        const { data: internalInvoice } = await supabase
+          .from("invoices")
+          .select("organization_id")
+          .eq("stripe_invoice_id", invoice.id)
+          .maybeSingle();
+
+        if (internalInvoice) {
+          const { organization_id: orgId } = internalInvoice as { organization_id: string };
+          await supabase
+            .from("organizations")
+            .update({ billing_status: "past_due" })
+            .eq("id", orgId);
+        }
+
         await logBillingEvent(
           payload.organizationId,
           event.id,

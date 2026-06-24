@@ -4,7 +4,10 @@ import type { ComponentType } from "react";
 import { Plus, Activity, TrendingUp, TrendingDown, DollarSign, BarChart2 } from "lucide-react";
 import { RtbCampaignsTable } from "@/components/campaigns/rtb-campaigns-table";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
-import { canAccessProgrammatic } from "@/lib/stripe/plans";
+/** Agency plan is the only plan that includes programmatic access. */
+function canAccessProgrammatic(plan: string): boolean {
+  return plan === "agency";
+}
 import { UpgradeBanner } from "@/components/billing/upgrade-banner";
 import { getServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 

@@ -3,17 +3,30 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CreditCard, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
-import {
-  PLANS,
-  campaignLimit,
-  creativeLimit,
-  pixelLimit,
-  formatPlanPrice,
-} from "@/lib/stripe/plans";
 import { PlanBadge } from "@/components/billing/plan-badge";
 import { UsageMeter } from "@/components/billing/usage-meter";
 import { UpgradeModal } from "@/components/billing/upgrade-modal";
 import type { OrgPlan } from "@/types/database";
+
+// ── Inline plan data (M22: kept for billing page display) ────────────────────
+
+const PLAN_DISPLAY: Record<OrgPlan, { name: string; priceMonthly: number; campaigns: number; creatives: number; pixels: number }> = {
+  free:   { name: "Free",   priceMonthly: 0,      campaigns: 3,  creatives: 10,  pixels: 1  },
+  pro:    { name: "Pro",    priceMonthly: 50000,  campaigns: 25, creatives: 100, pixels: 5  },
+  agency: { name: "Agency", priceMonthly: 300000, campaigns: -1, creatives: -1,  pixels: -1 },
+};
+
+function formatPlanPrice(plan: OrgPlan): string {
+  const { priceMonthly } = PLAN_DISPLAY[plan];
+  if (priceMonthly === 0) return "Grátis";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(priceMonthly / 100);
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 type Usage = { campaigns: number; creatives: number; pixels: number };
 
@@ -21,7 +34,7 @@ type Props = { plan: OrgPlan; usage: Usage };
 
 export function BillingPageClient({ plan, usage }: Props) {
   const params = useSearchParams();
-  const planConfig = PLANS[plan];
+  const planConfig = PLAN_DISPLAY[plan];
 
   const checkoutStatus = params.get("checkout");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -113,17 +126,17 @@ export function BillingPageClient({ plan, usage }: Props) {
           <UsageMeter
             label="Campanhas"
             current={usage.campaigns}
-            limit={campaignLimit(plan)}
+            limit={planConfig.campaigns}
           />
           <UsageMeter
             label="Criativos"
             current={usage.creatives}
-            limit={creativeLimit(plan)}
+            limit={planConfig.creatives}
           />
           <UsageMeter
             label="Pixels"
             current={usage.pixels}
-            limit={pixelLimit(plan)}
+            limit={planConfig.pixels}
           />
         </div>
       </div>

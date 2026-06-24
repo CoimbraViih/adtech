@@ -1,11 +1,16 @@
 import { cn } from "@/lib/utils";
-import { PLANS } from "@/lib/stripe/plans";
 import type { OrgPlan } from "@/types/database";
 
 const PLAN_STYLES: Record<OrgPlan, string> = {
   free: "bg-[color:var(--adflow-border)] text-[color:var(--adflow-fg-muted)]",
   pro: "bg-data/20 text-data",
   agency: "bg-accent/20 text-accent",
+};
+
+const PLAN_NAMES: Record<OrgPlan, string> = {
+  free: "Free",
+  pro: "Pro",
+  agency: "Agency",
 };
 
 type PlanBadgeProps = {
@@ -22,7 +27,7 @@ export function PlanBadge({ plan, className }: PlanBadgeProps) {
         className
       )}
     >
-      {PLANS[plan].name}
+      {PLAN_NAMES[plan]}
     </span>
   );
 }

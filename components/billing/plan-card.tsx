@@ -2,9 +2,74 @@
 
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PLANS, formatPlanPrice, formatLimit } from "@/lib/stripe/plans";
 import { PlanBadge } from "@/components/billing/plan-badge";
 import type { OrgPlan } from "@/types/database";
+
+// ── Inline plan data (M22: subscription plans kept for legacy checkout UI) ───
+
+type PlanFeatures = {
+  aiCreatives: boolean;
+  automation: boolean;
+  programmatic: boolean;
+  whiteLabel: boolean;
+  prioritySupport: boolean;
+};
+
+type PlanConfig = {
+  name: string;
+  priceMonthly: number;
+  stripePriceId: string;
+  campaigns: number;
+  creatives: number;
+  pixels: number;
+  features: PlanFeatures;
+};
+
+const PLANS: Record<OrgPlan, PlanConfig> = {
+  free: {
+    name: "Free",
+    priceMonthly: 0,
+    stripePriceId: "",
+    campaigns: 3,
+    creatives: 10,
+    pixels: 1,
+    features: { aiCreatives: false, automation: false, programmatic: false, whiteLabel: false, prioritySupport: false },
+  },
+  pro: {
+    name: "Pro",
+    priceMonthly: 50000,
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID ?? "price_pro_test",
+    campaigns: 25,
+    creatives: 100,
+    pixels: 5,
+    features: { aiCreatives: true, automation: true, programmatic: false, whiteLabel: false, prioritySupport: false },
+  },
+  agency: {
+    name: "Agency",
+    priceMonthly: 300000,
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_AGENCY_PRICE_ID ?? "price_agency_test",
+    campaigns: -1,
+    creatives: -1,
+    pixels: -1,
+    features: { aiCreatives: true, automation: true, programmatic: true, whiteLabel: true, prioritySupport: true },
+  },
+};
+
+function formatPlanPrice(plan: OrgPlan): string {
+  const { priceMonthly } = PLANS[plan];
+  if (priceMonthly === 0) return "Grátis";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(priceMonthly / 100);
+}
+
+function formatLimit(limit: number): string {
+  return limit === -1 ? "Ilimitado" : String(limit);
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 type PlanCardProps = {
   plan: OrgPlan;
@@ -13,7 +78,7 @@ type PlanCardProps = {
   loading?: boolean;
 };
 
-const PLAN_FEATURES: Array<{ label: string; key: keyof typeof PLANS.free.features }> = [
+const PLAN_FEATURES: Array<{ label: string; key: keyof PlanFeatures }> = [
   { label: "IA para criativos (GPT-4o)", key: "aiCreatives" },
   { label: "Automação de alertas", key: "automation" },
   { label: "Programático RTB", key: "programmatic" },

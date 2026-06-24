@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireServerSession } from "@/lib/supabase/server";
 import { canAccessBilling } from "@/lib/auth/roles";
-import { PLANS } from "@/lib/stripe/plans";
 
 async function getStripe() {
   const { getStripeClient } = await import("@/lib/stripe/client");
@@ -12,6 +11,11 @@ async function getStripe() {
 const bodySchema = z.object({
   plan: z.enum(["pro", "agency"]),
 });
+
+const STRIPE_PRICE_IDS: Record<"pro" | "agency", string> = {
+  pro: process.env.STRIPE_PRO_PRICE_ID ?? "price_pro_test",
+  agency: process.env.STRIPE_AGENCY_PRICE_ID ?? "price_agency_test",
+};
 
 export async function POST(request: Request) {
   let session;
@@ -35,7 +39,7 @@ export async function POST(request: Request) {
   }
 
   const { plan } = parsed.data;
-  const priceId = PLANS[plan].stripePriceId;
+  const priceId = STRIPE_PRICE_IDS[plan];
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   if (!process.env.STRIPE_SECRET_KEY) {
