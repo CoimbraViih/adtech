@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, requireServerSession } from "@/lib/supabase/server";
-import { canManageCampaigns } from "@/lib/auth/roles";
+import { canManageCampaigns, isOrgBillingBlocked } from "@/lib/auth/roles";
 import { syncCampaignsFromPlatform } from "@/lib/campaigns/sync";
 import { createCampaignOnPlatform } from "@/lib/campaigns/platform";
 import { createRateLimiter } from "@/lib/security/rate-limit";
@@ -80,6 +80,11 @@ export async function POST(req: NextRequest) {
 
   if (!canManageCampaigns(session)) {
     return NextResponse.json({ error: "Permissão insuficiente." }, { status: 403 });
+  }
+
+  const billingBlocked = await isOrgBillingBlocked(session.organization.id);
+  if (billingBlocked) {
+    return NextResponse.json({ error: "Conta com pagamento pendente" }, { status: 402 });
   }
 
   if (campaignCreateLimiter(session.workspace.id)) {

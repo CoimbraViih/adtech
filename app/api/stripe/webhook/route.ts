@@ -191,11 +191,12 @@ export async function POST(request: Request) {
 
         if (!internalInvoice) {
           // Not a fee invoice (could be a legacy subscription invoice) — skip
+          console.log("[stripe/webhook] invoice.paid: no internal invoice found for", stripeInvoiceId, "— skipping");
           break;
         }
 
         const { id: invoiceId, organization_id: orgId, billing_period_id: billingPeriodId } =
-          internalInvoice as { id: string; organization_id: string; billing_period_id: string | null };
+          internalInvoice as { id: string; organization_id: string; billing_period_id: string };
 
         // 2. Mark invoice as paid
         await supabase
@@ -210,14 +211,12 @@ export async function POST(request: Request) {
           .eq("id", orgId);
 
         // 4. Close the billing period
-        if (billingPeriodId) {
-          await supabase
-            .from("billing_periods")
-            .update({ status: "paid" })
-            .eq("id", billingPeriodId);
-        }
+        await supabase
+          .from("billing_periods")
+          .update({ status: "paid" })
+          .eq("id", billingPeriodId);
 
-        // 5. Log the event
+        // 5. Log the event (ensures idempotency — re-delivery from Stripe won't re-process)
         await logBillingEvent(
           orgId,
           event.id,
@@ -263,6 +262,11 @@ export async function POST(request: Request) {
             .from("organizations")
             .update({ billing_status: "past_due" })
             .eq("id", orgId);
+          // Mark the local invoice as payment_failed (requires migration 030)
+          await supabase
+            .from("invoices")
+            .update({ status: "payment_failed" })
+            .eq("stripe_invoice_id", invoice.id);
         }
 
         await logBillingEvent(

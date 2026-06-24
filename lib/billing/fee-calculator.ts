@@ -45,7 +45,7 @@ export function calculateFee(spendBRL: number): number {
     if (remaining <= 0) break;
   }
 
-  return Math.max(FLOOR_BRL, fee);
+  return Math.round(Math.max(FLOOR_BRL, fee) * 100) / 100;
 }
 
 /**

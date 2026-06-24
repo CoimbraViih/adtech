@@ -83,7 +83,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   const { data: orgs, error: orgsError } = await supabase
     .from("organizations")
     .select("id, stripe_customer_id, billing_status")
-    .eq("billing_status", "active");
+    .in("billing_status", ["active", "past_due"]);
 
   if (orgsError) {
     console.error("[cron/close-billing-period] failed to fetch orgs:", orgsError);
@@ -169,6 +169,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       const stripeInvoice = await stripe.invoices.create({
         customer: org.stripe_customer_id,
         auto_advance: true,
+        collection_method: "send_invoice" as const,
+        days_until_due: 7,
         description: `Taxa AdFlow — ${monthLabelCapitalized}`,
         currency: "brl",
       });

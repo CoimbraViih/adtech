@@ -91,7 +91,3 @@ export function SpendMeter({ currentBRL, label = "Gasto gerenciado este mês", c
     </div>
   );
 }
-
-// Legacy export alias so any remaining import of `UsageMeter` still compiles
-// (will be removed after full cleanup)
-export { SpendMeter as UsageMeter };

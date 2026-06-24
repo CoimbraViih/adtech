@@ -38,7 +38,7 @@ async function BillingData() {
   });
 
   // Fetch all data in parallel
-  const [spendResult, orgResult, invoicesResult, openPeriodResult] =
+  const [spendResult, orgResult, invoicesResult] =
     await Promise.all([
       getManagedSpend(orgId, period.start, period.end),
       supabase
@@ -54,13 +54,6 @@ async function BillingData() {
         .eq("organization_id", orgId)
         .order("created_at", { ascending: false })
         .limit(12),
-      supabase
-        .from("billing_periods")
-        .select("id, status")
-        .eq("organization_id", orgId)
-        .eq("status", "open")
-        .limit(1)
-        .maybeSingle(),
     ]);
 
   const currentSpendBRL = spendResult;
@@ -68,8 +61,6 @@ async function BillingData() {
   const billingStatus =
     (orgResult.data?.billing_status as string | undefined) ?? "active";
   const invoices = (invoicesResult.data ?? []) as InvoiceRow[];
-  // openPeriod is available for future use if needed
-  void openPeriodResult;
 
   return (
     <BillingPageClient
