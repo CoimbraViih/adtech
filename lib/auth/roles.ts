@@ -3,8 +3,11 @@
  * These functions operate on the OrgRole type and contain no Supabase calls —
  * they will work identically with real auth once SessionContext is populated
  * from a real Supabase getUser() response.
+ *
+ * Exception: isOrgBillingBlocked — requires a service-role Supabase query.
  */
 
+import { createServiceClient } from "@/lib/supabase/service";
 import type { OrgRole, SessionContext } from "@/types/database";
 
 // ── Role hierarchy ────────────────────────────────────────────────────────────
@@ -66,6 +69,32 @@ export function canManageWorkspaces(session: SessionContext): boolean {
 /** Can configure org-level API credentials (owner or admin only) */
 export function canManageIntegrations(session: SessionContext): boolean {
   return hasMinRole(session.role, "admin");
+}
+
+/**
+ * Checks if the organization is in past_due or suspended billing status.
+ * Returns true when the org should be blocked from billable actions.
+ *
+ * Fails open: returns false on any DB error so we never accidentally block
+ * a legitimate request due to an infrastructure issue.
+ */
+export async function isOrgBillingBlocked(orgId: string): Promise<boolean> {
+  try {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from("organizations")
+      .select("billing_status")
+      .eq("id", orgId)
+      .maybeSingle();
+
+    if (error || !data) return false;
+
+    const status = (data as { billing_status: string | null }).billing_status;
+    return status === "past_due" || status === "suspended";
+  } catch {
+    // Fail open — do not block the org when the DB is unreachable
+    return false;
+  }
 }
 
 // ── Utility ───────────────────────────────────────────────────────────────────

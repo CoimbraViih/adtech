@@ -62,14 +62,14 @@ export default function LandingPage() {
               letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: 16,
             }}>
               Acesso antecipado.<br />
-              <span style={{ color: "#10B981" }}>3 meses Pro grátis.</span>
+              <span style={{ color: "#10B981" }}>3 meses sem cobrança.</span>
             </h2>
             <p style={{
               fontFamily: "var(--font-manrope, sans-serif)",
               fontSize: 15, color: "#64748b", lineHeight: 1.7, marginBottom: 32,
             }}>
-              Para os primeiros 100. Sem cartão de crédito.<br />
-              Cancele quando quiser.
+              Para os primeiros 100 usuários. Sem cartão de crédito.<br />
+              Sem mensalidade — pague só sobre o que gastar.
             </p>
 
             {/* Social signal */}

@@ -1,5 +1,18 @@
-import { getPlanByPriceId } from "@/lib/stripe/plans";
 import type { OrgPlan, SubscriptionStatus } from "@/types/database";
+
+/**
+ * Resolves an OrgPlan from a Stripe price ID.
+ * Kept here (not in plans.ts) because subscription-based plans are legacy;
+ * plans.ts now only contains fee-calculator re-exports.
+ */
+function getPlanByPriceId(priceId: string): OrgPlan {
+  if (!priceId) return "free";
+  const proPriceId = process.env.STRIPE_PRO_PRICE_ID ?? "price_pro_test";
+  const agencyPriceId = process.env.STRIPE_AGENCY_PRICE_ID ?? "price_agency_test";
+  if (priceId === proPriceId) return "pro";
+  if (priceId === agencyPriceId) return "agency";
+  return "free";
+}
 
 // ── Input/Output types ────────────────────────────────────────────────────────
 

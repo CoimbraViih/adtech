@@ -10,7 +10,7 @@ gsap.registerPlugin(ScrollTrigger);
 const FAQS = [
   {
     q: "Como funciona o período gratuito?",
-    a: "O plano Free não tem limite de tempo — fica ativo enquanto você quiser. Para ativar recursos avançados como pixel server-side e IA de criativos, faça upgrade para Pro ou Agency.",
+    a: "Os primeiros 3 meses são gratuitos — zero de cobrança durante o acesso antecipado. Após isso, é pay-as-you-go: 10% do seu gasto até R$2k/mês, 5% entre R$2k–R$5k, e 3% acima de R$5k. Piso mínimo: R$197/mês com gasto ativo. Sem gasto = sem cobrança.",
   },
   {
     q: "O pixel server-side substitui o pixel do navegador?",

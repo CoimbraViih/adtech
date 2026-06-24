@@ -1,9 +1,21 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { requireServerSession } from "@/lib/supabase/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { getManagedSpend, getCurrentBillingPeriod } from "@/lib/billing/managed-spend";
+import { calculateFee } from "@/lib/billing/fee-calculator";
 import { BillingPageClient } from "./billing-page-client";
-import type { OrgPlan } from "@/types/database";
+
+type InvoiceRow = {
+  id: string;
+  amount_brl: number;
+  spend_brl: number;
+  status: string;
+  stripe_hosted_url: string | null;
+  paid_at: string | null;
+  created_at: string;
+  billing_period_id: string;
+};
 
 async function BillingData() {
   let session;
@@ -13,32 +25,52 @@ async function BillingData() {
     redirect("/login");
   }
 
-  const supabase = await createServerSupabaseClient();
-  const workspaceId = session.workspace.id;
-  const plan = (session.organization.plan ?? "free") as OrgPlan;
+  const orgId = session.organization.id;
+  const supabase = createServiceClient();
 
-  const [campaignsResult, creativesResult, pixelsResult] = await Promise.all([
-    supabase
-      .from("campaigns")
-      .select("id", { count: "exact", head: true })
-      .eq("workspace_id", workspaceId),
-    supabase
-      .from("creatives")
-      .select("id", { count: "exact", head: true })
-      .eq("workspace_id", workspaceId),
-    supabase
-      .from("pixels")
-      .select("id", { count: "exact", head: true })
-      .eq("workspace_id", workspaceId),
-  ]);
+  // Current billing period
+  const period = getCurrentBillingPeriod();
 
-  const usage = {
-    campaigns: campaignsResult.count ?? 0,
-    creatives: creativesResult.count ?? 0,
-    pixels: pixelsResult.count ?? 0,
-  };
+  // Period label e.g. "Junho 2026"
+  const currentPeriodLabel = period.start.toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
 
-  return <BillingPageClient plan={plan} usage={usage} />;
+  // Fetch all data in parallel
+  const [spendResult, orgResult, invoicesResult] =
+    await Promise.all([
+      getManagedSpend(orgId, period.start, period.end),
+      supabase
+        .from("organizations")
+        .select("billing_status")
+        .eq("id", orgId)
+        .single(),
+      supabase
+        .from("invoices")
+        .select(
+          "id, amount_brl, spend_brl, status, stripe_hosted_url, paid_at, created_at, billing_period_id"
+        )
+        .eq("organization_id", orgId)
+        .order("created_at", { ascending: false })
+        .limit(12),
+    ]);
+
+  const currentSpendBRL = spendResult;
+  const estimatedFeeBRL = calculateFee(currentSpendBRL);
+  const billingStatus =
+    (orgResult.data?.billing_status as string | undefined) ?? "active";
+  const invoices = (invoicesResult.data ?? []) as InvoiceRow[];
+
+  return (
+    <BillingPageClient
+      billingStatus={billingStatus}
+      currentSpendBRL={currentSpendBRL}
+      estimatedFeeBRL={estimatedFeeBRL}
+      currentPeriodLabel={currentPeriodLabel}
+      invoices={invoices}
+    />
+  );
 }
 
 export default function BillingPage() {

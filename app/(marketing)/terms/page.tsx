@@ -27,7 +27,7 @@ export default function TermsPage() {
           <p>
             O AdHunter é uma plataforma SaaS para gestão de campanhas de anúncios,
             geração de criativos com IA, rastreamento server-side e análise de atribuição.
-            Oferecemos planos Free, Pro e Agency com diferentes limites e funcionalidades.
+            A cobrança é pós-paga, baseada em taxa marginal sobre o gasto gerenciado nas plataformas de anúncios conectadas.
           </p>
         </div>
 

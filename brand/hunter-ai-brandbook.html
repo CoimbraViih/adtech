@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hunter AI — Brand Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0A0F0D;
+    --surface:#111815;
+    --surface-2:#16201B;
+    --line:#243029;
+    --signal:#2EE6A0;     /* primary — IA ativa, sinal */
+    --signal-dim:#1FA877;
+    --hunter:#0E4D3A;     /* deep hunter green */
+    --amber:#FFB23E;      /* humano, calor */
+    --mist:#E8EFEA;
+    --muted:#7A8B83;
+    --display:'Space Grotesk',sans-serif;
+    --body:'Manrope',sans-serif;
+    --mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--ink);
+    color:var(--mist);
+    font-family:var(--body);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(900px 500px at 85% -5%, rgba(46,230,160,.10), transparent 60%),
+      radial-gradient(700px 500px at 0% 100%, rgba(255,178,62,.06), transparent 60%);
+  }
+  .grain{position:fixed;inset:0;pointer-events:none;opacity:.035;z-index:1;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 32px;position:relative;z-index:2}
+  section{padding:96px 0;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--signal);margin-bottom:20px}
+  h1,h2,h3{font-family:var(--display);font-weight:600;line-height:1.05;letter-spacing:-.02em}
+  h2{font-size:clamp(28px,4vw,44px);margin-bottom:14px}
+  h3{font-size:20px;margin-bottom:10px}
+  p.lede{font-size:clamp(17px,2vw,20px);color:#C5D2CB;max-width:60ch}
+  .muted{color:var(--muted)}
+
+  /* HERO */
+  .hero{min-height:88vh;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--line)}
+  .hero h1{font-size:clamp(52px,11vw,140px);font-weight:700}
+  .hero h1 .ai{color:var(--signal)}
+  .hero .sub{display:flex;gap:18px;flex-wrap:wrap;margin-top:28px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+  .hero .sub span{border:1px solid var(--line);padding:6px 12px;border-radius:999px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:28px 0}
+  .topbar .meta{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.1em}
+
+  .grid{display:grid;gap:24px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:820px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px}
+  .logo-stage{background:
+      linear-gradient(180deg,var(--surface),var(--surface-2));
+      border:1px solid var(--line);border-radius:20px;padding:56px;display:flex;align-items:center;justify-content:center;min-height:240px}
+  .logo-stage.light{background:var(--mist)}
+
+  /* swatches */
+  .swatch{border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+  .swatch .chip{height:120px}
+  .swatch .info{padding:14px 16px;background:var(--surface);font-family:var(--mono);font-size:12px;line-height:1.7}
+  .swatch .info b{font-family:var(--body);font-weight:700;font-size:13px;display:block;letter-spacing:.02em}
+  .swatch .info .hex{color:var(--signal)}
+
+  .type-spec{padding:24px 0;border-bottom:1px dashed var(--line)}
+  .type-spec:last-child{border-bottom:0}
+  .type-spec small{font-family:var(--mono);color:var(--muted);font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--signal);border:1px solid var(--signal-dim);padding:6px 12px;border-radius:999px;background:rgba(46,230,160,.06)}
+
+  .dodont{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:820px){.dodont{grid-template-columns:1fr}}
+  .do{border-left:3px solid var(--signal)}
+  .dont{border-left:3px solid #E5484D}
+  .tag{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+  .tag.ok{color:var(--signal)}
+  .tag.no{color:#E5484D}
+
+  .voice-row{display:flex;gap:20px;align-items:flex-start;padding:18px 0;border-bottom:1px dashed var(--line)}
+  .voice-row:last-child{border-bottom:0}
+  .voice-row .k{font-family:var(--display);font-weight:600;min-width:130px;color:var(--amber)}
+
+  footer{padding:60px 0;text-align:center;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .app-mock{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface)}
+  .app-mock .bar{height:40px;background:var(--surface-2);display:flex;align-items:center;gap:7px;padding:0 14px;border-bottom:1px solid var(--line)}
+  .app-mock .dot{width:10px;height:10px;border-radius:50%}
+  .app-mock .body{padding:26px}
+  .btn{font-family:var(--body);font-weight:700;font-size:14px;border-radius:10px;padding:11px 18px;border:0;cursor:pointer}
+  .btn-primary{background:var(--signal);color:#06231A}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--mist)}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<div class="wrap">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <!-- mini mark -->
+      <svg width="30" height="30" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="19" stroke="#2EE6A0" stroke-width="2.5"/>
+        <path d="M24 5 V13 M24 35 V43 M5 24 H13 M35 24 H43" stroke="#2EE6A0" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="24" cy="24" r="5.5" fill="#2EE6A0"/>
+      </svg>
+      <strong style="font-family:var(--display);letter-spacing:-.01em">Hunter&nbsp;AI</strong>
+    </div>
+    <div class="meta">BRAND BOOK · v1.0 · 2026</div>
+  </div>
+</div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Ecossistema de Inteligência Artificial</div>
+    <h1>Hunter<span class="ai">.AI</span></h1>
+    <p class="lede" style="margin-top:24px">A inteligência que caça oportunidades para pequenos e médios negócios. Um ecossistema de IA que trabalha enquanto você cresce.</p>
+    <div class="sub">
+      <span>IA para PMEs</span>
+      <span>Automação · Insights · Crescimento</span>
+      <span>Família Hunter</span>
+    </div>
+  </div>
+</header>
+
+<!-- ESSENCE -->
+<section id="essence">
+  <div class="wrap">
+    <div class="eyebrow">01 — Essência</div>
+    <h2>O caçador inteligente do pequeno negócio</h2>
+    <div class="grid g3" style="margin-top:40px">
+      <div class="card">
+        <div class="pill">Propósito</div>
+        <h3 style="margin-top:16px">Democratizar a IA</h3>
+        <p class="muted">Levar para a padaria, a clínica e a loja de bairro a mesma inteligência que antes só as grandes empresas tinham.</p>
+      </div>
+      <div class="card">
+        <div class="pill">Promessa</div>
+        <h3 style="margin-top:16px">Sempre em alerta</h3>
+        <p class="muted">Como um bom caçador, a Hunter AI observa, antecipa e age — encontra a oportunidade antes do concorrente.</p>
+      </div>
+      <div class="card">
+        <div class="pill">Personalidade</div>
+        <h3 style="margin-top:16px">Esperta e próxima</h3>
+        <p class="muted">Tecnologia de ponta com linguagem de gente. Confiante sem ser arrogante, simples sem ser rasa.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOGO -->
+<section id="logo">
+  <div class="wrap">
+    <div class="eyebrow">02 — Logotipo</div>
+    <h2>A marca</h2>
+    <p class="lede">O símbolo é uma <b>retícula de mira</b> (crosshair) — o mesmo formato da família Hunter. Representa o foco absoluto no alvo certo; o ponto central é a oportunidade capturada. A AdHunter usa a mesma mira em ember; a Hunter AI, em <b>verde-sinal</b>, sua cor de assinatura.</p>
+
+    <div class="grid g2" style="margin-top:40px">
+      <div class="logo-stage">
+        <svg width="320" height="120" viewBox="0 0 320 120" fill="none">
+          <circle cx="40" cy="50" r="30" stroke="#2EE6A0" stroke-width="3"/>
+          <path d="M40 12 V26 M40 74 V88 M2 50 H16 M64 50 H78" stroke="#2EE6A0" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="40" cy="50" r="8" fill="#2EE6A0"/>
+          <text x="100" y="62" font-family="Space Grotesk" font-size="40" font-weight="700" fill="#E8EFEA">Hunter</text>
+          <text x="232" y="62" font-family="Space Grotesk" font-size="40" font-weight="700" fill="#2EE6A0">.AI</text>
+        </svg>
+      </div>
+      <div class="logo-stage light">
+        <svg width="320" height="120" viewBox="0 0 320 120" fill="none">
+          <circle cx="40" cy="50" r="30" stroke="#1FA877" stroke-width="3"/>
+          <path d="M40 12 V26 M40 74 V88 M2 50 H16 M64 50 H78" stroke="#1FA877" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="40" cy="50" r="8" fill="#1FA877"/>
+          <text x="100" y="62" font-family="Space Grotesk" font-size="40" font-weight="700" fill="#0A0F0D">Hunter</text>
+          <text x="232" y="62" font-family="Space Grotesk" font-size="40" font-weight="700" fill="#1FA877">.AI</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="grid g3" style="margin-top:24px">
+      <div class="logo-stage" style="min-height:180px">
+        <svg width="100" height="120" viewBox="0 0 100 120" fill="none">
+          <circle cx="50" cy="56" r="34" stroke="#2EE6A0" stroke-width="3.4"/>
+          <path d="M50 8 V24 M50 88 V104 M4 56 H20 M80 56 H96" stroke="#2EE6A0" stroke-width="3.4" stroke-linecap="round"/>
+          <circle cx="50" cy="56" r="11" fill="#2EE6A0"/>
+        </svg>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;justify-content:center">
+        <h3>Símbolo (reticle)</h3>
+        <p class="muted">Use a mira sozinha em avatares, app icons e favicons. Mira centralizada, respiro mínimo = raio do ponto central ×3.</p>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;justify-content:center">
+        <h3>Assinatura</h3>
+        <p class="muted">"Hunter" em branco/tinta, ".AI" sempre no verde-sinal. Mesma família tipográfica e mesmo formato de mira da AdHunter — só muda a cor.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COLOR -->
+<section id="color">
+  <div class="wrap">
+    <div class="eyebrow">03 — Cor</div>
+    <h2>Paleta</h2>
+    <p class="lede">Verde-sinal sobre fundo profundo evoca visão noturna e instinto de caça; o âmbar adiciona o calor humano que conecta com o pequeno empreendedor.</p>
+
+    <div class="grid g4" style="margin-top:40px">
+      <div class="swatch"><div class="chip" style="background:#2EE6A0"></div><div class="info"><b>Signal Green</b><span class="hex">#2EE6A0</span> · IA ativa / CTA</div></div>
+      <div class="swatch"><div class="chip" style="background:#0E4D3A"></div><div class="info"><b>Hunter Green</b><span class="hex">#0E4D3A</span> · profundidade</div></div>
+      <div class="swatch"><div class="chip" style="background:#FFB23E"></div><div class="info"><b>Amber</b><span class="hex">#FFB23E</span> · calor / destaque</div></div>
+      <div class="swatch"><div class="chip" style="background:#0A0F0D"></div><div class="info"><b>Ink</b><span class="hex">#0A0F0D</span> · fundo base</div></div>
+      <div class="swatch"><div class="chip" style="background:#111815"></div><div class="info"><b>Surface</b><span class="hex">#111815</span> · cards</div></div>
+      <div class="swatch"><div class="chip" style="background:#243029"></div><div class="info"><b>Line</b><span class="hex">#243029</span> · bordas</div></div>
+      <div class="swatch"><div class="chip" style="background:#7A8B83"></div><div class="info"><b>Muted</b><span class="hex">#7A8B83</span> · texto sec.</div></div>
+      <div class="swatch"><div class="chip" style="background:#E8EFEA"></div><div class="info"><b>Mist</b><span class="hex">#E8EFEA</span> · texto / fundo claro</div></div>
+    </div>
+    <p class="muted" style="margin-top:24px;font-family:var(--mono);font-size:12px">PROPORÇÃO 60 / 30 / 10 — Ink &amp; Surface dominam · Mist estrutura o texto · Signal Green + Amber apenas como acento.</p>
+  </div>
+</section>
+
+<!-- TYPOGRAPHY -->
+<section id="type">
+  <div class="wrap">
+    <div class="eyebrow">04 — Tipografia</div>
+    <h2>Tipografia</h2>
+    <div style="margin-top:32px">
+      <div class="type-spec">
+        <small>Display · Space Grotesk 700</small>
+        <div style="font-family:var(--display);font-weight:700;font-size:clamp(34px,6vw,72px);line-height:1;margin-top:10px">Inteligência que caça oportunidades</div>
+      </div>
+      <div class="type-spec">
+        <small>Corpo · Manrope 400/600</small>
+        <p style="font-size:18px;margin-top:10px;max-width:62ch">A Hunter AI fala como um sócio que entende de tecnologia mas conversa como gente. Frases diretas, sem jargão, com a confiança de quem já encontrou a resposta. <b>Manrope</b> dá calor e legibilidade em qualquer tela.</p>
+      </div>
+      <div class="type-spec">
+        <small>Dados &amp; código · JetBrains Mono</small>
+        <div style="font-family:var(--mono);font-size:15px;margin-top:10px;color:var(--signal)">ROI +38%  ·  leads_qualificados: 124  ·  hunter.run(insights)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VOICE -->
+<section id="voice">
+  <div class="wrap">
+    <div class="eyebrow">05 — Tom de voz</div>
+    <h2>Como a Hunter AI fala</h2>
+    <div class="card" style="margin-top:32px">
+      <div class="voice-row"><div class="k">Próxima</div><p class="muted">Tratamos por "você". Falamos a língua do dono do negócio, não a do engenheiro. "A gente cuida disso pra você."</p></div>
+      <div class="voice-row"><div class="k">Afiada</div><p class="muted">Direto ao ponto. Cada frase tem um alvo. Cortamos o que não ajuda a decidir.</p></div>
+      <div class="voice-row"><div class="k">Confiante</div><p class="muted">Mostramos resultado, não promessa vazia. Dados quando há dados; honestidade quando não há.</p></div>
+      <div class="voice-row"><div class="k">Otimista</div><p class="muted">Toda oportunidade é uma caça que vale a pena. Energia que move o pequeno negócio pra frente.</p></div>
+    </div>
+    <div class="grid g2" style="margin-top:24px">
+      <div class="card do"><span class="tag ok">✓ Escreva assim</span><p style="margin-top:12px">"Sua loja vendeu 22% a mais essa semana. A Hunter encontrou 3 anúncios que estão puxando o resultado — quer dobrar a aposta neles?"</p></div>
+      <div class="card dont"><span class="tag no">✕ Evite</span><p style="margin-top:12px">"Nossa plataforma de IA leverage machine learning de ponta para otimizar KPIs e maximizar sinergias de performance omnichannel."</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- APPLICATION -->
+<section id="apps">
+  <div class="wrap">
+    <div class="eyebrow">06 — Aplicações</div>
+    <h2>A marca em uso</h2>
+    <div class="grid g2" style="margin-top:40px">
+      <div class="app-mock">
+        <div class="bar"><span class="dot" style="background:#E5484D"></span><span class="dot" style="background:#FFB23E"></span><span class="dot" style="background:#2EE6A0"></span></div>
+        <div class="body">
+          <div class="pill">Hunter · Dashboard</div>
+          <h3 style="margin-top:16px">Bom dia, Victor 👋</h3>
+          <p class="muted" style="font-size:14px">Encontrei 2 oportunidades hoje.</p>
+          <div style="margin-top:18px;display:flex;gap:10px">
+            <button class="btn btn-primary">Ver oportunidades</button>
+            <button class="btn btn-ghost">Depois</button>
+          </div>
+          <div style="margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px">
+            faturamento <span style="color:var(--signal)">+18.4%</span> · novos clientes <span style="color:var(--signal)">+9</span>
+          </div>
+        </div>
+      </div>
+      <div class="logo-stage" style="flex-direction:column;gap:18px">
+        <svg width="80" height="96" viewBox="0 0 100 120" fill="none">
+          <circle cx="50" cy="56" r="34" stroke="#2EE6A0" stroke-width="3.4"/>
+          <path d="M50 8 V24 M50 88 V104 M4 56 H20 M80 56 H96" stroke="#2EE6A0" stroke-width="3.4" stroke-linecap="round"/>
+          <circle cx="50" cy="56" r="11" fill="#2EE6A0"/>
+        </svg>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center">App icon · favicon · avatar<br>fundo Ink, mark centralizado</div>
+      </div>
+    </div>
+
+    <div class="dodont" style="margin-top:24px">
+      <div class="card do"><span class="tag ok">✓ Faça</span><p style="margin-top:12px" class="muted">Use bastante espaço negativo escuro. Deixe o verde-sinal brilhar em poucos pontos. Combine com fotografia real de pequenos negócios.</p></div>
+      <div class="card dont"><span class="tag no">✕ Não faça</span><p style="margin-top:12px" class="muted">Não use gradientes roxos genéricos de IA, não encha a tela de verde, não distorça a mira nem troque a cor do ".AI".</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  HUNTER AI · BRAND BOOK v1.0 · família de marcas Hunter · documento vivo, ajustável conforme evolução
+</footer>
+</body>
+</html>
