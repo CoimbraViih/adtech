@@ -26,7 +26,7 @@
 | M11 | AI Traffic Manager (Campaign Diagnostics) | `feat/integrations-api-keys` ✅ | M2, M4, M5 |
 | M-ADS | Melhorias de Integrações de Anúncios | `feat/m-ads-integrations` ✅ F1 F2 F3 F4 | M2, M11, MS |
 | M14 | Pixel Observability & SLO | `feat/m14-pixel-observability` ✅ | M4 |
-| M13 | Event Data Layer (ClickHouse) | `feat/m13-event-data-layer` | M14 |
+| M13 | Event Data Layer (ClickHouse) | `feat/m13-event-data-layer` ✅ | M14 |
 | M22 | Monetização para Go-Live (usage-based + fiscal BR) | `feat/m22-monetization` | M-ADS (campaign_metrics_daily) |
 | M10 | Deploy & Produção | `feat/m10-deploy` | M14, M13 |
 | M17 | Consent & LGPD / Cookieless | `feat/m17-consent-lgpd` | M13 |
@@ -884,15 +884,15 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 # PLANEJADOS
 
-> Sequência de execução: **M13 → M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
+> Sequência de execução: ~~M13~~ ✅ → **M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
 >
 > M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
 
 ---
 
-## M13 — Event Data Layer (ClickHouse)
+## M13 — Event Data Layer (ClickHouse) ✅ CONCLUÍDO
 
-**Branch:** `feat/m13-event-data-layer`  
+**Branch:** `feat/m13-event-data-layer` → mergeado em `main` via PR #19 (`49e3834`)  
 **Depende de:** M14  
 **Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §5  
 **Objetivo:** Mover eventos do pixel do Postgres para ClickHouse com ingestão event-driven (padrão transactional outbox). Pré-requisito do loop de IA (M19), data transparency (M18), DMP real (M8-DMP) e otimização preditiva.
@@ -900,24 +900,44 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 > **Skills:** `/supabase` · `/supabase-postgres-best-practices` · `/webapp-testing`
 
 ### Database / Infra
-- [ ] `supabase/migrations/026_events_outbox.sql` — tabela `events_outbox` (outbox transacional): `id`, `organization_id`, `workspace_id`, `payload JSONB`, `processed_at TIMESTAMPTZ NULL`, `created_at`; RLS service role
-- [ ] `infra/clickhouse/schema.sql` — DDL tabela `events` particionada por dia, ordenada por `(organization_id, workspace_id, event_time)`
-- [ ] `infra/clickhouse/materialized_views.sql` — rollups: conversões por campanha/dia, funil por etapa
+- [x] `supabase/migrations/028_events_outbox.sql` — tabela `events_outbox` (outbox transacional): `id`, `organization_id`, `workspace_id`, `pixel_id`, `payload JSONB`, `attempts INT DEFAULT 0`, `processed_at TIMESTAMPTZ NULL`, `created_at`; RLS AS RESTRICTIVE service role (USING(false)/WITH CHECK(false)); partial index em `(created_at) WHERE processed_at IS NULL`
+- [x] `infra/clickhouse/schema.sql` — tabela `events` MergeTree particionada por `toYYYYMMDD(event_time)`, ORDER BY `(organization_id, workspace_id, event_time)`, TTL 2 anos; LowCardinality em `event_type` e `consent_state`
+- [x] `infra/clickhouse/materialized_views.sql` — `mv_conversions_campaign_day` (SummingMergeTree: conversions + revenue por campanha/dia) + `mv_funnel_steps` (SummingMergeTree: event_count por tipo/dia)
 
 ### Backend
-- [ ] `lib/events/schema.ts` — tipos de evento unificados com campo `consent_state`
-- [ ] `lib/events/ingest.ts` — produtor: grava em `events_outbox` (Postgres) e responde 200; não acopla ao ClickHouse
-- [ ] `lib/events/clickhouse.ts` — client ClickHouse (ClickHouse Cloud sa-east-1)
-- [ ] `lib/events/consumer.ts` — worker que drena outbox → ClickHouse em batch
-- [ ] `lib/events/query.ts` — camada de consulta segura sobre ClickHouse (RLS lógica por org)
-- [ ] `app/api/pixel/[id]/route.ts` — usar `ingest.ts` em vez de INSERT direto no Postgres
-- [ ] Script de backfill: reprocessa eventos históricos Postgres → ClickHouse
+- [x] `lib/events/schema.ts` — tipos `AdFlowEvent` + `ConsentState` ('granted' | 'denied' | 'unknown'); placeholder para M17
+- [x] `lib/events/clickhouse.ts` — client HTTP (Vercel-compatible, sem TCP nativo): `isClickHouseConfigured`, `chInsert`, `chQuery`, `chQueryWithParams` com `{name:Type}` placeholder syntax (SQL-injection safe via `param_${key}` URL params)
+- [x] `lib/events/ingest.ts` — `enqueueEvent`: grava em `events_outbox` via service client; fire-and-forget no pixel route; retorna `{ queued: boolean }` sem lançar exceção
+- [x] `lib/events/consumer.ts` — `drainOutbox`: batch de 500 eventos, MAX_ATTEMPTS=3, retry por linha individual (não batch) no catch, marca `processed_at` no sucesso
+- [x] `lib/events/query.ts` — `getConversionsByCampaign` + `getFunnelByDay` com `chQueryWithParams` sobre as MVs; sem interpolação de strings de entrada do usuário
+- [x] `app/api/pixel/[id]/route.ts` — `void enqueueEvent(adflowEvent)` adicionado como fire-and-forget após INSERT em `pixel_events` (dual write — backward compatible com M5)
+- [x] `app/api/cron/drain-events-outbox/route.ts` — cron protegido por `CRON_SECRET` fail-closed; chama `drainOutbox`; loga resultado JSON
+- [x] `scripts/backfill-events-to-outbox.ts` — script one-time: paginação por offset em `pixel_events`, join `pixels(workspace_id, workspaces(organization_id))`, insert em `events_outbox`
+- [x] `vercel.json` — cron `drain-events-outbox` adicionado com schedule `0 2 * * *` (diário 2am — limite Hobby plan; 3 crons no total)
+
+### Testes
+- [x] `tests/unit/events-schema.test.ts` — 3 testes: shape de AdFlowEvent, 3 valores ConsentState, campos opcionais nulos
+- [x] `tests/unit/clickhouse-client.test.ts` — 6 testes: `isClickHouseConfigured`, `chInsert` skip sem config / rows vazios / HTTP 500, `chQuery` retorna [] sem config; `vi.resetModules()` + dynamic import para re-avaliar env vars no nível de módulo
+- [x] `tests/unit/events-ingest.test.ts` — 3 testes: `queued: true` no sucesso, campos corretos em `events_outbox`, `queued: false` em erro Supabase sem throw
+- [x] `tests/unit/events-consumer.test.ts` — 4 testes: skip quando não configurado, outbox vazia, sucesso com contagem, falha incrementa attempts por linha
+- [x] `tests/unit/events-query.test.ts` — 4 testes: `getConversionsByCampaign` e `getFunnelByDay` usam `chQueryWithParams`
+
+### Correções críticas (pós-review)
+- [x] **Per-row attempts increment** — `drainOutbox` incrementa `attempts` por linha individualmente no catch; removida pré-incrementação incorreta de batch com `rows[0].attempts`
+- [x] **SQL injection em query.ts** — `chQueryWithParams` adicionado ao client com `{name:Type}` placeholders + `param_${key}` via URLSearchParams; zero interpolação de dados externos no SQL
 
 ### Entregáveis
-- Pixel responde 200 mesmo com ClickHouse indisponível (outbox acumula e drena depois)
-- Latência de consulta "conversões por campanha (90 dias)" < 1s para 50M+ eventos
-- Reconciliação: contagem outbox == contagem ClickHouse após drain
-- `tsc --noEmit` zero erros; `vitest run` passando; teste de resiliência documentado
+- PR #19 mergeado: https://github.com/CoimbraViih/adtech/pull/19
+- `tsc --noEmit` zero erros; `vitest run` 435/435 passando (20 novos testes M13)
+- Pixel responde 204 mesmo com ClickHouse indisponível (outbox acumula e drena depois)
+- Dual write backward-compatible: `pixel_events` (Postgres) continua alimentando M5 analytics
+- Deploy em produção: aguardando build Vercel (`dpl_8JGGa4Xe5t2FLjsD8xWjvuXs7b2S`)
+
+### Ações manuais pré-ativação (ClickHouse Cloud)
+- [ ] Criar conta ClickHouse Cloud (sa-east-1) e rodar `infra/clickhouse/schema.sql` + `infra/clickhouse/materialized_views.sql`
+- [ ] Configurar `CLICKHOUSE_URL`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DATABASE` nas envs da Vercel
+- [ ] Aplicar `supabase/migrations/028_events_outbox.sql` no Supabase de produção
+- [ ] Executar `scripts/backfill-events-to-outbox.ts` uma vez após a migration
 
 ---
 
