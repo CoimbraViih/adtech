@@ -70,15 +70,26 @@ ALTER TABLE pixels ADD COLUMN IF NOT EXISTS cmp_site_key TEXT;
 ALTER TABLE pixels ADD COLUMN IF NOT EXISTS data_retention_days INT NOT NULL DEFAULT 365;
 
 -- Função para anonimizar PII no payload JSONB do outbox (usada pelo endpoint LGPD)
-CREATE OR REPLACE FUNCTION strip_pii_from_outbox(p_organization_id UUID)
+-- p_session_ids: quando informado, aplica apenas às linhas com session_id correspondente
+CREATE OR REPLACE FUNCTION strip_pii_from_outbox(
+  p_organization_id UUID,
+  p_session_ids TEXT[] DEFAULT NULL
+)
 RETURNS void
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
+BEGIN
   UPDATE events_outbox
   SET payload = payload
     - 'session_id'
     - 'ip'
     - 'user_agent'
-  WHERE organization_id = p_organization_id;
+  WHERE organization_id = p_organization_id
+    AND (
+      p_session_ids IS NULL
+      OR payload->>'session_id' = ANY(p_session_ids)
+    );
+END;
 $$;
