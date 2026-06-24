@@ -199,22 +199,37 @@ export async function POST(request: Request) {
           internalInvoice as { id: string; organization_id: string; billing_period_id: string };
 
         // 2. Mark invoice as paid
-        await supabase
+        const { error: invErr } = await supabase
           .from("invoices")
           .update({ status: "paid", paid_at: new Date().toISOString() })
           .eq("id", invoiceId);
 
+        if (invErr) {
+          console.error("[invoice.paid] invoices update failed:", invErr.message);
+          return NextResponse.json({ error: "DB write failed" }, { status: 500 });
+        }
+
         // 3. Unblock the org
-        await supabase
+        const { error: orgErr } = await supabase
           .from("organizations")
           .update({ billing_status: "active" })
           .eq("id", orgId);
 
+        if (orgErr) {
+          console.error("[invoice.paid] organizations update failed:", orgErr.message);
+          return NextResponse.json({ error: "DB write failed" }, { status: 500 });
+        }
+
         // 4. Close the billing period
-        await supabase
+        const { error: periodErr } = await supabase
           .from("billing_periods")
           .update({ status: "paid" })
           .eq("id", billingPeriodId);
+
+        if (periodErr) {
+          console.error("[invoice.paid] billing_periods update failed:", periodErr.message);
+          return NextResponse.json({ error: "DB write failed" }, { status: 500 });
+        }
 
         // 5. Log the event (ensures idempotency — re-delivery from Stripe won't re-process)
         await logBillingEvent(
@@ -258,15 +273,27 @@ export async function POST(request: Request) {
 
         if (internalInvoice) {
           const { organization_id: orgId } = internalInvoice as { organization_id: string };
-          await supabase
+
+          const { error: pastDueErr } = await supabase
             .from("organizations")
             .update({ billing_status: "past_due" })
             .eq("id", orgId);
+
+          if (pastDueErr) {
+            console.error("[invoice.payment_failed] organizations update failed:", pastDueErr.message);
+            return NextResponse.json({ error: "DB write failed" }, { status: 500 });
+          }
+
           // Mark the local invoice as payment_failed (requires migration 030)
-          await supabase
+          const { error: failedInvErr } = await supabase
             .from("invoices")
             .update({ status: "payment_failed" })
             .eq("stripe_invoice_id", invoice.id);
+
+          if (failedInvErr) {
+            console.error("[invoice.payment_failed] invoices update failed:", failedInvErr.message);
+            return NextResponse.json({ error: "DB write failed" }, { status: 500 });
+          }
         }
 
         await logBillingEvent(
