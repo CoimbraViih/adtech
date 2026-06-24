@@ -109,9 +109,11 @@
       }
     } else if (subcommand === 'update') {
       _consentState = newState;
-      _consentResolved = true;
-      if (newState === 'denied') clearSessionId();
-      drainQueue();
+      if (newState !== 'unknown') {
+        _consentResolved = true;
+        if (newState === 'denied') clearSessionId();
+        drainQueue();
+      }
     }
   }
 
