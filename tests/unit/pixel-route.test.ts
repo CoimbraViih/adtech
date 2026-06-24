@@ -63,6 +63,10 @@ describe("POST /api/pixel/[id]", () => {
         error: null,
       }),
     });
+    // events_outbox insert (enqueueEvent — fire-and-forget)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    });
 
     const req = makeRequest(PIXEL_ID, { event_type: "page_view" }, {
       "x-forwarded-for": "1.2.3.4",
@@ -163,6 +167,10 @@ describe("POST /api/pixel/[id]", () => {
         data: { organization_id: "org_1" },
         error: null,
       }),
+    });
+    // events_outbox insert (enqueueEvent — fire-and-forget)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
     });
 
     const req = makeRequest(PIXEL_ID, { event_type: "purchase" }, { "x-forwarded-for": "1.2.3.4" });

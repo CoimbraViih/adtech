@@ -9,6 +9,8 @@ import { logPixelMetric } from "@/lib/observability/metrics";
 import type { Pixel, PixelEventInsert } from "@/types/database";
 import { enqueueEvent }  from '@/lib/events/ingest';
 import type { AdFlowEvent } from '@/lib/events/schema';
+import { gcmToConsentState, normalizeConsentState } from '@/lib/consent/mode';
+import type { GcmSignals } from '@/lib/consent/mode';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -152,21 +154,35 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
     return NextResponse.json({ error: "Origin not allowed." }, { status: 403 });
   }
 
-  // 7. Store event with masked IP (LGPD)
-  const maskedIp = maskIp(rawIp === "unknown" ? null : rawIp);
+  // 7. Resolve consent state (gcm_signals takes precedence over explicit consent_state)
+  const resolvedConsent = parsed.data.gcm_signals
+    ? gcmToConsentState(parsed.data.gcm_signals as GcmSignals)
+    : normalizeConsentState(parsed.data.consent_state);
 
+  // 8. Strip PII when consent is denied (defense in depth — browser already strips client-side)
+  const maskedIp = maskIp(rawIp === "unknown" ? null : rawIp);
+  const safeIp        = resolvedConsent === 'denied' ? null : maskedIp;
+  const safeSessionId = resolvedConsent === 'denied' ? null : (parsed.data.session_id ?? null);
+  const safeUrl       = resolvedConsent === 'denied'
+    ? (parsed.data.url ? new URL(parsed.data.url).origin : null)
+    : (parsed.data.url ?? null);
+  const safeReferrer  = resolvedConsent === 'denied' ? null : (parsed.data.referrer ?? null);
+  const safeUserAgent = resolvedConsent === 'denied' ? null : (req.headers.get("user-agent") ?? null);
+  const safeProps     = resolvedConsent === 'denied' ? null : ((parsed.data.properties as Record<string, unknown>) ?? null);
+
+  // 9. Store event in pixel_events
   const eventInsert: PixelEventInsert = {
-    pixel_id: pixelId,
+    pixel_id:   pixelId,
     event_type: parsed.data.event_type,
     event_name: parsed.data.event_name ?? null,
-    url: parsed.data.url ?? null,
-    referrer: parsed.data.referrer ?? null,
-    ip: maskedIp,
-    user_agent: req.headers.get("user-agent") ?? null,
-    session_id: parsed.data.session_id ?? null,
-    value: parsed.data.value ?? null,
-    currency: parsed.data.currency ?? null,
-    properties: (parsed.data.properties as Record<string, unknown>) ?? null,
+    url:        safeUrl,
+    referrer:   safeReferrer,
+    ip:         safeIp,
+    user_agent: safeUserAgent,
+    session_id: safeSessionId,
+    value:      parsed.data.value ?? null,
+    currency:   parsed.data.currency ?? null,
+    properties: safeProps,
   };
 
   const { data: savedEvent, error: insertError } = await (supabase.from("pixel_events") as unknown as EventQueryChain)
@@ -186,7 +202,7 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
     return NextResponse.json({ error: "Failed to record event." }, { status: 500 });
   }
 
-  // 8. Workspace lookup (best-effort, para fanout e métricas)
+  // 10. Workspace lookup (best-effort)
   const { data: workspace, error: workspaceError } = await (supabase.from("workspaces") as unknown as WorkspaceQueryChain)
     .select("organization_id")
     .eq("id", pixel.workspace_id)
@@ -197,12 +213,14 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
   }
   const organizationId = workspace?.organization_id ?? "";
 
-  // 9. Fire-and-forget fanout
-  fanoutToPlatforms(savedEvent as Parameters<typeof fanoutToPlatforms>[0], pixel, organizationId).catch(
-    (err) => console.error("[pixel/ingest] fanout error:", (err as Error).message)
-  );
+  // 11. Fire-and-forget fanout (only when consent granted or unknown)
+  if (resolvedConsent !== 'denied') {
+    fanoutToPlatforms(savedEvent as Parameters<typeof fanoutToPlatforms>[0], pixel, organizationId).catch(
+      (err) => console.error("[pixel/ingest] fanout error:", (err as Error).message)
+    );
+  }
 
-  // 10. Enqueue to events_outbox for ClickHouse pipeline (M13 dual write — fire-and-forget)
+  // 12. Enqueue to events_outbox (M13 dual write)
   const adflowEvent: AdFlowEvent = {
     event_id:        crypto.randomUUID(),
     organization_id: organizationId || '',
@@ -210,15 +228,15 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
     pixel_id:        pixelId,
     event_type:      parsed.data.event_type,
     event_name:      parsed.data.event_name ?? null,
-    session_id:      parsed.data.session_id ?? null,
-    url:             parsed.data.url ?? null,
-    referrer:        parsed.data.referrer ?? null,
-    ip:              maskedIp,
-    user_agent:      req.headers.get('user-agent') ?? null,
+    session_id:      safeSessionId,
+    url:             safeUrl,
+    referrer:        safeReferrer,
+    ip:              safeIp,
+    user_agent:      safeUserAgent,
     value:           parsed.data.value ?? null,
     currency:        parsed.data.currency ?? null,
-    properties:      (parsed.data.properties as Record<string, unknown>) ?? {},
-    consent_state:   'unknown',
+    properties:      safeProps ?? {},
+    consent_state:   resolvedConsent,
     event_time:      new Date().toISOString(),
   };
   void enqueueEvent(adflowEvent);
