@@ -1,4 +1,4 @@
-import { chQuery } from './clickhouse';
+import { chQueryWithParams } from './clickhouse';
 
 export type ConversionRow = {
   campaign_id: string;
@@ -23,20 +23,21 @@ export async function getConversionsByCampaign(
   startDate: string,  // YYYY-MM-DD
   endDate: string     // YYYY-MM-DD
 ): Promise<ConversionRow[]> {
-  return chQuery<ConversionRow>(`
-    SELECT
+  return chQueryWithParams<ConversionRow>(
+    `SELECT
       campaign_id,
       toString(event_day) AS event_day,
       sum(conversions)    AS conversions,
       sum(revenue)        AS revenue
     FROM adflow.mv_conversions_campaign_day
-    WHERE organization_id = '${organizationId}'
-      AND workspace_id    = '${workspaceId}'
-      AND event_day BETWEEN '${startDate}' AND '${endDate}'
+    WHERE organization_id = {org_id:String}
+      AND workspace_id    = {ws_id:String}
+      AND event_day BETWEEN {start:String} AND {end:String}
       AND campaign_id != ''
     GROUP BY campaign_id, event_day
-    ORDER BY event_day DESC, conversions DESC
-  `);
+    ORDER BY event_day DESC, conversions DESC`,
+    { org_id: organizationId, ws_id: workspaceId, start: startDate, end: endDate }
+  );
 }
 
 /**
@@ -49,16 +50,17 @@ export async function getFunnelByDay(
   startDate: string,  // YYYY-MM-DD
   endDate: string     // YYYY-MM-DD
 ): Promise<FunnelRow[]> {
-  return chQuery<FunnelRow>(`
-    SELECT
+  return chQueryWithParams<FunnelRow>(
+    `SELECT
       event_type,
       toString(event_day) AS event_day,
       sum(event_count)    AS event_count
     FROM adflow.mv_funnel_steps
-    WHERE organization_id = '${organizationId}'
-      AND workspace_id    = '${workspaceId}'
-      AND event_day BETWEEN '${startDate}' AND '${endDate}'
+    WHERE organization_id = {org_id:String}
+      AND workspace_id    = {ws_id:String}
+      AND event_day BETWEEN {start:String} AND {end:String}
     GROUP BY event_type, event_day
-    ORDER BY event_day DESC, event_count DESC
-  `);
+    ORDER BY event_day DESC, event_count DESC`,
+    { org_id: organizationId, ws_id: workspaceId, start: startDate, end: endDate }
+  );
 }

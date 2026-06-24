@@ -6,13 +6,14 @@ vi.mock('@/lib/events/clickhouse', () => ({
 }));
 
 const mockIn = vi.fn().mockReturnThis();
-const mockUpdate = vi.fn().mockReturnValue({ in: mockIn });
+const mockEq = vi.fn().mockResolvedValue({ error: null });
+const mockUpdate = vi.fn().mockReturnValue({ in: mockIn, eq: mockEq });
 const mockLimit = vi.fn();
 const mockOrder = vi.fn().mockReturnValue({ limit: mockLimit });
 const mockLt = vi.fn().mockReturnValue({ order: mockOrder });
 const mockIs = vi.fn().mockReturnValue({ lt: mockLt });
 const mockSelect = vi.fn().mockReturnValue({ is: mockIs });
-const mockFrom = vi.fn().mockReturnValue({ select: mockSelect, update: mockUpdate, in: mockIn });
+const mockFrom = vi.fn().mockReturnValue({ select: mockSelect, update: mockUpdate, in: mockIn, eq: mockEq });
 
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({ from: mockFrom }),

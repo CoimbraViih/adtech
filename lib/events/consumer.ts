@@ -38,15 +38,9 @@ export async function drainOutbox(): Promise<DrainResult> {
   const ids     = rows.map(r => r.id as string);
   const events  = rows.map(r => r.payload as AdFlowEvent);
 
-  // Increment attempt counter BEFORE trying ClickHouse (fail-safe)
-  await supabase
-    .from('events_outbox')
-    .update({ attempts: rows[0].attempts as number + 1 })
-    .in('id', ids);
-
   try {
     await chInsert('events', events);
-    // Mark rows as processed
+    // Success: mark all rows processed
     await supabase
       .from('events_outbox')
       .update({ processed_at: new Date().toISOString() })
@@ -54,6 +48,13 @@ export async function drainOutbox(): Promise<DrainResult> {
     return { processed: rows.length, failed: 0, skipped: 0 };
   } catch (err) {
     console.error('[events/consumer] ClickHouse insert failed:', (err as Error).message);
+    // Failure: increment attempts per row to respect each row's current count
+    for (const row of rows) {
+      await supabase
+        .from('events_outbox')
+        .update({ attempts: (row.attempts as number) + 1 })
+        .eq('id', row.id as string);
+    }
     return { processed: 0, failed: rows.length, skipped: 0 };
   }
 }

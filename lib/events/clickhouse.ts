@@ -51,3 +51,32 @@ export async function chQuery<T>(sql: string): Promise<T[]> {
   const json = await res.json() as { data: T[] };
   return json.data;
 }
+
+export async function chQueryWithParams<T>(
+  sql: string,
+  params: Record<string, string>
+): Promise<T[]> {
+  if (!isClickHouseConfigured()) return [];
+  const urlParams = new URLSearchParams({
+    database: database,
+    output_format_json_quote_64bit_integers: '0',
+  });
+  for (const [key, value] of Object.entries(params)) {
+    urlParams.set(`param_${key}`, value);
+  }
+  const res = await fetch(`${baseUrl}/?${urlParams.toString()}`, {
+    method: 'POST',
+    headers: {
+      'X-ClickHouse-User': user,
+      'X-ClickHouse-Key':  password,
+      'Content-Type':      'text/plain',
+    },
+    body: `${sql} FORMAT JSON`,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`ClickHouse query failed (${res.status}): ${text.slice(0, 200)}`);
+  }
+  const json = await res.json() as { data: T[] };
+  return json.data;
+}
