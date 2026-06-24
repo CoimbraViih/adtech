@@ -8,70 +8,30 @@ import Link from "next/link";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const PLANS = [
+const TIERS = [
+  { range: "Gasto até R$2.000/mês", rate: "10%", neon: "#E8390E" },
+  { range: "R$2.001 – R$5.000/mês", rate: "5%", neon: "#F59E0B" },
+  { range: "Acima de R$5.000/mês", rate: "3%", neon: "#10B981" },
+];
+
+const INFO_CARDS = [
   {
-    name: "Free",
-    price: "R$0",
-    period: "/mês",
-    desc: "Para testar e validar",
-    neon: "#334155",
-    cta: "Criar conta",
-    ctaHref: "/signup",
-    highlight: false,
-    features: [
-      { text: "1 workspace", ok: true },
-      { text: "Meta Ads (só leitura)", ok: true },
-      { text: "Pixel básico", ok: true },
-      { text: "500 eventos/mês", ok: true },
-      { text: "Atribuição multi-touch", ok: false },
-      { text: "IA de criativos", ok: false },
-      { text: "Programático", ok: false },
-    ],
+    title: "Sem setup",
+    desc: "Conecte Meta e Google em minutos. Zero taxa de setup ou onboarding.",
   },
   {
-    name: "Pro",
-    price: "R$997",
-    period: "/mês",
-    desc: "Para agências em crescimento",
-    neon: "#E8390E",
-    cta: "Começar agora",
-    ctaHref: "/signup?plan=pro",
-    highlight: true,
-    tag: "MAIS POPULAR",
-    features: [
-      { text: "3 workspaces", ok: true },
-      { text: "Meta + Google Ads", ok: true },
-      { text: "Pixel server-side", ok: true },
-      { text: "Eventos ilimitados", ok: true },
-      { text: "Atribuição multi-touch", ok: true },
-      { text: "IA de criativos (50/mês)", ok: true },
-      { text: "Programático", ok: false },
-    ],
+    title: "Tudo incluso",
+    desc: "IA de criativos, pixel server-side, atribuição multi-touch e automações — sem adicional.",
   },
   {
-    name: "Agency",
-    price: "R$2.997",
-    period: "/mês",
-    desc: "Para operações de alto volume",
-    neon: "#7b2fff",
-    cta: "Falar com vendas",
-    ctaHref: "/signup?plan=agency",
-    highlight: false,
-    features: [
-      { text: "Workspaces ilimitados", ok: true },
-      { text: "Meta + Google + Programático", ok: true },
-      { text: "Pixel server-side avançado", ok: true },
-      { text: "Eventos ilimitados", ok: true },
-      { text: "Atribuição multi-touch", ok: true },
-      { text: "IA de criativos ilimitada", ok: true },
-      { text: "DSP/SSP proprietário", ok: true },
-    ],
+    title: "Cancelamento livre",
+    desc: "Sem contrato mínimo. Cancele quando quiser.",
   },
 ];
 
 export function Pricing() {
   const sectionRef = useRef<HTMLElement>(null);
-  const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
   useGSAP(() => {
     const cards = gsap.utils.toArray<HTMLElement>(".price-card");
@@ -105,19 +65,21 @@ export function Pricing() {
         margin: "0 auto",
       }}
     >
+      {/* Divider */}
       <div style={{
         height: 1,
         background: "linear-gradient(90deg, transparent, #1E1E2E 20%, #1E1E2E 80%, transparent)",
         marginBottom: 80,
       }} />
 
+      {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 64 }}>
         <div style={{
           fontFamily: "var(--font-jetbrains, monospace)",
           fontSize: 10, color: "#E8390E",
           letterSpacing: "0.25em", marginBottom: 12, opacity: 0.8,
         }}>
-          // PLANOS DE ACESSO
+          // MODELO DE COBRANÇA
         </div>
         <h2 style={{
           fontFamily: "var(--font-space-grotesk, sans-serif)",
@@ -125,148 +87,166 @@ export function Pricing() {
           fontWeight: 700, color: "#ffffff", letterSpacing: "-0.02em",
           marginBottom: 12,
         }}>
-          Preço justo. Performance real.
+          Só paga quem gera resultado.
         </h2>
         <p style={{
           fontFamily: "var(--font-manrope, sans-serif)",
           fontSize: 15, color: "#64748b",
         }}>
-          Sem taxa de setup. Cancele quando quiser.
+          Pós-pago. Taxa sobre gasto gerenciado. Sem mensalidade.
         </p>
       </div>
 
+      {/* Main fee block */}
+      <div style={{
+        maxWidth: 680,
+        margin: "0 auto 64px",
+        background: "rgba(13,13,26,0.8)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderTop: "2px solid #E8390E",
+        borderRadius: 8,
+        padding: "40px 40px 32px",
+        backdropFilter: "blur(16px)",
+        boxShadow: "0 0 40px rgba(232,57,14,0.08)",
+      }}>
+        {/* Block label */}
+        <div style={{
+          fontFamily: "var(--font-jetbrains, monospace)",
+          fontSize: 10, color: "#E8390E",
+          letterSpacing: "0.2em", marginBottom: 24, opacity: 0.8,
+        }}>
+          // TAXA SOBRE GASTO GERENCIADO
+        </div>
+
+        {/* Tier table */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: 32 }}>
+          {TIERS.map((tier, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "14px 0",
+                borderBottom: i < TIERS.length - 1
+                  ? "1px solid rgba(255,255,255,0.05)"
+                  : "none",
+              }}
+            >
+              <span style={{
+                fontFamily: "var(--font-manrope, sans-serif)",
+                fontSize: 14, color: "#94a3b8",
+              }}>
+                {tier.range}
+              </span>
+              <span style={{
+                fontFamily: "var(--font-space-grotesk, sans-serif)",
+                fontSize: "clamp(1.1rem, 2vw, 1.4rem)",
+                fontWeight: 700,
+                color: tier.neon,
+                textShadow: `0 0 12px ${tier.neon}60`,
+                letterSpacing: "-0.01em",
+              }}>
+                {tier.rate}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Floor highlight */}
+        <div style={{
+          background: "rgba(232,57,14,0.06)",
+          border: "1px solid rgba(232,57,14,0.2)",
+          borderRadius: 4,
+          padding: "14px 18px",
+          marginBottom: 14,
+        }}>
+          <span style={{
+            fontFamily: "var(--font-manrope, sans-serif)",
+            fontSize: 14, color: "#ffffff", fontWeight: 600,
+          }}>
+            Piso R$197/mês
+          </span>
+          <span style={{
+            fontFamily: "var(--font-manrope, sans-serif)",
+            fontSize: 13, color: "#94a3b8",
+          }}>
+            {" "}— cobrado apenas quando há gasto ativo
+          </span>
+        </div>
+
+        <p style={{
+          fontFamily: "var(--font-manrope, sans-serif)",
+          fontSize: 13, color: "#64748b",
+        }}>
+          Sem gasto no mês = R$0. Simples assim.
+        </p>
+      </div>
+
+      {/* Info cards */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(3, 1fr)",
         gap: 20,
         alignItems: "start",
+        marginBottom: 56,
       }}>
-        {PLANS.map((plan) => (
+        {INFO_CARDS.map((card, i) => (
           <div
-            key={plan.name}
+            key={i}
             className="price-card"
-            onMouseEnter={() => setHoveredPlan(plan.name)}
-            onMouseLeave={() => setHoveredPlan(null)}
+            onMouseEnter={() => setHoveredCard(i)}
+            onMouseLeave={() => setHoveredCard(null)}
             style={{
-              background: plan.highlight
-                ? "rgba(232,57,14,0.05)"
-                : "rgba(13,13,26,0.8)",
-              border: `1px solid ${plan.highlight ? "rgba(232,57,14,0.3)" : "rgba(255,255,255,0.06)"}`,
-              borderTop: `2px solid ${plan.neon}`,
+              background: "rgba(13,13,26,0.8)",
+              border: `1px solid ${hoveredCard === i ? "rgba(232,57,14,0.2)" : "rgba(255,255,255,0.06)"}`,
               borderRadius: 8,
-              padding: "32px 28px",
-              position: "relative",
+              padding: "28px 24px",
               backdropFilter: "blur(16px)",
-              transition: "transform 0.3s ease, box-shadow 0.3s ease",
-              transform: hoveredPlan === plan.name ? "translateY(-6px)" : "translateY(0)",
-              boxShadow: hoveredPlan === plan.name
-                ? `0 20px 60px ${plan.neon}20`
-                : plan.highlight
-                  ? `0 0 40px rgba(232,57,14,0.12)`
-                  : "none",
+              transition: "transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease",
+              transform: hoveredCard === i ? "translateY(-6px)" : "translateY(0)",
+              boxShadow: hoveredCard === i
+                ? "0 20px 60px rgba(232,57,14,0.1)"
+                : "none",
             }}
           >
-            {plan.tag && (
-              <div style={{
-                position: "absolute", top: -12, left: "50%",
-                transform: "translateX(-50%)",
-                fontFamily: "var(--font-jetbrains, monospace)",
-                fontSize: 9, color: "#E8390E",
-                background: "#0D0D1A",
-                border: "1px solid rgba(232,57,14,0.3)",
-                padding: "2px 10px", borderRadius: 2,
-                letterSpacing: "0.2em", whiteSpace: "nowrap",
-              }}>
-                {plan.tag}
-              </div>
-            )}
-
-            <div style={{ marginBottom: 24 }}>
-              <div style={{
-                fontFamily: "var(--font-jetbrains, monospace)",
-                fontSize: 10, color: plan.neon,
-                letterSpacing: "0.15em", marginBottom: 8, opacity: 0.8,
-              }}>
-                {plan.name.toUpperCase()}
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 6 }}>
-                <span style={{
-                  fontFamily: "var(--font-space-grotesk, sans-serif)",
-                  fontSize: "clamp(1.8rem, 3vw, 2.4rem)",
-                  fontWeight: 700, color: "#ffffff",
-                }}>
-                  {plan.price}
-                </span>
-                <span style={{
-                  fontFamily: "var(--font-manrope, sans-serif)",
-                  fontSize: 13, color: "#475569",
-                }}>
-                  {plan.period}
-                </span>
-              </div>
-              <div style={{
-                fontFamily: "var(--font-manrope, sans-serif)",
-                fontSize: 13, color: "#64748b",
-              }}>
-                {plan.desc}
-              </div>
-            </div>
-
-            <Link
-              href={plan.ctaHref}
-              style={{
-                display: "block",
-                textAlign: "center",
-                padding: "10px 20px",
-                borderRadius: 3,
-                fontFamily: "var(--font-manrope, sans-serif)",
-                fontWeight: 700, fontSize: 13,
-                textDecoration: "none",
-                marginBottom: 28,
-                background: plan.highlight ? "#E8390E" : "transparent",
-                color: plan.highlight ? "#ffffff" : "#94a3b8",
-                border: plan.highlight ? "none" : `1px solid rgba(255,255,255,0.1)`,
-                boxShadow: plan.highlight ? "0 0 20px rgba(232,57,14,0.3)" : "none",
-                letterSpacing: "0.02em",
-              }}
-            >
-              {plan.cta}
-            </Link>
-
             <div style={{
-              height: 1,
-              background: "rgba(255,255,255,0.05)",
-              marginBottom: 20,
-            }} />
-
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-              {plan.features.map((f) => (
-                <li key={f.text} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}>
-                  <span style={{
-                    fontFamily: "var(--font-jetbrains, monospace)",
-                    fontSize: 11,
-                    color: f.ok ? "#10B981" : "#1E1E2E",
-                    flexShrink: 0,
-                    textShadow: f.ok ? "0 0 8px #10B98160" : "none",
-                  }}>
-                    {f.ok ? "✓" : "—"}
-                  </span>
-                  <span style={{
-                    fontFamily: "var(--font-manrope, sans-serif)",
-                    fontSize: 13,
-                    color: f.ok ? "#94a3b8" : "#2d3748",
-                  }}>
-                    {f.text}
-                  </span>
-                </li>
-              ))}
-            </ul>
+              fontFamily: "var(--font-space-grotesk, sans-serif)",
+              fontSize: 15, fontWeight: 700, color: "#ffffff",
+              marginBottom: 10,
+            }}>
+              {card.title}
+            </div>
+            <p style={{
+              fontFamily: "var(--font-manrope, sans-serif)",
+              fontSize: 13, color: "#64748b", lineHeight: 1.65,
+              margin: 0,
+            }}>
+              {card.desc}
+            </p>
           </div>
         ))}
+      </div>
+
+      {/* CTA */}
+      <div style={{ textAlign: "center" }}>
+        <Link
+          href="/signup"
+          style={{
+            display: "inline-block",
+            padding: "12px 36px",
+            borderRadius: 3,
+            fontFamily: "var(--font-manrope, sans-serif)",
+            fontWeight: 700, fontSize: 14,
+            textDecoration: "none",
+            background: "#E8390E",
+            color: "#ffffff",
+            boxShadow: "0 0 24px rgba(232,57,14,0.35)",
+            letterSpacing: "0.02em",
+          }}
+        >
+          Começar grátis
+        </Link>
       </div>
     </section>
   );
