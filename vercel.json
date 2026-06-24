@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/pixel-synthetic",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/drain-events-outbox",
+      "schedule": "0 2 * * *"
     }
   ]
 }
