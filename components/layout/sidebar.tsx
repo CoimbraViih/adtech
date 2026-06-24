@@ -14,8 +14,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { PlanBadge } from "@/components/billing/plan-badge";
-
 function AdFlowLogo({ collapsed }: { collapsed: boolean }) {
   return (
     <div
@@ -56,14 +54,13 @@ function DesktopSidebar() {
 
         <SidebarNav collapsed={collapsed} />
 
-        {/* Plan badge — links to billing page */}
+        {/* Billing link */}
         {!collapsed && (
           <Link
             href="/settings/billing"
-            className="flex items-center justify-between px-3 py-2 mx-2 mb-1 rounded-md hover:bg-[color:var(--adflow-border)] transition-colors"
+            className="flex items-center px-3 py-2 mx-2 mb-1 rounded-md hover:bg-[color:var(--adflow-border)] transition-colors"
           >
-            <span className="text-xs text-[color:var(--adflow-fg-muted)]">Plano atual</span>
-            <PlanBadge plan="free" />
+            <span className="text-xs text-[color:var(--adflow-fg-muted)]">Billing</span>
           </Link>
         )}
 

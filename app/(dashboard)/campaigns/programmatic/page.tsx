@@ -8,7 +8,6 @@ import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-d
 function canAccessProgrammatic(plan: string): boolean {
   return plan === "agency";
 }
-import { UpgradeBanner } from "@/components/billing/upgrade-banner";
 import { getServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 
 function fmt(n: number, dec = 0) {
@@ -29,7 +28,9 @@ export default async function ProgrammaticPage({
     return (
       <div className="space-y-4">
         <h1 className="text-lg font-semibold text-[color:var(--adflow-fg)]">Programático</h1>
-        <UpgradeBanner feature="Programático RTB" requiredPlan="agency" />
+        <div className="rounded-lg border border-[color:var(--adflow-border)] bg-[color:var(--adflow-surface)] p-5 text-sm text-[color:var(--adflow-fg-muted)]">
+          Programático RTB não está disponível no seu plano atual. Entre em contato para habilitar o acesso.
+        </div>
       </div>
     );
   }
