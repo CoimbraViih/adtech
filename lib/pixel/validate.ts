@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { GcmSignals } from '@/lib/consent/mode';
 
 /**
  * Preprocessor: normalise empty string / whitespace-only to null.
@@ -16,6 +17,9 @@ const gcmSignalsSchema = z.object({
   ad_user_data: z.enum(['granted', 'denied']).optional(),
   ad_personalization: z.enum(['granted', 'denied']).optional(),
 }).optional();
+
+// Compile-time check: Zod schema output must be assignable to GcmSignals
+type _GcmSignalsCheck = Exclude<z.infer<typeof gcmSignalsSchema>, undefined> extends GcmSignals ? true : never;
 
 const pixelEventSchema = z.object({
   event_type: z.enum(["page_view", "add_to_cart", "purchase", "lead", "sign_up", "custom"]),
