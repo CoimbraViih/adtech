@@ -10,6 +10,13 @@ const urlOrNull = z.preprocess(
   z.string().url().max(2048).optional().nullable()
 );
 
+const gcmSignalsSchema = z.object({
+  analytics_storage: z.enum(['granted', 'denied']).optional(),
+  ad_storage: z.enum(['granted', 'denied']).optional(),
+  ad_user_data: z.enum(['granted', 'denied']).optional(),
+  ad_personalization: z.enum(['granted', 'denied']).optional(),
+}).optional();
+
 const pixelEventSchema = z.object({
   event_type: z.enum(["page_view", "add_to_cart", "purchase", "lead", "sign_up", "custom"]),
   event_name: z.string().max(100).optional().nullable(),
@@ -19,6 +26,8 @@ const pixelEventSchema = z.object({
   value: z.number().nonnegative().optional().nullable(),
   currency: z.string().length(3).optional().nullable(),
   properties: z.record(z.string(), z.unknown()).optional().nullable(),
+  consent_state: z.enum(['granted', 'denied', 'unknown']).default('unknown'),
+  gcm_signals: gcmSignalsSchema,
 });
 
 export type ParsedPixelEvent = z.infer<typeof pixelEventSchema>;
