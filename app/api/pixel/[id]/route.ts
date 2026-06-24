@@ -7,6 +7,8 @@ import { createRateLimiter } from "@/lib/security/rate-limit";
 import { writeToDeadLetter } from "@/lib/pixel/dead-letter";
 import { logPixelMetric } from "@/lib/observability/metrics";
 import type { Pixel, PixelEventInsert } from "@/types/database";
+import { enqueueEvent }  from '@/lib/events/ingest';
+import type { AdFlowEvent } from '@/lib/events/schema';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -199,6 +201,27 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
   fanoutToPlatforms(savedEvent as Parameters<typeof fanoutToPlatforms>[0], pixel, organizationId).catch(
     (err) => console.error("[pixel/ingest] fanout error:", (err as Error).message)
   );
+
+  // 10. Enqueue to events_outbox for ClickHouse pipeline (M13 dual write — fire-and-forget)
+  const adflowEvent: AdFlowEvent = {
+    event_id:        crypto.randomUUID(),
+    organization_id: organizationId || '',
+    workspace_id:    pixel.workspace_id,
+    pixel_id:        pixelId,
+    event_type:      parsed.data.event_type,
+    event_name:      parsed.data.event_name ?? null,
+    session_id:      parsed.data.session_id ?? null,
+    url:             parsed.data.url ?? null,
+    referrer:        parsed.data.referrer ?? null,
+    ip:              maskedIp,
+    user_agent:      req.headers.get('user-agent') ?? null,
+    value:           parsed.data.value ?? null,
+    currency:        parsed.data.currency ?? null,
+    properties:      (parsed.data.properties as Record<string, unknown>) ?? {},
+    consent_state:   'unknown',
+    event_time:      new Date().toISOString(),
+  };
+  void enqueueEvent(adflowEvent);
 
   logPixelMetric({
     pixelId,

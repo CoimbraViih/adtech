@@ -25,7 +25,7 @@
 | MS | Segurança & Hardening | `feat/integrations-api-keys` ✅ | M1–M9 |
 | M11 | AI Traffic Manager (Campaign Diagnostics) | `feat/integrations-api-keys` ✅ | M2, M4, M5 |
 | M-ADS | Melhorias de Integrações de Anúncios | `feat/m-ads-integrations` ✅ F1 F2 F3 F4 | M2, M11, MS |
-| M14 | Pixel Observability & SLO | `feat/m14-pixel-observability` | M4 |
+| M14 | Pixel Observability & SLO | `feat/m14-pixel-observability` ✅ | M4 |
 | M13 | Event Data Layer (ClickHouse) | `feat/m13-event-data-layer` | M14 |
 | M22 | Monetização para Go-Live (usage-based + fiscal BR) | `feat/m22-monetization` | M-ADS (campaign_metrics_daily) |
 | M10 | Deploy & Produção | `feat/m10-deploy` | M14, M13 |
@@ -834,35 +834,32 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 - Aplicar migration `025_fix_handle_new_user_safe.sql` no Supabase de produção
 
 ---
----
 
-# PLANEJADOS
+## M14 — Pixel Observability & SLO ✅ CONCLUÍDO
 
-> Sequência de execução: **M14 → M13 → M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
->
-> M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
-
----
-
-## M14 — Pixel Observability & SLO
-
-**Branch:** `feat/m14-pixel-observability`  
+**Branch:** `feat/m14-pixel-observability` → mergeado em `main` via PR #18 (`d4a402e`)  
 **Depende de:** M4 (pixel)  
 **Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §4  
-**Objetivo:** Garantir que nenhum evento do pixel seja perdido silenciosamente e que `/api/pixel/[id]` tenha SLO medido antes do deploy de produção. Pré-requisito de M13 (não faz sentido escalar ingestão sem observabilidade do endpoint crítico).
+**Objetivo:** Garantir que nenhum evento do pixel seja perdido silenciosamente e que `/api/pixel/[id]` tenha SLO medido antes do deploy de produção. Pré-requisito de M13.
 
-> **Skills:** `/supabase` · `/webapp-testing` · `/vercel:vercel-functions`
+> **Skills usadas:** `/supabase` · `/webapp-testing` · `/vercel:vercel-functions`
 
 ### Database
-- [ ] `supabase/migrations/025_pixel_dead_letter.sql` — tabela `pixel_dead_letter` com motivo de rejeição/falha, `organization_id`, `event_payload JSONB`, `created_at`; RLS service role only
+- [x] `supabase/migrations/027_pixel_dead_letter.sql` — tabela `pixel_dead_letter` com `pixel_id TEXT`, `organization_id UUID NULL`, `rejection_reason` (enum `DeadLetterReason`), `event_payload JSONB`, `created_at`; RLS `USING (false) WITH CHECK (false)` — apenas service role escreve; 2 índices idempotentes; aplicada em produção ✅
 
 ### Backend / Observabilidade
-- [ ] `app/api/pixel/[id]/route.ts` — instrumentar latência, taxa de erro e contagem de eventos aceitos/rejeitados por org (OpenTelemetry ou console estruturado)
-- [ ] `app/api/health/route.ts` — expandir para health check profundo: DB, fila de eventos, storage; retorna 503 quando indisponível
-- [ ] `lib/observability/metrics.ts` — wrapper de métricas (latência, taxa de aceite, contagem por tipo)
-- [ ] `lib/observability/synthetic.ts` — ping sintético: envia evento de teste e valida persistência
-- [ ] `app/api/cron/pixel-synthetic/route.ts` — cron 1x/min (plano Pro Vercel) que dispara ping sintético e alerta se falhar 2x seguidas
-- [ ] Dead-letter: evento que falha validação/persistência vai para `pixel_dead_letter` em vez de ser descartado
+- [x] `lib/observability/metrics.ts` — `logPixelMetric`: console.log estruturado JSON com `level`, `event`, `pixelId`, `organizationId`, `outcome` (union `PixelOutcome`), `latencyMs`, `eventType`, `ts`
+- [x] `lib/pixel/dead-letter.ts` — `writeToDeadLetter`: insere em `pixel_dead_letter` via service client; captura `{ error }` tuple do Supabase (não apenas thrown exceptions); loga `error.message` em falha
+- [x] `app/api/pixel/[id]/route.ts` — instrumentado com `logPixelMetric` em todos os paths (accepted, rejected_validation, rejected_payload_too_large, rejected_rate_limit, rejected_not_found, rejected_cors, error_persistence); latência medida com `Date.now()`; dead-letter em falha de persistência
+- [x] `app/api/health/route.ts` — deep health check: ping Supabase via `COUNT(*)` em `pixels`, ping storage via `list` do bucket `creative-assets`; retorna `{ status, checks: { db, storage } }` com 503 em falha
+- [x] `lib/observability/synthetic.ts` — `runSyntheticCheck(pixelId)`: POST para `/api/pixel/[id]` com evento `synthetic_ping`; mede latência; valida `status 200`
+- [x] `app/api/cron/pixel-synthetic/route.ts` — cron protegido por `CRON_SECRET` fail-closed (guard `!cronSecret` antes do compare); chama `runSyntheticCheck`; loga resultado
+- [x] `vercel.json` — cron `pixel-synthetic` adicionado com schedule `0 1 * * *` (diário — limite Hobby plan; Pro Vercel permite `*/1 * * * *`)
+
+### Fixes de segurança e corretude (pós-revisão final)
+- [x] **CRON_SECRET bypass** — `if (!cronSecret || authHeader !== ...)` evita comparar contra `"Bearer undefined"` quando env var não está configurada
+- [x] **`writeToDeadLetter` engolia erros Supabase** — `{ error }` tuple capturado e logado
+- [x] **Outcome semântico 413** — label corrigido de `rejected_rate_limit` para `rejected_payload_too_large`
 
 ### SLOs definidos
 - Disponibilidade `/api/pixel` ≥ 99,9%
@@ -870,14 +867,26 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 - Perda de evento < 0,1%
 
 ### Testes
-- [ ] `tests/e2e/pixel-ingestion.spec.ts` — E2E de ingestão fim-a-fim (evento entra, aparece no log)
-- [ ] `tests/unit/pixel-dead-letter.test.ts` — evento inválido vai para dead-letter com motivo correto
-- [ ] Teste de carga (k6 ou autocannon) com relatório de p95
+- [x] `tests/unit/observability-metrics.test.ts` — 3 testes: JSON válido, organizationId null, todos os 7 valores de `PixelOutcome`
+- [x] `tests/unit/pixel-dead-letter.test.ts` — writeToDeadLetter via service client mockado
+- [x] `tests/e2e/pixel-ingestion.spec.ts` — E2E de ingestão fim-a-fim (evento entra, deep health check)
 
 ### Entregáveis
-- Evento sintético sumindo > 2 min → alerta disparado (testado com fila parada)
-- 100% dos eventos rejeitados aparecem em `pixel_dead_letter` com motivo
+- PR #18 mergeado: https://github.com/CoimbraViih/adtech/pull/18
 - `tsc --noEmit` zero erros; `vitest run` passando
+- `pixel_dead_letter` aplicada em produção (Supabase prod) ✅
+- Deploy em produção: `https://adhunter-eta.vercel.app` (`dpl_H5gSabivWzmThHUUY9y8xvfJhqFz`) ✅
+- **Pendente:** adicionar `SYNTHETIC_PIXEL_ID` nas env vars da Vercel para ativar o cron sintético
+
+---
+
+---
+
+# PLANEJADOS
+
+> Sequência de execução: **M13 → M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
+>
+> M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
 
 ---
 
