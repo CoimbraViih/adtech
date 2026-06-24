@@ -9,7 +9,6 @@ const deletionRequestSchema = z.object({
   session_ids: z.array(z.string().max(128)).max(1000).optional(),
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getOrgIdForUser(userId: string, supabaseService: ReturnType<typeof createServiceClient>): Promise<string | null> {
   const { data } = await supabaseService
     .from('organization_members')
@@ -17,7 +16,7 @@ async function getOrgIdForUser(userId: string, supabaseService: ReturnType<typeo
     .eq('user_id', userId)
     .in('role', ['owner', 'admin'])
     .limit(1)
-    .single();
+    .maybeSingle();
   return data?.organization_id ?? null;
 }
 
@@ -132,6 +131,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           const { error: deleteError } = await deleteQuery.in('session_id', parsed.data.session_ids);
           if (deleteError) {
             console.error('[lgpd/deletion] pixel_events delete error:', deleteError.message);
+            await supabaseService
+              .from('data_deletion_requests')
+              .update({ status: 'failed', error_message: 'Failed to delete pixel events.' })
+              .eq('id', request.id);
+            return NextResponse.json({ error: 'Failed to delete pixel events.' }, { status: 500 });
           }
         } else {
           const { count, error: countError } = await countQuery;
@@ -140,6 +144,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           const { error: deleteError } = await deleteQuery;
           if (deleteError) {
             console.error('[lgpd/deletion] pixel_events delete error:', deleteError.message);
+            await supabaseService
+              .from('data_deletion_requests')
+              .update({ status: 'failed', error_message: 'Failed to delete pixel events.' })
+              .eq('id', request.id);
+            return NextResponse.json({ error: 'Failed to delete pixel events.' }, { status: 500 });
           }
         }
       }
@@ -154,7 +163,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (parsed.data.session_ids && parsed.data.session_ids.length > 0) {
       rpcParams.p_session_ids = parsed.data.session_ids;
     }
-    await supabaseService.rpc('strip_pii_from_outbox', rpcParams);
+    const { error: rpcError } = await supabaseService.rpc('strip_pii_from_outbox', rpcParams);
+    if (rpcError) {
+      console.error('[lgpd/deletion] RPC error:', rpcError.message);
+      await supabaseService
+        .from('data_deletion_requests')
+        .update({ status: 'failed', error_message: 'PII anonymization failed.' })
+        .eq('id', request.id);
+      return NextResponse.json({ error: 'Failed to anonymize analytics data.' }, { status: 500 });
+    }
   }
 
   // 4. Atualizar request como completed
