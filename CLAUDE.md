@@ -306,7 +306,7 @@ See `.env.local.example` for the full list.
 | M22 | Monetização para Go-Live (usage-based + fiscal BR) | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
 | M10 | Deploy & Production | Planned | — |
 | M17 | Consent & LGPD / Cookieless | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
-| M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
+| M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | ✅ Done | `docs/superpowers/plans/2026-06-24-m16-ecommerce-integrations.md` |
 | M18 | Data Transparency (event explorer + export) | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
 | M15 | Creative Asset Uploads + DCO | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
 | M19 | Predictive & Autonomous Optimization | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |

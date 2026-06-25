@@ -30,7 +30,7 @@
 | M22 | Monetização para Go-Live (usage-based + fiscal BR) | `feat/m22-monetization` | M-ADS (campaign_metrics_daily) |
 | M10 | Deploy & Produção | `feat/m10-deploy` | M14, M13 |
 | M17 | Consent & LGPD / Cookieless | `feat/m17-consent-lgpd` ✅ | M13 |
-| M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | `feat/m16-ecommerce` | M10, M13 |
+| M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | `feat/m16-ecommerce` ✅ | M10, M13 |
 | M18 | Data Transparency (event explorer + export) | `feat/m18-data-transparency` | M13 |
 | M15 | Creative Asset Uploads + DCO | `feat/m15-dco` | M16, M13, M3 |
 | M19 | Predictive & Autonomous Optimization | `feat/m19-predictive-optimization` | M13, M16, M11 |
