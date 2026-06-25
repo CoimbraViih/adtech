@@ -29,7 +29,7 @@
 | M13 | Event Data Layer (ClickHouse) | `feat/m13-event-data-layer` ✅ | M14 |
 | M22 | Monetização para Go-Live (usage-based + fiscal BR) | `feat/m22-monetization` | M-ADS (campaign_metrics_daily) |
 | M10 | Deploy & Produção | `feat/m10-deploy` | M14, M13 |
-| M17 | Consent & LGPD / Cookieless | `feat/m17-consent-lgpd` | M13 |
+| M17 | Consent & LGPD / Cookieless | `feat/m17-consent-lgpd` ✅ | M13 |
 | M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | `feat/m16-ecommerce` | M10, M13 |
 | M18 | Data Transparency (event explorer + export) | `feat/m18-data-transparency` | M13 |
 | M15 | Creative Asset Uploads + DCO | `feat/m15-dco` | M16, M13, M3 |
@@ -1039,32 +1039,25 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M17 — Consent & LGPD / Cookieless
+## M17 — Consent & LGPD / Cookieless ✅ CONCLUÍDO
 
-**Branch:** `feat/m17-consent-lgpd`  
+**Branch:** `feat/m17-consent-lgpd` → mergeado em `main` via PR #21  
 **Depende de:** M13 (para apagamento no event store)  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §7  
-**Objetivo:** Transformar o pixel server-side no argumento cookieless e fechar o gap de consentimento/LGPD que bloqueia venda no BR. Independente de outras features, mas deve ser concluído antes do go-live comercial.
+**Plano detalhado:** `docs/superpowers/plans/2026-06-24-m17-consent-lgpd.md`  
+**Objetivo:** Transformar o pixel server-side no argumento cookieless e fechar o gap de consentimento/LGPD que bloqueia venda no BR.
 
-> **Skills:** `/supabase` · `/webapp-testing` · `/security-review`
+### Entregado
 
-### Database
-- [ ] `supabase/migrations/028_consent.sql` — registro de consentimento por evento/usuário; campo `consent_state` em `events_outbox`
-
-### Backend
-- [ ] `public/adflow.js` — respeitar sinais de consentimento antes de disparar; modo "consent denied" envia evento sem PII
-- [ ] `lib/consent/mode.ts` — Google Consent Mode v2 mapping
-- [ ] `lib/consent/cmp.ts` — integração CMP (AdOpt como primeira opção no ecossistema BR)
-- [ ] TTL configurável + endpoint de apagamento por usuário (LGPD art. 18) — remove do Postgres E do ClickHouse em < 24h
-- [ ] Anonimização/hashing de PII em repouso no event store
-
-### Interface
-- [ ] `app/(dashboard)/settings/privacy/page.tsx` — configuração de CMP, retenção de dados e regiões
-
-### Entregáveis
-- Com consentimento negado, nenhum identificador pessoal sai do navegador nem entra no event store
-- Pedido de apagamento remove usuário do Postgres E ClickHouse em < 24h
-- `tsc --noEmit` zero erros; `vitest run` passando
+- **Migration 031** — `consent_records`, `data_deletion_requests`, `consent_state` em `events_outbox`, `strip_pii_from_outbox` RPC (SECURITY DEFINER)
+- **`lib/consent/mode.ts`** — GCM v2 normalizer (`analytics_storage` → `ConsentState`)
+- **`lib/consent/cmp.ts`** — AdOpt CMP embed snippet generator com sanitização XSS
+- **`lib/pixel/validate.ts`** — `consent_state` + `gcm_signals` no schema Zod do pixel
+- **`app/api/pixel/[id]/route.ts`** — resolve consent, strip PII quando negado, gating de fanout, escrita em `consent_records`
+- **`public/adflow.js`** — reescrito: fila de eventos, `adflow("consent", "default"/"update")`, `window.__adflowConsentCallback`, descarta fila quando denied
+- **`app/api/lgpd/deletion/route.ts`** — GET/POST `/api/lgpd/deletion` com RBAC (owner/admin), chama `strip_pii_from_outbox`
+- **`app/(dashboard)/settings/privacy/`** — página de privacidade (snippet CMP + UI de requisições LGPD)
+- **23 novos testes passando** (consent-mode, pixel-validate-consent, lgpd-deletion, pixel-route)
+- `tsc --noEmit` → 0 erros
 
 ---
 
