@@ -104,15 +104,23 @@
       _consentState = newState;
       if (newState !== 'unknown') {
         _consentResolved = true;
-        if (newState === 'denied') clearSessionId();
-        drainQueue();
+        if (newState === 'denied') {
+          clearSessionId();
+          _queue = []; // discard queued events -- no consent
+        } else {
+          drainQueue(); // send queued events
+        }
       }
     } else if (subcommand === 'update') {
       _consentState = newState;
       if (newState !== 'unknown') {
         _consentResolved = true;
-        if (newState === 'denied') clearSessionId();
-        drainQueue();
+        if (newState === 'denied') {
+          clearSessionId();
+          _queue = []; // discard queued events -- no consent
+        } else {
+          drainQueue(); // send queued events
+        }
       }
     }
   }
