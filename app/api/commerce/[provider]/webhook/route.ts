@@ -52,6 +52,9 @@ export async function POST(
   } else if (provider === "shopify") {
     const sig = request.headers.get("x-shopify-hmac-sha256") ?? "";
     const secret = process.env.SHOPIFY_CLIENT_SECRET ?? "";
+    if (!secret) {
+      return NextResponse.json({ error: "Shopify not configured" }, { status: 503 });
+    }
     verified = verifyShopifyHmac(rawBody, sig, secret);
   } else if (provider === "vtex") {
     const headerToken = request.headers.get("x-vtex-api-apptoken") ?? "";
@@ -124,7 +127,7 @@ export async function POST(
 
   // Upsert commerce_order record (idempotent on catalog_id + external_order_id)
   const eventId = crypto.randomUUID();
-  await supabase.from("commerce_orders").upsert(
+  const { error: upsertError } = await supabase.from("commerce_orders").upsert(
     {
       organization_id: orgId,
       catalog_id: catalog.id,
@@ -140,6 +143,10 @@ export async function POST(
     },
     { onConflict: "catalog_id,external_order_id" }
   );
+  if (upsertError) {
+    console.error("[commerce/webhook] order upsert failed:", upsertError);
+    return NextResponse.json({ error: "DB write failed" }, { status: 500 });
+  }
 
   // Inject purchase event into the AdFlow event pipeline when pixel is configured
   if (pixel) {

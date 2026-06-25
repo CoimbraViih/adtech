@@ -34,6 +34,12 @@ CREATE POLICY "org admins can write catalogs"
       SELECT organization_id FROM public.organization_members
       WHERE user_id = auth.uid() AND role IN ('owner','admin')
     )
+  )
+  WITH CHECK (
+    organization_id IN (
+      SELECT organization_id FROM public.organization_members
+      WHERE user_id = auth.uid() AND role IN ('owner','admin')
+    )
   );
 
 -- products: itens do catálogo importados da plataforma
