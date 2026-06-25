@@ -64,6 +64,10 @@ describe("POST /api/pixel/[id]", () => {
         error: null,
       }),
     });
+    // consent_records insert (fire-and-forget)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    });
     // events_outbox insert (enqueueEvent — fire-and-forget)
     mockFrom.mockReturnValueOnce({
       insert: vi.fn().mockResolvedValue({ error: null }),
@@ -168,6 +172,10 @@ describe("POST /api/pixel/[id]", () => {
         data: { organization_id: "org_1" },
         error: null,
       }),
+    });
+    // consent_records insert (fire-and-forget)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
     });
     // events_outbox insert (enqueueEvent — fire-and-forget)
     mockFrom.mockReturnValueOnce({
