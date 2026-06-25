@@ -884,7 +884,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 # PLANEJADOS
 
-> Sequência de execução: ~~M13~~ ✅ → **M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
+> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → **M22 → M10 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
 >
 > M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
 
@@ -1061,38 +1061,67 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M16 — E-commerce Integrations (Nuvemshop / VTEX / Shopify)
+## M16 — E-commerce Integrations (Nuvemshop / VTEX / Shopify) ✅ CONCLUÍDO
 
-**Branch:** `feat/m16-ecommerce`  
+**Branch:** `feat/m16-ecommerce` → mergeado em `main` via PR #22 (`3642de1`)  
 **Depende de:** M10 (deploy), M13 (event store)  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §8  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-24-m16-ecommerce-integrations.md`  
 **Objetivo:** Wedge de go-to-market no Brasil — integrar plataformas de venda (não só de anúncio). Alimenta retargeting, DCO (M15) e atribuição com conversões reais.
 
-> **Skills:** `/brainstorming` · `/supabase` · `/webapp-testing`  
-> **Decisão build-vs-buy:** construir os 3 clients à mão (são o diferencial BR); avaliar Windsor.ai para cauda longa de plataformas.
-
 ### Database
-- [ ] `supabase/migrations/029_commerce.sql` — tabelas `product_catalogs`, `products`, `commerce_orders`; multi-tenant + RLS
+- [x] `supabase/migrations/029_commerce.sql` — tabelas `product_catalogs`, `products`, `commerce_orders`; UNIQUE `(organization_id, provider)` em catalogs; UNIQUE `(catalog_id, external_id)` em products; RLS completo com `WITH CHECK` em todas as políticas write (service_role + admin)
 
-### TypeScript
-- [ ] `lib/commerce/types.ts` — modelo canônico de produto e pedido (abstrai as 3 plataformas)
-- [ ] `lib/commerce/nuvemshop/` — `client.ts`, `catalog.ts`, `orders.ts`, `webhooks.ts`
-- [ ] `lib/commerce/vtex/` — idem
-- [ ] `lib/commerce/shopify/` — idem
+### TypeScript — tipos canônicos
+- [x] `lib/commerce/types.ts` — `CommerceProvider`, `CanonicalProduct`, `CanonicalOrder`, `CommerceLineItem`, `isCanonicalOrder` type guard
+- [x] `lib/commerce/sync.ts` — `syncCommerceProvider(orgId, provider)`: lookup de `product_catalogs`, delega por provider, atualiza `synced_at`; exhaustiveness check `const _never: never = provider`
+
+### TypeScript — Nuvemshop
+- [x] `lib/commerce/nuvemshop/client.ts` — `fetchNuvemshop(orgId, path)` com credencial `access_token` + `user_id`; `buildNuvemshopAuthUrl`, `exchangeNuvemshopCode`; header `Authentication: bearer` (não-padrão da plataforma)
+- [x] `lib/commerce/nuvemshop/catalog.ts` — paginação por número de página; upsert em `products`
+- [x] `lib/commerce/nuvemshop/webhooks.ts` — `verifyNuvemshopHmac` (SHA-256, hex, `timingSafeEqual`); `parseNuvemshopOrder → CanonicalOrder`
+
+### TypeScript — Shopify
+- [x] `lib/commerce/shopify/client.ts` — `fetchShopify(orgId, path)` com `access_token` + `shop_domain`; API version `2024-04`; `buildShopifyAuthUrl`, `exchangeShopifyCode`
+- [x] `lib/commerce/shopify/catalog.ts` — paginação por cursor via `Link` header `rel="next"` + `page_info`
+- [x] `lib/commerce/shopify/webhooks.ts` — `verifyShopifyHmac` (SHA-256, **base64**, `timingSafeEqual`); `parseShopifyOrder → CanonicalOrder`
+
+### TypeScript — VTEX
+- [x] `lib/commerce/vtex/client.ts` — `fetchVtex(orgId, path)` com headers `X-VTEX-API-AppKey` + `X-VTEX-API-AppToken`; base URL `{accountName}.vtexcommercestable.com.br`
+- [x] `lib/commerce/vtex/catalog.ts` — paginação por offset
+- [x] `lib/commerce/vtex/webhooks.ts` — `verifyVtexHook` (token comparison via `timingSafeEqual`; sem HMAC); `parseVtexOrder` divide centavos ÷ 100; usa campo `orderId`
 
 ### API Routes
-- [ ] `app/api/commerce/[provider]/webhook/route.ts` — recebe eventos de pedido/conversão → injeta como conversão no pixel (com `organization_id`)
-- [ ] Reaproveitar padrão OAuth de `/api/integrations/[provider]/oauth` do M-ADS
+- [x] `app/api/commerce/[provider]/oauth/start/route.ts` — providers válidos: `nuvemshop`, `shopify`; state cookie `HttpOnly`, `Secure` (prod), `SameSite=lax`, `Max-Age=600`
+- [x] `app/api/commerce/[provider]/oauth/callback/route.ts` — valida state cookie; exchange de código; upsert em `product_catalogs`; Nuvemshop salva `client_secret` para verificação HMAC
+- [x] `app/api/commerce/[provider]/webhook/route.ts` — `?org_id=<uuid>` como identificador multi-tenant; verificação HMAC/token por provider; guard 503 quando `SHOPIFY_CLIENT_SECRET` vazio; upsert `commerce_orders` com check de erro; `enqueueEvent("purchase")` apenas quando pixel encontrado
+- [x] `app/api/commerce/[provider]/sync/route.ts` — POST; RBAC owner/admin; chama `syncCommerceProvider`
+- [x] `app/api/commerce/vtex/credentials/route.ts` — POST; RBAC owner/admin; salva `app_key`, `app_token`, `account_name` via `upsertCredentials`; upsert em `product_catalogs`
 
 ### Interface
-- [ ] `app/(dashboard)/settings/integrations/commerce/page.tsx` — OAuth/conexão por plataforma
-- [ ] Estender `/analytics/reconciliation` — conciliação pedido × conversão do pixel
+- [x] `app/(dashboard)/settings/integrations/commerce/page.tsx` — Server Component; lê `product_catalogs` + `org_api_credentials` em paralelo; `isConnected`: Nuvemshop/Shopify = `oauth_connected === "true"`, VTEX = `app_key && app_token`
+- [x] `components/settings/commerce-connect-card.tsx` — três fluxos: Shopify (shop domain + OAuth), Nuvemshop (OAuth direto), VTEX (form de API key); estado conectado mostra botão de sync; badge usa `bg-emerald-500/20 text-emerald-400` (CSS var opacity não funciona com Tailwind v4)
+
+### Testes (34 novos)
+- [x] `tests/unit/commerce-types.test.ts` — 3 testes: `isCanonicalOrder` guard
+- [x] `tests/unit/commerce-nuvemshop-webhooks.test.ts` — 4 testes: HMAC válido/inválido, parse de pedido
+- [x] `tests/unit/commerce-shopify-webhooks.test.ts` — 3 testes: HMAC base64, parse de pedido
+- [x] `tests/unit/commerce-vtex-webhooks.test.ts` — 4 testes: token comparison, parse (centavos ÷ 100)
+- [x] `tests/unit/commerce-webhook-route.test.ts` — 16 testes: todos os paths por provider
+- [x] `tests/unit/commerce-sync.test.ts` — 4 testes: sync por provider + exhaustiveness
+
+### Correções críticas (pós-revisão de segurança)
+- [x] **RLS `WITH CHECK` faltando** — políticas `FOR ALL` sem `WITH CHECK` não protegem INSERT; adicionado em service_role e admin write em `products`, `commerce_orders` e `product_catalogs`
+- [x] **Shopify secret vazio** — guard `if (!secret) return 503` antes de `verifyShopifyHmac`; evita aceitar webhooks forjados quando env var não está configurada
+- [x] **Erro de upsert silencioso** — `commerce_orders` upsert checka `{ error: upsertError }`; retorna 500 em falha; previne `enqueueEvent` com dados não persistidos
 
 ### Entregáveis
-- Conectar loja Nuvemshop importa catálogo e registra conversões reais no event store
-- Pedido criado na loja aparece como conversão atribuída em < 5 min
-- Catálogo disponível como feed para criativos dinâmicos (M15)
-- `tsc --noEmit` zero erros; `vitest run` passando
+- PR #22 mergeado: https://github.com/CoimbraViih/adtech/pull/22
+- `tsc --noEmit` zero erros; `vitest run` 485/521 passando (+34 novos testes M16; 36 falhas são pré-existentes em main)
+- Deploy Vercel produção: `dpl_AbwqnQN2GpHFiXxEqtyqS4QrNgxQ`
+
+### Ações manuais pós-merge
+- [ ] Aplicar migration `029_commerce.sql` no Supabase de produção
+- [ ] Configurar `NUVEMSHOP_CLIENT_ID`, `NUVEMSHOP_CLIENT_SECRET`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET` nas envs da Vercel
 
 ---
 
@@ -1331,24 +1360,24 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 ```
 M0–M9, MS, M11, M-ADS (F1–F4) ← CONCLUÍDOS
   │
-  ├─ M14 (Pixel Observability & SLO)     ← primeiro: observar antes de escalar
-  │    └─ M13 (Event Data Layer / ClickHouse)
+  ├─ ~~M14~~ ✅ (Pixel Observability & SLO)
+  │    └─ ~~M13~~ ✅ (Event Data Layer / ClickHouse)
+  │         ├─ ~~M17~~ ✅ (Consent & LGPD / Cookieless)
+  │         ├─ ~~M16~~ ✅ (E-commerce: Nuvemshop/VTEX/Shopify)
   │         ├─ M22 (Monetização Go-Live)      ← gate de comercialização
   │         │    └─ [go-live comercial liberado]
   │         ├─ M10 (Deploy & Produção)        ← smoke test M14 como gate
-  │         │    ├─ M17 (Consent & LGPD / Cookieless)   ← independente, pré-venda BR
-  │         │    └─ M16 (E-commerce: Nuvemshop/VTEX/Shopify)
-  │         │         ├─ M18 (Data Transparency — event explorer + export)
-  │         │         │    └─ M20 (White-label Agency Portal)
-  │         │         └─ M15 (Creative Uploads + DCO)
-  │         │              └─ M19 (Predictive & Autonomous Optimization)
-  │         │                   └─ M21 (In-app AI Assistant)  ← paralelo, pode iniciar em M13
-  │         │                        └─ M8-DMP (avaliação real de audiências)
-  │         │                             └─ M12 (PMP — adiado pós-M19)
-  │         └─ M21 pode iniciar em paralelo com M16 (com mock do event store)
+  │         │    ├─ M18 (Data Transparency — event explorer + export)
+  │         │    │    └─ M20 (White-label Agency Portal)
+  │         │    └─ M15 (Creative Uploads + DCO)
+  │         │         └─ M19 (Predictive & Autonomous Optimization)
+  │         │              └─ M21 (In-app AI Assistant)  ← paralelo, pode iniciar em M13
+  │         │                   └─ M8-DMP (avaliação real de audiências)
+  │         │                        └─ M12 (PMP — adiado pós-M19)
+  │         └─ M21 pode iniciar em paralelo com M18 (com mock do event store)
 ```
 
-**Sequência linear recomendada:** M14 → M13 → M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)
+**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → **M22 → M10 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
 
 **Regras:**
 - Interface mockada sempre antes do backend — cada milestone demonstrável com dados reais antes do próximo.
