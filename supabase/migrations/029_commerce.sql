@@ -68,7 +68,8 @@ CREATE POLICY "org members can read products"
 
 CREATE POLICY "service role can write products"
   ON public.products FOR ALL
-  USING (auth.role() = 'service_role');
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
 
 -- commerce_orders: pedidos recebidos via webhook
 CREATE TABLE IF NOT EXISTS public.commerce_orders (
@@ -100,7 +101,8 @@ CREATE POLICY "org members can read orders"
 
 CREATE POLICY "service role can write orders"
   ON public.commerce_orders FOR ALL
-  USING (auth.role() = 'service_role');
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
 
 -- updated_at triggers
 CREATE TRIGGER set_updated_at_product_catalogs
