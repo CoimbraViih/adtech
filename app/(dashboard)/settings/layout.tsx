@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const SETTINGS_TABS = [
   { label: "Faturamento",   href: "/settings/billing" },
   { label: "Integrações",   href: "/settings/integrations" },
+  { label: "Privacidade",   href: "/settings/privacy" },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

@@ -21,6 +21,7 @@ import { POST } from "@/app/api/pixel/[id]/route";
 import { NextRequest } from "next/server";
 import { writeToDeadLetter } from "@/lib/pixel/dead-letter";
 import { logPixelMetric } from "@/lib/observability/metrics";
+import { fanoutToPlatforms } from "@/lib/pixel/fanout";
 
 function makeRequest(pixelId: string, body: unknown, headers: Record<string, string> = {}) {
   return new NextRequest(`http://localhost/api/pixel/${pixelId}`, {
@@ -62,6 +63,14 @@ describe("POST /api/pixel/[id]", () => {
         data: { organization_id: "org_1" },
         error: null,
       }),
+    });
+    // consent_records insert (fire-and-forget)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    });
+    // events_outbox insert (enqueueEvent — fire-and-forget)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
     });
 
     const req = makeRequest(PIXEL_ID, { event_type: "page_view" }, {
@@ -164,6 +173,14 @@ describe("POST /api/pixel/[id]", () => {
         error: null,
       }),
     });
+    // consent_records insert (fire-and-forget)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    });
+    // events_outbox insert (enqueueEvent — fire-and-forget)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    });
 
     const req = makeRequest(PIXEL_ID, { event_type: "purchase" }, { "x-forwarded-for": "1.2.3.4" });
     await POST(req, { params: Promise.resolve({ id: PIXEL_ID }) });
@@ -171,5 +188,53 @@ describe("POST /api/pixel/[id]", () => {
     expect(logPixelMetric).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: "accepted", eventType: "purchase" })
     );
+  });
+
+  it("does not call fanoutToPlatforms when consent is denied", async () => {
+    const mockFanout = vi.mocked(fanoutToPlatforms);
+
+    // Pixel lookup
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { id: PIXEL_ID, workspace_id: "ws_1", name: "Site", meta_pixel_id: null, google_tag_id: null, domain: null, created_at: "", updated_at: "" },
+        error: null,
+      }),
+    });
+    // pixel_events insert
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { id: "ev_2", pixel_id: PIXEL_ID, event_type: "page_view", received_at: new Date().toISOString() },
+        error: null,
+      }),
+    });
+    // workspace lookup
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { organization_id: "org_1" },
+        error: null,
+      }),
+    });
+    // consent_records insert (fire-and-forget)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    });
+    // events_outbox insert (enqueueEvent — fire-and-forget)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    });
+
+    const req = makeRequest(PIXEL_ID, { event_type: "page_view", consent_state: "denied" }, {
+      "x-forwarded-for": "1.2.3.4",
+    });
+    const res = await POST(req, { params: Promise.resolve({ id: PIXEL_ID }) });
+
+    expect(res.status).toBe(204);
+    expect(mockFanout).not.toHaveBeenCalled();
   });
 });
