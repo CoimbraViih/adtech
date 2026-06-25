@@ -14,7 +14,7 @@ describe('gcmToConsentState', () => {
     expect(gcmToConsentState({})).toBe('unknown');
   });
 
-  it('returns denied when any ad signal is denied and analytics absent', () => {
+  it('returns unknown when only ad_storage is denied and analytics_storage is absent', () => {
     expect(gcmToConsentState({ ad_storage: 'denied' })).toBe('unknown');
   });
 

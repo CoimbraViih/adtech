@@ -86,6 +86,7 @@ BEGIN
     - 'session_id'
     - 'ip'
     - 'user_agent'
+    - 'properties'
   WHERE organization_id = p_organization_id
     AND (
       p_session_ids IS NULL

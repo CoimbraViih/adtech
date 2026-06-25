@@ -213,6 +213,18 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
   }
   const organizationId = workspace?.organization_id ?? "";
 
+  // 10b. Fire-and-forget: log consent signal to audit table
+  if (organizationId) {
+    void supabase.from('consent_records').insert({
+      organization_id: organizationId,
+      pixel_id: pixelId,
+      session_id: safeSessionId,
+      consent_state: resolvedConsent,
+      gcm_signals: parsed.data.gcm_signals ?? null,
+      source: 'pixel',
+    });
+  }
+
   // 11. Fire-and-forget fanout (only when consent granted or unknown)
   if (resolvedConsent !== 'denied') {
     fanoutToPlatforms(savedEvent as Parameters<typeof fanoutToPlatforms>[0], pixel, organizationId).catch(

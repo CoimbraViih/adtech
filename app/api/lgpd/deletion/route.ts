@@ -113,22 +113,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const pixelIds = (pixels ?? []).map((p: { id: string }) => p.id);
 
       if (pixelIds.length > 0) {
-        // Contar primeiro, depois deletar
-        const countQuery = supabaseService
-          .from('pixel_events')
-          .select('id', { count: 'exact', head: true })
-          .in('pixel_id', pixelIds);
-
-        const deleteQuery = supabaseService
-          .from('pixel_events')
-          .delete()
-          .in('pixel_id', pixelIds);
-
+        // Single query: delete and return deleted rows to get accurate count atomically
         if (parsed.data.session_ids && parsed.data.session_ids.length > 0) {
-          const { count, error: countError } = await countQuery.in('session_id', parsed.data.session_ids);
-          if (!countError) rowsDeleted += count ?? 0;
-
-          const { error: deleteError } = await deleteQuery.in('session_id', parsed.data.session_ids);
+          const { data: deletedRows, error: deleteError } = await supabaseService
+            .from('pixel_events')
+            .delete()
+            .in('pixel_id', pixelIds)
+            .in('session_id', parsed.data.session_ids)
+            .select('id');
           if (deleteError) {
             console.error('[lgpd/deletion] pixel_events delete error:', deleteError.message);
             await supabaseService
@@ -137,11 +129,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               .eq('id', request.id);
             return NextResponse.json({ error: 'Failed to delete pixel events.' }, { status: 500 });
           }
+          rowsDeleted += deletedRows?.length ?? 0;
         } else {
-          const { count, error: countError } = await countQuery;
-          if (!countError) rowsDeleted += count ?? 0;
-
-          const { error: deleteError } = await deleteQuery;
+          const { data: deletedRows, error: deleteError } = await supabaseService
+            .from('pixel_events')
+            .delete()
+            .in('pixel_id', pixelIds)
+            .select('id');
           if (deleteError) {
             console.error('[lgpd/deletion] pixel_events delete error:', deleteError.message);
             await supabaseService
@@ -150,6 +144,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               .eq('id', request.id);
             return NextResponse.json({ error: 'Failed to delete pixel events.' }, { status: 500 });
           }
+          rowsDeleted += deletedRows?.length ?? 0;
         }
       }
     }

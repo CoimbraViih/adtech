@@ -13,14 +13,16 @@ export function generatePixelSnippet(
   opts: PixelSnippetOptions = {}
 ): string {
   const endpoint = opts.endpoint ?? 'https://app.adflow.com.br';
-  const hasAdopt = Boolean(opts.cmpSiteKey);
+  // Validate cmpSiteKey: only allow alphanumeric, hyphens, underscores (typical slug format)
+  const safeCmpSiteKey = opts.cmpSiteKey?.replace(/[^a-zA-Z0-9\-_]/g, '') ?? undefined;
+  const hasAdopt = Boolean(safeCmpSiteKey);
   const defaultConsent = opts.defaultConsent ?? (hasAdopt ? 'unknown' : 'granted');
 
   const adoptScript = hasAdopt
     ? `
   <!-- AdOpt CMP -->
   <script>
-    window.adoptConfig = { siteKey: "${opts.cmpSiteKey}" };
+    window.adoptConfig = { siteKey: "${safeCmpSiteKey}" };
     window.adoptCallback = function(consent) {
       if (window.__adflowConsentCallback) window.__adflowConsentCallback(consent.analytics !== false);
     };
