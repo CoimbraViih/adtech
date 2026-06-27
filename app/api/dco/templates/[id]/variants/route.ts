@@ -113,6 +113,8 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
 
   // Map DB rows to CanonicalProduct and assemble variants
   const variantInserts = productsData.map((row) => {
+    const rawStatus = row.status
+    const status: 'active' | 'archived' = rawStatus === 'archived' ? 'archived' : 'active'
     const canonical: CanonicalProduct = {
       externalId: row.external_id as string,
       title: row.title as string,
@@ -121,7 +123,7 @@ export async function POST(req: NextRequest, { params }: RouteParams): Promise<N
       currency: (row.currency as string) ?? 'BRL',
       imageUrl: row.image_url as string | null,
       url: row.url as string | null,
-      status: row.status as 'active' | 'archived',
+      status: status,
       rawData: row as Record<string, unknown>,
     }
 

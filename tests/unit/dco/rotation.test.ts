@@ -3,13 +3,6 @@ import type { CreativeVariant } from '@/types/database'
 
 // ─── Mock Supabase service client ────────────────────────────────────────────
 
-const mockInsert = vi.fn().mockResolvedValue({ error: null })
-const mockSingle = vi.fn().mockResolvedValue({ data: { impressions: 5, conversions: 2 }, error: null })
-const mockUpdate = vi.fn().mockReturnThis()
-const mockEq = vi.fn().mockReturnThis()
-const mockSelect = vi.fn().mockReturnThis()
-const mockIn = vi.fn().mockResolvedValue({ data: [], error: null })
-const mockInsertFn = vi.fn().mockResolvedValue({ error: null })
 
 // Chain builder: each `from()` call returns a fresh chain
 function makeChain() {

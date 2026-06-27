@@ -32,7 +32,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const supabase = createServiceClient()
 
-  // Fetch active variants for this template (RLS via org filter)
+  // Fetch active variants for this template — org isolation via explicit .eq('organization_id', orgId)
   const { data, error } = await supabase
     .from('creative_variants')
     .select('*')
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Epsilon-greedy selection
   const { variant: selected, strategy } = selectVariantWithStrategy(variants)
 
-  // Record impression (fire-and-forget — we don't let recording errors block the response)
+  // Record impression — errors are swallowed so they don't block the response
   try {
     await recordImpression(selected.id)
   } catch (impressionError) {
