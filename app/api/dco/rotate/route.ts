@@ -58,7 +58,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     await recordImpression(selected.id)
   } catch (impressionError) {
-    console.error('[dco/rotate POST] recordImpression failed', impressionError)
+    console.error('[dco/rotate POST] recordImpression failed', (impressionError as Error).message)
   }
 
   return NextResponse.json({ variant: selected })

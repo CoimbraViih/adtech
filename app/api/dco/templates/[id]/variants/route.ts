@@ -41,6 +41,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams): Promise<N
     conversionRate: rate,
   }))
 
+  // Sort by conversion rate descending
+  withRate.sort((a, b) => b.conversionRate - a.conversionRate)
+
   return NextResponse.json({ variants: withRate })
 }
 
