@@ -77,20 +77,11 @@ export async function recordImpression(variantId: string): Promise<void> {
 
   if (insertError) throw insertError
 
-  const { data: current, error: selectError } = await supabase
-    .from('creative_variants')
-    .select('impressions')
-    .eq('id', variantId)
-    .single()
-
-  if (selectError) throw selectError
-
-  const { error: updateError } = await supabase
-    .from('creative_variants')
-    .update({ impressions: (current?.impressions ?? 0) + 1 })
-    .eq('id', variantId)
-
-  if (updateError) throw updateError
+  const { error } = await supabase.rpc('increment_variant_counter', {
+    p_variant_id: variantId,
+    p_field: 'impressions',
+  })
+  if (error) throw error
 }
 
 /**
@@ -110,20 +101,11 @@ export async function recordConversion(variantId: string, value?: number): Promi
 
   if (insertError) throw insertError
 
-  const { data: current, error: selectError } = await supabase
-    .from('creative_variants')
-    .select('conversions')
-    .eq('id', variantId)
-    .single()
-
-  if (selectError) throw selectError
-
-  const { error: updateError } = await supabase
-    .from('creative_variants')
-    .update({ conversions: (current?.conversions ?? 0) + 1 })
-    .eq('id', variantId)
-
-  if (updateError) throw updateError
+  const { error } = await supabase.rpc('increment_variant_counter', {
+    p_variant_id: variantId,
+    p_field: 'conversions',
+  })
+  if (error) throw error
 }
 
 /**
@@ -131,14 +113,15 @@ export async function recordConversion(variantId: string, value?: number): Promi
  * Updates creative_variants.impressions and .conversions for all variants
  * of the given template.
  */
-export async function refreshBanditState(templateId: string): Promise<void> {
+export async function refreshBanditState(templateId: string, orgId: string): Promise<void> {
   const supabase = createServiceClient()
 
-  // Fetch all variants for this template
+  // Fetch all variants for this template (scoped to org via creative_templates join)
   const { data: variants, error: variantsError } = await supabase
     .from('creative_variants')
-    .select('id')
+    .select('id, creative_templates!inner(organization_id)')
     .eq('template_id', templateId)
+    .eq('creative_templates.organization_id', orgId)
 
   if (variantsError) throw variantsError
   if (!variants || variants.length === 0) return

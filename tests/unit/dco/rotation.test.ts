@@ -4,7 +4,8 @@ import type { CreativeVariant } from '@/types/database'
 // ─── Mock Supabase service client ────────────────────────────────────────────
 
 
-// Chain builder: each `from()` call returns a fresh chain
+// Chain builder: each `from()` call returns a fresh chain.
+// The chain is also thenable so that `await chain` resolves to { data: [], error: null }.
 function makeChain() {
   const chain: Record<string, unknown> = {}
   chain.select = vi.fn(() => chain)
@@ -13,12 +14,15 @@ function makeChain() {
   chain.eq = vi.fn(() => chain)
   chain.in = vi.fn().mockResolvedValue({ data: [], error: null })
   chain.single = vi.fn().mockResolvedValue({ data: { impressions: 5, conversions: 2 }, error: null })
+  // Make chain itself awaitable (Supabase builder pattern)
+  chain.then = (resolve: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(resolve)
   return chain
 }
 
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
     from: vi.fn(() => makeChain()),
+    rpc: vi.fn().mockResolvedValue({ error: null }),
   }),
 }))
 
@@ -174,6 +178,6 @@ describe('recordConversion', () => {
 
 describe('refreshBanditState', () => {
   it('resolves without throwing for a valid templateId', async () => {
-    await expect(refreshBanditState('tmpl-1')).resolves.toBeUndefined()
+    await expect(refreshBanditState('tmpl-1', 'org-1')).resolves.toBeUndefined()
   })
 })

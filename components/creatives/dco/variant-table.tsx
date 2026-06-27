@@ -79,6 +79,8 @@ export function VariantTable({ templateId }: Props) {
     return `+${((best - mean) * 100).toFixed(2)}%`
   }
 
+  const gain = conversionGain()
+
   const inputStyle: React.CSSProperties = {
     background: 'var(--adflow-base)',
     border: '1px solid var(--adflow-border)',
@@ -105,12 +107,12 @@ export function VariantTable({ templateId }: Props) {
             className="text-sm font-semibold tabular-nums"
             style={{
               color:
-                conversionGain() === 'N/A'
+                gain === 'N/A'
                   ? 'var(--adflow-fg-muted)'
                   : 'var(--adflow-success)',
             }}
           >
-            {conversionGain()}
+            {gain}
           </span>
         </div>
         <Button
