@@ -14,8 +14,8 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   pageview:    'var(--color-data)',
   purchase:    'var(--color-success)',
   lead:        'var(--color-warning)',
-  add_to_cart: '#8B5CF6',
-  checkout:    '#EC4899',
+  add_to_cart: 'var(--color-purple)',
+  checkout:    'var(--color-pink)',
   custom:      'var(--color-muted)',
 }
 

@@ -23,6 +23,8 @@
   --color-danger: var(--adflow-danger);
   --color-fg: var(--foreground);
   --color-fg-muted: var(--muted-foreground);
+  --color-purple: var(--adflow-purple);
+  --color-pink:   var(--adflow-pink);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -72,6 +74,8 @@
   --adflow-danger:   #EF4444;
   --adflow-fg:       #F1F5F9;
   --adflow-fg-muted: #94A3B8;
+  --adflow-purple:   #8B5CF6;
+  --adflow-pink:     #EC4899;
 
   /* shadcn/ui CSS variable surface */
   --background:             #0D0D1A;

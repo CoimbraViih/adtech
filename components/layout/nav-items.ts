@@ -12,6 +12,7 @@ import {
   Users,
   GitCompareArrows,
   List,
+  Download,
 } from "lucide-react";
 
 export type NavItem = {
@@ -35,4 +36,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Landing Pages", href: "/landing-pages",           icon: FileText },
   { label: "Automação",     href: "/automation",              icon: Zap },
   { label: "Configurações", href: "/settings",                icon: Settings, matchPrefix: true },
+  { label: "Exportações",   href: "/settings/exports",        icon: Download, matchPrefix: false },
 ];
