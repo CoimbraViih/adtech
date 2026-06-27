@@ -1235,10 +1235,11 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 - `vitest run` 425/425 passando · Upload PNG/JPEG/WebP funcional nos 3 contextos
 - Arquivo > 10 MB rejeitado inline no dropzone
 
-### Parte 2 — DCO (Dynamic Creative Optimization) ✅ CONCLUÍDO (PR #24)
+### Parte 2 — DCO (Dynamic Creative Optimization) ✅ CONCLUÍDO (PR #24 + fix PR #25)
 
 #### Database
 - [x] `supabase/migrations/032_dco.sql` — tabelas `creative_templates`, `creative_variants`, `variant_performance`; RLS completo (USING + WITH CHECK em todas as writes; `variant_performance` via subquery em `creative_variants`)
+- [x] `supabase/migrations/033_dco_atomic_increment.sql` — RPC `increment_variant_counter` para incremento atômico (elimina lost-update race)
 
 #### Backend
 - [x] `lib/creatives/dco/templates.ts` — `renderTemplate` + `extractPlaceholders` (placeholders `{{field}}` ligados ao feed M16)
@@ -1253,21 +1254,26 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 #### Interface
 - [x] `app/(dashboard)/creatives/dco/page.tsx` — dashboard de templates (Server Component)
+- [x] `app/(dashboard)/creatives/dco/new/page.tsx` + `client.tsx` — página de criação de template
+- [x] `app/(dashboard)/creatives/dco/[id]/page.tsx` + `client.tsx` — detalhe do template com VariantTable + RotationPreview
+- [x] `app/(dashboard)/creatives/dco/[id]/edit/page.tsx` + `client.tsx` — edição de template
 - [x] `components/creatives/dco/template-editor.tsx` — editor com chips de placeholders live
 - [x] `components/creatives/dco/variant-table.tsx` — tabela com "Conversion gain per cycle" + gerar variantes
 - [x] `components/creatives/dco/rotation-preview.tsx` — preview de rotação com label Exploit/Explore
 
 #### Entregáveis DCO
 - PR #24 mergeado: https://github.com/CoimbraViih/adtech/pull/24
+- PR #25 (fix pós-review): https://github.com/CoimbraViih/adtech/pull/25
 - 76 testes DCO passando (7 arquivos) — bandit estatístico, formatação de preço, API 401/422/404
 - `tsc --noEmit` zero erros
 - Um template + feed gera N variantes automaticamente
 - Rotação epsilon-greedy realoca impressões para variante de maior conversão
+- Incremento de counters atômico via RPC SQL
 - Métrica "Conversion gain per cycle" exposta na UI
+- Rotas `/creatives/dco`, `/creatives/dco/new`, `/creatives/dco/[id]`, `/creatives/dco/[id]/edit` acessíveis
 
 #### Pendências pós-merge
-- Aplicar migration `032_dco.sql` no Supabase prod antes do go-live
-- Follow-up: substituir leitura-incremento não-atômico em `recordImpression`/`recordConversion` por RPC SQL atômico (`UPDATE ... SET impressions = impressions + 1`)
+- Aplicar migrations `032_dco.sql` e `033_dco_atomic_increment.sql` no Supabase prod antes do go-live
 
 ---
 
