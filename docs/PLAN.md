@@ -31,7 +31,7 @@
 | M10 | Deploy & Produção | `feat/m10-deploy` | M14, M13 |
 | M17 | Consent & LGPD / Cookieless | `feat/m17-consent-lgpd` ✅ | M13 |
 | M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | `feat/m16-ecommerce` ✅ | M10, M13 |
-| M18 | Data Transparency (event explorer + export) | `feat/m18-data-transparency` | M13 |
+| M18 | Data Transparency (event explorer + export) | `feat/m18-data-transparency` ✅ | M13 |
 | M15 | Creative Asset Uploads + DCO | `feat/m15-dco` | M16, M13, M3 |
 | M19 | Predictive & Autonomous Optimization | `feat/m19-predictive-optimization` | M13, M16, M11 |
 | M20 | White-label Agency Portal | `feat/m20-whitelabel` | M18 |
@@ -1125,28 +1125,80 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M18 — Data Transparency (event explorer + export)
+## M18 — Data Transparency (event explorer + export) ✅ CONCLUÍDO
 
-**Branch:** `feat/m18-data-transparency`  
+**Branch:** `feat/m18-data-transparency` → mergeado em `main` via PR #23  
 **Depende de:** M13  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §9  
 **Objetivo:** Transformar "você é dono dos seus eventos, sem black-box" em feature de produto e de venda — posicionamento competitivo direto contra BMS.
 
-> **Skills:** `/supabase` · `/webapp-testing` · `/frontend-design`
+### Database
+- [x] `supabase/migrations/030_export_jobs.sql` — tabelas `export_destinations` + `export_runs`; RLS com WITH CHECK; trigger `set_updated_at()`; índices; service_role bypass para o cron
 
-### Backend
-- [ ] `lib/export/bigquery.ts`, `snowflake.ts`, `s3.ts` — destinos de data share
-- [ ] `app/api/export/events/route.ts` — export bruto (CSV/Parquet), autenticado por workspace, RBAC (`viewer` só lê)
+### TypeScript
+- [x] `types/database.ts` — `ExportDestinationType`, `ExportRunStatus`, `ExportSchedule`, `ExportDestination`, `ExportRun`, `ExportDestinationCreateInput`
+- [x] `lib/events/validation.ts` — `ISO_DATE` regex + `MAX_RANGE_DAYS = 90` (compartilhado entre API e export)
+
+### Backend — Event Query Layer
+- [x] `lib/events/query.ts` — `getEventsByWorkspace`: paginação parametrizada (LIMIT/OFFSET via `{limit_val:UInt32}` / `{offset_val:UInt32}`); `event_id AS id`; `JSONExtractString(properties, 'campaign_id') AS campaign_id`; cap 500 linhas; graceful fallback quando ClickHouse não configurado
+
+### Backend — Export
+- [x] `lib/export/csv.ts` — `eventsToCSV`: RFC 4180 com escaping correto de vírgulas, aspas e newlines
+- [x] `lib/export/bigquery.ts` — JWT RS256 via Web Crypto + OAuth2 token exchange → BigQuery `insertAll` REST
+- [x] `lib/export/snowflake.ts` — Basic auth → `{account}.snowflakecomputing.com/api/v2/statements`; batches de 500 linhas
+- [x] `lib/export/s3.ts` — SigV4 manual (HMAC-SHA256 via Web Crypto); content-length nos signed headers; PUT direto no bucket
+- [x] `lib/export/dispatch.ts` — roteador por `destination_type`; guard `csv_download` rejeita export agendado
+- [x] `lib/export/scheduler.ts` — `runScheduledExports(scheduleType?)`: filtra por schedule type; janela lookback 1h (hourly) / 24h (daily); per-destination try/catch; registra `export_runs`; filtra `csv_download` e destinos inativos
+
+### API Routes
+- [x] `app/api/analytics/events/route.ts` — GET; auth + RBAC; validação ISO_DATE; range máx 90 dias; retorna `EventsPage`
+- [x] `app/api/export/events/route.ts` — GET; mesmo auth; limite 10 000 linhas; `Content-Disposition: attachment; filename="events-YYYY-MM-DD.csv"`
+- [x] `app/api/export/schedules/route.ts` — GET lista destinos (secrets mascarados como `***`); POST cria destino (org_id/ws_id da sessão, nunca do body)
+- [x] `app/api/export/schedules/[id]/route.ts` — PATCH (Zod `.strict()`; IDOR guard; viewer → 403); DELETE (owner/admin only; 204)
+- [x] `app/api/export/runs/route.ts` — GET runs por destination_id; IDOR guard; últimas 20
+- [x] `app/api/cron/run-scheduled-exports/route.ts` — CRON_SECRET fail-closed; lê `?type=daily|hourly` e repassa ao scheduler
+
+### Cron (vercel.json)
+- [x] `0 3 * * *` → `/api/cron/run-scheduled-exports?type=daily`
+- [x] `0 * * * *` → `/api/cron/run-scheduled-exports?type=hourly`
 
 ### Interface
-- [ ] `app/(dashboard)/analytics/events/page.tsx` — explorador de eventos (filtros por tipo, campanha, período, paginação, download)
-- [ ] Export agendado (diário/horário) para warehouse do cliente com log de execução
+- [x] `app/(dashboard)/analytics/events/page.tsx` — Server Component shell com `requireServerSession()`
+- [x] `app/(dashboard)/analytics/events/event-explorer-client.tsx` — busca event-driven (sem `useEffect`); PAGE_SIZE=50; botão "Exportar CSV" (`<a download>`) visível após primeira busca
+- [x] `components/analytics/event-explorer-filters.tsx` — date range (default 30d, max 90d), select de tipo (`page_view / add_to_cart / purchase / lead / sign_up / custom`), campo campaign_id, botão com spinner
+- [x] `components/analytics/event-explorer-table.tsx` — pills por event_type (CSS vars), URL truncada 40 chars, valor em BRL, consent badge, paginação prev/next
+- [x] `app/(dashboard)/settings/exports/page.tsx` — Server Component shell
+- [x] `app/(dashboard)/settings/exports/exports-settings-client.tsx` — lista destinos + runs; toggle ativo; add/delete
+- [x] `components/settings/export-destination-card.tsx` — badge de tipo, toggle is_active, histórico últimas 3 runs, confirm-delete dialog
+- [x] `components/settings/export-destination-form.tsx` — campos dinâmicos por destination_type; POST para schedules API
+- [x] `components/layout/nav-items.ts` — "Eventos" (`/analytics/events`) + "Exportações" (`/settings/exports`) adicionados
+
+### Segurança
+- [x] `organization_id` / `workspace_id` sempre da sessão — nunca do body ou URL params
+- [x] IDOR guard (org check) em todos os endpoints de mutação
+- [x] Secrets de credenciais mascarados (`***`) nas respostas GET da API (stripSecrets helper)
+- [x] CRON_SECRET fail-closed: rejeita se ausente OU header não bate
+- [x] ClickHouse sem interpolação de string — todos os inputs via bindings `{name:Type}`
+- [x] Nenhum SDK de cloud (no `@aws-sdk`, `@google-cloud`, `snowflake-sdk`) — só fetch REST
+
+### Testes (24 novos — total 509 passando)
+- [x] `tests/unit/events-query-explorer.test.ts` — 4 testes: explorer, filtros, cap 500, graceful sem ClickHouse
+- [x] `tests/unit/export-csv.test.ts` — 3 testes: CSV RFC 4180, escaping de vírgulas/aspas
+- [x] `tests/unit/export-dispatch.test.ts` — 6 testes: roteamento por tipo, guard csv_download
+- [x] `tests/unit/export-scheduler.test.ts` + `export-scheduler-integration.test.ts` — 6 testes: csv_download skip, janela lookback, contagens sucesso/falha
+- [x] `tests/unit/export-schedules-api.test.ts` — 5 testes: org_id da sessão, IDOR 404, viewer 403
 
 ### Entregáveis
-- Cliente exporta eventos crus de 90 dias sem suporte humano
-- Export agendado entrega no destino do cliente
-- Zero vazamento cross-tenant (teste de isolamento por org)
-- `tsc --noEmit` zero erros; `vitest run` passando
+- PR #23 mergeado: https://github.com/CoimbraViih/adtech/pull/23
+- `tsc --noEmit` zero erros
+- `vitest run` 509/545 passando (36 falhas pré-existentes em sync-metrics-daily/TikTok — não relacionadas ao M18)
+- Cliente exporta eventos crus dos últimos 90 dias sem suporte humano
+- Export agendado entrega no destino (BigQuery/Snowflake/S3) com log de execução
+- Zero vazamento cross-tenant confirmado por testes de IDOR e isolamento por org
+
+### Pendências pós-merge (ações manuais externas)
+- [ ] Aplicar migration `030_export_jobs.sql` no Supabase de produção
+- [ ] Configurar `CRON_SECRET` nas envs da Vercel (se ainda não configurado)
+- [ ] **Nota para M19:** migration `030_optimization_actions.sql` já está ocupado por M18 — usar `031_optimization_actions.sql`
 
 ---
 
