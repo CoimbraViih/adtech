@@ -16,6 +16,7 @@ export async function runScheduledExports(): Promise<{
     .select('*')
     .not('schedule', 'is', null)
     .eq('is_active', true)
+    .neq('destination_type', 'csv_download')
 
   if (fetchError) {
     throw new Error(`Failed to fetch export destinations: ${fetchError.message}`)

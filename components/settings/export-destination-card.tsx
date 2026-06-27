@@ -140,7 +140,7 @@ export function ExportDestinationCard({ destination, runs, onDelete, onToggleAct
         {!confirmDelete && (
           <button
             onClick={() => setConfirmDelete(true)}
-            className="text-xs px-2 py-1 rounded border hover:border-red-500 hover:text-red-400 transition-colors"
+            className="text-xs px-2 py-1 rounded border transition-colors hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
             style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted)' }}
           >
             Excluir
@@ -161,7 +161,8 @@ export function ExportDestinationCard({ destination, runs, onDelete, onToggleAct
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="text-xs px-2 py-1 rounded bg-red-600 text-white disabled:opacity-50"
+              className="text-xs px-2 py-1 rounded text-white disabled:opacity-50"
+              style={{ background: 'var(--color-danger)' }}
             >
               {deleting ? 'Excluindo…' : 'Excluir'}
             </button>

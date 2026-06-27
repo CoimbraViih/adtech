@@ -56,7 +56,12 @@ function setupMocks(destinations: ExportDestination[]) {
       return {
         select: vi.fn().mockReturnValue({
           not: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ data: destinations, error: null }),
+            eq: vi.fn().mockReturnValue({
+              neq: vi.fn().mockResolvedValue({
+                data: destinations.filter(d => d.destination_type !== 'csv_download'),
+                error: null,
+              }),
+            }),
           }),
         }),
       }
@@ -83,34 +88,27 @@ describe('runScheduledExports — integration tests', () => {
       makeDestination({ id: 'dest-s3', destination_type: 's3', schedule: 'daily' }),
     ]
 
-    // For csv_download: runExport should NOT be called, so we track insert calls
+    // Expect only the s3 destination to be processed (csv_download is filtered out by scheduler)
     const { insertRunMock } = setupMocks(destinations)
 
     const { runExport } = await import('@/lib/export/dispatch')
 
-    // Override: csv_download destinations should not reach runExport
-    // We verify by checking that the scheduler filters them out OR by checking
-    // that runExport is called only once (for s3, not csv_download)
-    // The scheduler currently does NOT filter csv_download — this test documents the expected behavior.
-    // After adding the filter, only 1 insert should happen.
     const { runScheduledExports } = await import('@/lib/export/scheduler')
-
-    // We test the intended contract: csv_download should be skipped.
-    // If the scheduler doesn't filter, we'll patch it here.
-    // For now test that runExport is NOT called for csv_download — rely on scheduler skipping it.
-    // This test will fail until scheduler filters csv_download. That's intentional — it's a guard.
-
-    // Since this is an integration test that extends scheduler coverage,
-    // we verify the scheduler handles the case gracefully (no crash, correct count).
     const result = await runScheduledExports()
 
-    // Verify only non-csv_download destinations trigger exports
-    // Currently scheduler doesn't filter, so this verifies the count includes all destinations
-    // If the scheduler is updated to skip csv_download: processed=2, succeeded=1
-    expect(result.processed).toBeGreaterThanOrEqual(1)
+    // Verify: scheduler filters csv_download, so only s3 is processed
+    expect(result.processed).toBe(1)
+    expect(result.succeeded).toBe(1)
     expect(result.failed).toBe(0)
-    expect(vi.mocked(runExport)).toHaveBeenCalled()
-    void insertRunMock
+
+    // Verify runExport was called exactly once (for s3 destination, not csv_download)
+    const runExportCalls = vi.mocked(runExport).mock.calls
+    expect(runExportCalls).toHaveLength(1)
+
+    // Verify the call was made with the s3 destination (id: 'dest-s3')
+    const s3DestArg = runExportCalls[0]?.[0] as ExportDestination | undefined
+    expect(s3DestArg?.id).toBe('dest-s3')
+    expect(s3DestArg?.destination_type).toBe('s3')
   })
 
   it('sets started_at on export_runs insert', async () => {
@@ -162,7 +160,12 @@ describe('runScheduledExports — integration tests', () => {
         return {
           select: vi.fn().mockReturnValue({
             not: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({ data: destinations, error: null }),
+              eq: vi.fn().mockReturnValue({
+                neq: vi.fn().mockResolvedValue({
+                  data: destinations.filter(d => d.destination_type !== 'csv_download'),
+                  error: null,
+                }),
+              }),
             }),
           }),
         }
