@@ -760,3 +760,41 @@ export type ExportDestinationCreateInput = {
   config: Record<string, unknown>
   schedule?: ExportSchedule | null
 }
+
+// ─── M15 Part 2: Dynamic Creative Optimization (DCO) ─────────────────────────
+
+export type CreativeTemplateFormat = 'copy' | 'banner' | 'video'
+
+export type CreativeTemplate = {
+  id: string
+  organization_id: string
+  workspace_id: string
+  name: string
+  format: CreativeTemplateFormat
+  template_body: Record<string, string>  // { headline, description, imageUrl, cta, url }
+  placeholders: string[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type CreativeVariant = {
+  id: string
+  organization_id: string
+  template_id: string
+  product_id: string | null
+  resolved_body: Record<string, string>
+  impressions: number
+  conversions: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type VariantPerformance = {
+  id: string
+  variant_id: string
+  event_type: 'impression' | 'click' | 'conversion'
+  value: number | null
+  recorded_at: string
+}
