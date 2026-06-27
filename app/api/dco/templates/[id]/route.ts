@@ -88,9 +88,17 @@ export async function PATCH(req: NextRequest, { params }: RouteParams): Promise<
   if (b.format !== undefined) updates.format = b.format
   if (b.is_active !== undefined) updates.is_active = b.is_active
   if (b.template_body !== undefined) {
-    const templateBody = b.template_body as Record<string, string>
-    updates.template_body = templateBody
-    updates.placeholders = extractPlaceholders(templateBody)
+    const templateBody = b.template_body as Record<string, unknown>
+    // Validate all values in template_body are strings
+    const bodyEntries = Object.entries(templateBody)
+    if (bodyEntries.some(([, v]) => typeof v !== 'string')) {
+      return NextResponse.json(
+        { error: 'template_body values must all be strings' },
+        { status: 422 },
+      )
+    }
+    updates.template_body = templateBody as Record<string, string>
+    updates.placeholders = extractPlaceholders(templateBody as Record<string, string>)
   }
 
   if (Object.keys(updates).length === 0) {

@@ -25,10 +25,14 @@ export function productToContext(product: CanonicalProduct): Record<string, stri
   let priceStr = ''
   if (product.price !== null) {
     const locale = product.currency === 'BRL' ? 'pt-BR' : 'en-US'
-    priceStr = new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: product.currency,
-    }).format(product.price)
+    try {
+      priceStr = new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: product.currency,
+      }).format(product.price)
+    } catch {
+      priceStr = String(product.price)
+    }
   }
 
   return {

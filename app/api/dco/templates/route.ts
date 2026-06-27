@@ -90,8 +90,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'O campo "template_body" deve ser um objeto.' }, { status: 422 })
   }
 
-  const templateBody = b.template_body as Record<string, string>
-  const placeholders = extractPlaceholders(templateBody)
+  const templateBody = b.template_body as Record<string, unknown>
+
+  // Validate all values in template_body are strings
+  const bodyEntries = Object.entries(templateBody)
+  if (bodyEntries.some(([, v]) => typeof v !== 'string')) {
+    return NextResponse.json(
+      { error: 'template_body values must all be strings' },
+      { status: 422 },
+    )
+  }
+
+  const placeholders = extractPlaceholders(templateBody as Record<string, string>)
 
   const supabase = createServiceClient()
   const { data, error } = await supabase
@@ -101,7 +111,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       workspace_id: workspaceId,
       name: b.name.trim(),
       format: b.format as CreativeTemplateFormat,
-      template_body: templateBody,
+      template_body: templateBody as Record<string, string>,
       placeholders,
       is_active: true,
     })
