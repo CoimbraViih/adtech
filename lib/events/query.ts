@@ -1,4 +1,4 @@
-import { chQueryWithParams } from './clickhouse';
+import { chQueryWithParams, isClickHouseConfigured } from './clickhouse';
 
 export type ConversionRow = {
   campaign_id: string;
@@ -63,4 +63,101 @@ export async function getFunnelByDay(
     ORDER BY event_day DESC, event_count DESC`,
     { org_id: organizationId, ws_id: workspaceId, start: startDate, end: endDate }
   );
+}
+
+// ---------------------------------------------------------------------------
+// Raw event explorer — M18 Data Transparency
+// ---------------------------------------------------------------------------
+
+export type EventRow = {
+  id: string
+  event_type: string
+  url: string | null
+  referrer: string | null
+  campaign_id: string | null
+  value: number | null
+  currency: string | null
+  consent_state: string
+  event_time: string  // ISO string
+}
+
+export type EventsPage = {
+  rows: EventRow[]
+  total: number
+  has_more: boolean
+}
+
+/**
+ * Paginated raw event query from ClickHouse `events` table.
+ * organizationId and workspaceId come from the authenticated session — never from user input.
+ * limit is capped at 500 server-side regardless of what the caller passes.
+ */
+export async function getEventsByWorkspace(
+  organizationId: string,
+  workspaceId: string,
+  filters: {
+    event_type?: string
+    campaign_id?: string
+    start_date: string   // YYYY-MM-DD
+    end_date: string     // YYYY-MM-DD
+    limit: number        // capped at 500
+    offset: number
+  }
+): Promise<EventsPage> {
+  if (!isClickHouseConfigured()) {
+    return { rows: [], total: 0, has_more: false };
+  }
+
+  const safeLimit = Math.min(filters.limit, 500);
+
+  // Build shared WHERE clause parts — only parametrised bindings, never string interpolation
+  const baseParams: Record<string, string> = {
+    org_id: organizationId,
+    ws_id: workspaceId,
+    start: filters.start_date,
+    end: filters.end_date,
+  };
+
+  let whereExtra = '';
+  if (filters.event_type) {
+    whereExtra += ' AND event_type = {evt_type:String}';
+    baseParams['evt_type'] = filters.event_type;
+  }
+  if (filters.campaign_id) {
+    whereExtra += ' AND campaign_id = {camp_id:String}';
+    baseParams['camp_id'] = filters.campaign_id;
+  }
+
+  const baseWhere = `organization_id = {org_id:String}
+      AND workspace_id    = {ws_id:String}
+      AND toDate(event_time) BETWEEN {start:String} AND {end:String}${whereExtra}`;
+
+  const dataSql = `SELECT
+      id,
+      event_type,
+      url,
+      referrer,
+      campaign_id,
+      value,
+      currency,
+      consent_state,
+      toString(event_time) AS event_time
+    FROM adflow.events
+    WHERE ${baseWhere}
+    ORDER BY event_time DESC
+    LIMIT ${safeLimit} OFFSET ${filters.offset}`;
+
+  const countSql = `SELECT count() AS total
+    FROM adflow.events
+    WHERE ${baseWhere}`;
+
+  const [rows, countRows] = await Promise.all([
+    chQueryWithParams<EventRow>(dataSql, baseParams),
+    chQueryWithParams<{ total: number }>(countSql, baseParams),
+  ]);
+
+  const total = countRows[0]?.total ?? 0;
+  const has_more = filters.offset + rows.length < total;
+
+  return { rows, total, has_more };
 }
