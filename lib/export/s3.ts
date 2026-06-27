@@ -69,11 +69,16 @@ async function signS3Request(
 
   const payloadHash = await sha256Hex(body)
 
+  const contentLength = typeof body === 'string'
+    ? new TextEncoder().encode(body).length
+    : (body as ArrayBuffer).byteLength
+
   const headers: Record<string, string> = {
-    host: url.host,
-    'x-amz-date': amzDatetime,
-    'x-amz-content-sha256': payloadHash,
+    'content-length': String(contentLength),
     'content-type': 'text/csv',
+    host: url.host,
+    'x-amz-content-sha256': payloadHash,
+    'x-amz-date': amzDatetime,
   }
 
   // Canonical headers — must be sorted
