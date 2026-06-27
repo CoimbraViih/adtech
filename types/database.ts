@@ -720,3 +720,43 @@ export type PixelDeadLetterInsert = {
   rejection_reason: DeadLetterReason;
   event_payload: unknown;
 };
+
+// ─── M18: Data Transparency ─────────────────────────────────────────────────
+
+export type ExportDestinationType = 'bigquery' | 'snowflake' | 's3' | 'csv_download'
+export type ExportRunStatus = 'pending' | 'running' | 'done' | 'failed'
+export type ExportSchedule = 'hourly' | 'daily'
+
+export type ExportDestination = {
+  id: string
+  organization_id: string
+  workspace_id: string
+  name: string
+  destination_type: ExportDestinationType
+  config: Record<string, unknown>
+  schedule: ExportSchedule | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type ExportRun = {
+  id: string
+  destination_id: string
+  organization_id: string
+  workspace_id: string
+  status: ExportRunStatus
+  rows_exported: number | null
+  error: string | null
+  output_path: string | null
+  started_at: string | null
+  completed_at: string | null
+  created_at: string
+}
+
+export type ExportDestinationCreateInput = {
+  name: string
+  destination_type: ExportDestinationType
+  config: Record<string, unknown>
+  schedule?: ExportSchedule | null
+}
