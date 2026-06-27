@@ -77,10 +77,10 @@ describe('getEventsByWorkspace', () => {
       offset: 0,
     });
 
-    // The SQL passed to first call must contain limit 500, not 9999
-    const firstCallSql = vi.mocked(chQueryWithParams).mock.calls[0][0] as string;
-    expect(firstCallSql).toContain('500');
-    expect(firstCallSql).not.toContain('9999');
+    // The params passed to first call must have limit_val = '500', not '9999'
+    const firstCallParams = vi.mocked(chQueryWithParams).mock.calls[0][1] as Record<string, string>;
+    expect(firstCallParams.limit_val).toBe('500');
+    expect(firstCallParams).not.toHaveProperty('9999');
   });
 
   it('computes has_more correctly', async () => {

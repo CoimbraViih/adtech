@@ -3,9 +3,8 @@ import { NextResponse } from 'next/server'
 import { requireServerSession } from '@/lib/supabase/server'
 import { getEventsByWorkspace } from '@/lib/events/query'
 import { eventsToCSV } from '@/lib/export/csv'
+import { ISO_DATE, MAX_RANGE_DAYS } from '@/lib/events/validation'
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-const MAX_RANGE_DAYS = 90
 const EXPORT_LIMIT = 10_000
 
 export async function GET(req: NextRequest) {

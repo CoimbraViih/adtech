@@ -116,6 +116,8 @@ export async function getEventsByWorkspace(
     ws_id: workspaceId,
     start: filters.start_date,
     end: filters.end_date,
+    limit_val: String(safeLimit),
+    offset_val: String(filters.offset),
   };
 
   let whereExtra = '';
@@ -145,7 +147,7 @@ export async function getEventsByWorkspace(
     FROM adflow.events
     WHERE ${baseWhere}
     ORDER BY event_time DESC
-    LIMIT ${safeLimit} OFFSET ${filters.offset}`;
+    LIMIT {limit_val:UInt32} OFFSET {offset_val:UInt32}`;
 
   const countSql = `SELECT count() AS total
     FROM adflow.events

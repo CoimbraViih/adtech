@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireServerSession } from '@/lib/supabase/server'
 import { getEventsByWorkspace } from '@/lib/events/query'
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-const MAX_RANGE_DAYS = 90
+import { ISO_DATE, MAX_RANGE_DAYS } from '@/lib/events/validation'
 
 export async function GET(req: NextRequest) {
   let session: Awaited<ReturnType<typeof requireServerSession>>
