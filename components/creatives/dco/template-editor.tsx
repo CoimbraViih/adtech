@@ -166,9 +166,9 @@ export function TemplateEditor({ template, onSave, onCancel }: Props) {
                 key={p}
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono"
                 style={{
-                  background: 'rgba(59,130,246,0.12)',
+                  background: 'color-mix(in srgb, var(--color-data) 12%, transparent)',
                   color: 'var(--adflow-data)',
-                  border: '1px solid rgba(59,130,246,0.25)',
+                  border: '1px solid color-mix(in srgb, var(--color-data) 25%, transparent)',
                 }}
               >
                 {`{{${p}}}`}

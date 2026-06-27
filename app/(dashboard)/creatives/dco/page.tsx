@@ -43,7 +43,7 @@ export default async function DcoPage() {
           className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium rounded-lg transition-colors"
           style={{
             background: 'var(--adflow-accent)',
-            color: '#fff',
+            color: 'var(--color-base)',
           }}
         >
           <Plus className="w-4 h-4" />
@@ -97,7 +97,7 @@ export default async function DcoPage() {
                   style={{
                     borderColor: 'var(--adflow-border)',
                     color: 'var(--adflow-fg)',
-                    background: idx % 2 === 1 ? 'rgba(255,255,255,0.02)' : undefined,
+                    background: idx % 2 === 1 ? 'color-mix(in srgb, var(--color-surface) 98%, white)' : undefined,
                   }}
                 >
                   <td className="px-4 py-3 font-medium">{t.name}</td>
@@ -107,8 +107,8 @@ export default async function DcoPage() {
                       className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                       style={{
                         background: t.is_active
-                          ? 'rgba(16,185,129,0.12)'
-                          : 'rgba(239,68,68,0.12)',
+                          ? 'color-mix(in srgb, var(--color-success) 12%, transparent)'
+                          : 'color-mix(in srgb, var(--color-danger) 12%, transparent)',
                         color: t.is_active
                           ? 'var(--adflow-success)'
                           : 'var(--adflow-danger)',

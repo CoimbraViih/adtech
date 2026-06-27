@@ -14,18 +14,39 @@ export const EPSILON = 0.1
  * Throws if variants array is empty.
  */
 export function selectVariant(variants: CreativeVariant[]): CreativeVariant {
+  return selectVariantWithStrategy(variants).variant
+}
+
+export type SelectionResult = {
+  variant: CreativeVariant
+  strategy: 'exploit' | 'explore'
+}
+
+/**
+ * Same epsilon-greedy logic as selectVariant() but also returns which
+ * strategy was used: 'explore' if a random variant was chosen, 'exploit'
+ * if the variant with the highest conversion rate was chosen.
+ * Throws if variants array is empty.
+ */
+export function selectVariantWithStrategy(variants: CreativeVariant[]): SelectionResult {
   if (variants.length === 0) {
     throw new Error('No variants to select from')
   }
 
   // Explore: pick a random variant
   if (Math.random() < EPSILON) {
-    return variants[Math.floor(Math.random() * variants.length)]
+    return {
+      variant: variants[Math.floor(Math.random() * variants.length)],
+      strategy: 'explore',
+    }
   }
 
   // Exploit: pick variant with highest conversion rate
   const rated = computeConversionRates(variants)
-  return rated[0].variant
+  return {
+    variant: rated[0].variant,
+    strategy: 'exploit',
+  }
 }
 
 /**

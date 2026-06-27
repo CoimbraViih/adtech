@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireServerSession } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { selectVariant, recordImpression } from '@/lib/creatives/dco/rotation'
+import { selectVariantWithStrategy, recordImpression } from '@/lib/creatives/dco/rotation'
 import type { CreativeVariant } from '@/types/database'
 
 // ── POST /api/dco/rotate ──────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Epsilon-greedy selection
-  const selected = selectVariant(variants)
+  const { variant: selected, strategy } = selectVariantWithStrategy(variants)
 
   // Record impression (fire-and-forget — we don't let recording errors block the response)
   try {
@@ -61,5 +61,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.error('[dco/rotate POST] recordImpression failed', (impressionError as Error).message)
   }
 
-  return NextResponse.json({ variant: selected })
+  return NextResponse.json({ variant: selected, strategy })
 }

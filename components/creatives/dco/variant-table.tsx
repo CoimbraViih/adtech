@@ -210,7 +210,7 @@ export function VariantTable({ templateId }: Props) {
                   style={{
                     borderColor: 'var(--adflow-border)',
                     color: 'var(--adflow-fg)',
-                    background: idx % 2 === 1 ? 'rgba(255,255,255,0.02)' : undefined,
+                    background: idx % 2 === 1 ? 'color-mix(in srgb, var(--color-surface) 98%, white)' : undefined,
                   }}
                 >
                   <td
@@ -247,8 +247,8 @@ export function VariantTable({ templateId }: Props) {
                       className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                       style={{
                         background: v.is_active
-                          ? 'rgba(16,185,129,0.12)'
-                          : 'rgba(239,68,68,0.12)',
+                          ? 'color-mix(in srgb, var(--color-success) 12%, transparent)'
+                          : 'color-mix(in srgb, var(--color-danger) 12%, transparent)',
                         color: v.is_active
                           ? 'var(--adflow-success)'
                           : 'var(--adflow-danger)',

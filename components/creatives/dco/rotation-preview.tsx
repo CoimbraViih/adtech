@@ -10,6 +10,7 @@ type Props = {
 
 type RotationResult = {
   variant: CreativeVariant
+  strategy: 'exploit' | 'explore'
 }
 
 const PREVIEW_FIELDS = [
@@ -22,6 +23,7 @@ const PREVIEW_FIELDS = [
 
 export function RotationPreview({ templateId }: Props) {
   const [variant, setVariant] = useState<CreativeVariant | null>(null)
+  const [strategy, setStrategy] = useState<'exploit' | 'explore' | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -29,6 +31,7 @@ export function RotationPreview({ templateId }: Props) {
     setLoading(true)
     setError(null)
     setVariant(null)
+    setStrategy(null)
     try {
       const res = await fetch('/api/dco/rotate', {
         method: 'POST',
@@ -41,6 +44,7 @@ export function RotationPreview({ templateId }: Props) {
         return
       }
       setVariant(json.variant)
+      setStrategy(json.strategy)
     } catch {
       setError('Erro de rede.')
     } finally {
@@ -78,12 +82,20 @@ export function RotationPreview({ templateId }: Props) {
             background: 'var(--adflow-surface)',
           }}
         >
-          <p
-            className="text-xs uppercase tracking-wider font-medium"
-            style={{ color: 'var(--adflow-fg-muted)' }}
-          >
-            Selected Variant
-          </p>
+          <div className="flex items-center justify-between">
+            <p
+              className="text-xs uppercase tracking-wider font-medium"
+              style={{ color: 'var(--adflow-fg-muted)' }}
+            >
+              Selected Variant
+            </p>
+            {strategy && (
+              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                Strategy:{' '}
+                {strategy === 'exploit' ? 'Exploit (best variant)' : 'Explore (random)'}
+              </p>
+            )}
+          </div>
 
           <div className="space-y-2">
             {PREVIEW_FIELDS.map(({ key, label }) => {
