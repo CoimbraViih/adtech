@@ -13,8 +13,12 @@
       "schedule": "0 2 * * *"
     },
     {
-      "path": "/api/cron/run-scheduled-exports",
+      "path": "/api/cron/run-scheduled-exports?type=daily",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/run-scheduled-exports?type=hourly",
+      "schedule": "0 * * * *"
     }
   ]
 }

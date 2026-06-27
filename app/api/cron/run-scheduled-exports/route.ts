@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { runScheduledExports } from '@/lib/export/scheduler'
 
-export async function GET(req: Request): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   const cronSecret = process.env.CRON_SECRET
   const authHeader = req.headers.get('authorization')
 
@@ -10,7 +10,8 @@ export async function GET(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const result = await runScheduledExports()
+  const scheduleType = req.nextUrl.searchParams.get('type') as 'hourly' | 'daily' | null
+  const result = await runScheduledExports(scheduleType ?? undefined)
   console.log('[cron/run-scheduled-exports]', JSON.stringify(result))
   return NextResponse.json(result)
 }

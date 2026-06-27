@@ -11,11 +11,11 @@ type Props = {
 }
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
-  pageview:    'var(--color-data)',
+  page_view:   'var(--color-data)',
   purchase:    'var(--color-success)',
   lead:        'var(--color-warning)',
-  add_to_cart: 'var(--color-purple)',
-  checkout:    'var(--color-pink)',
+  add_to_cart: 'var(--color-accent)',
+  sign_up:     'var(--color-success)',
   custom:      'var(--color-muted)',
 }
 

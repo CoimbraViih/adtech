@@ -3,20 +3,26 @@ import { getEventsByWorkspace } from '@/lib/events/query'
 import type { ExportDestination } from '@/types/database'
 import { runExport } from './dispatch'
 
-export async function runScheduledExports(): Promise<{
+export async function runScheduledExports(scheduleType?: 'hourly' | 'daily'): Promise<{
   processed: number
   succeeded: number
   failed: number
 }> {
   const supabase = createServiceClient()
 
-  // Fetch all active scheduled destinations
-  const { data: destinations, error: fetchError } = await supabase
+  // Fetch all active scheduled destinations, optionally filtered by schedule type
+  let query = supabase
     .from('export_destinations')
     .select('*')
     .not('schedule', 'is', null)
     .eq('is_active', true)
     .neq('destination_type', 'csv_download')
+
+  if (scheduleType) {
+    query = query.eq('schedule', scheduleType)
+  }
+
+  const { data: destinations, error: fetchError } = await query
 
   if (fetchError) {
     throw new Error(`Failed to fetch export destinations: ${fetchError.message}`)
@@ -49,9 +55,10 @@ export async function runScheduledExports(): Promise<{
     const runId: string = (runData as { id: string }).id
 
     try {
-      // Compute last 24 hours date range
+      // Compute lookback window based on destination schedule
+      const windowHours = dest.schedule === 'hourly' ? 1 : 24
       const endDate = new Date()
-      const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000)
+      const startDate = new Date(endDate.getTime() - windowHours * 60 * 60 * 1000)
 
       const fmt = (d: Date) => d.toISOString().slice(0, 10)
 

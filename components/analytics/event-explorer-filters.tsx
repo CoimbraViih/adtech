@@ -87,12 +87,12 @@ export function EventExplorerFilters({ onFiltersChange, isLoading }: Props) {
             style={{ borderColor: 'var(--color-border)', color: 'inherit', background: 'var(--color-surface)' }}
           >
             <option value="">Todos</option>
-            <option value="pageview">pageview</option>
-            <option value="purchase">purchase</option>
-            <option value="lead">lead</option>
-            <option value="add_to_cart">add_to_cart</option>
-            <option value="checkout">checkout</option>
-            <option value="custom">custom</option>
+            <option value="page_view">Page View</option>
+            <option value="add_to_cart">Add to Cart</option>
+            <option value="purchase">Purchase</option>
+            <option value="lead">Lead</option>
+            <option value="sign_up">Sign Up</option>
+            <option value="custom">Custom</option>
           </select>
         </div>
 

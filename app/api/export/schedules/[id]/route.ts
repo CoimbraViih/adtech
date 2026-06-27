@@ -4,6 +4,18 @@ import { requireServerSession } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { ExportDestination } from '@/types/database'
 
+const SECRET_CONFIG_FIELDS = ['password', 'secret_access_key', 'credentials_json', 'private_key', 'client_secret']
+
+function stripSecrets(config: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...config }
+  for (const field of SECRET_CONFIG_FIELDS) {
+    if (field in result) {
+      result[field] = '***'
+    }
+  }
+  return result
+}
+
 const patchSchema = z
   .object({
     name: z.string().min(1).optional(),
@@ -74,7 +86,13 @@ export async function PATCH(req: NextRequest, { params }: Params): Promise<NextR
     return NextResponse.json({ error: 'Falha ao atualizar destino' }, { status: 500 })
   }
 
-  return NextResponse.json({ destination: data as ExportDestination })
+  const dest = data as ExportDestination
+  return NextResponse.json({
+    destination: {
+      ...dest,
+      config: stripSecrets(dest.config as Record<string, unknown>),
+    },
+  })
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params): Promise<NextResponse> {

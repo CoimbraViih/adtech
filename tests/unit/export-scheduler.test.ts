@@ -72,7 +72,9 @@ describe('runScheduledExports', () => {
     // Setup mock chain for export_destinations select
     const selectMock = vi.fn().mockReturnValue({
       not: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: destinations, error: null }),
+        eq: vi.fn().mockReturnValue({
+          neq: vi.fn().mockResolvedValue({ data: destinations, error: null }),
+        }),
       }),
     })
 
@@ -107,7 +109,9 @@ describe('runScheduledExports', () => {
 
     const selectMock = vi.fn().mockReturnValue({
       not: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: destinations, error: null }),
+        eq: vi.fn().mockReturnValue({
+          neq: vi.fn().mockResolvedValue({ data: destinations, error: null }),
+        }),
       }),
     })
 
@@ -143,7 +147,9 @@ describe('runScheduledExports', () => {
 
     const selectMock = vi.fn().mockReturnValue({
       not: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: destinations, error: null }),
+        eq: vi.fn().mockReturnValue({
+          neq: vi.fn().mockResolvedValue({ data: destinations, error: null }),
+        }),
       }),
     })
 

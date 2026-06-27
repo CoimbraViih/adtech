@@ -4,6 +4,18 @@ import { requireServerSession } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { ExportDestination } from '@/types/database'
 
+const SECRET_CONFIG_FIELDS = ['password', 'secret_access_key', 'credentials_json', 'private_key', 'client_secret']
+
+function stripSecrets(config: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...config }
+  for (const field of SECRET_CONFIG_FIELDS) {
+    if (field in result) {
+      result[field] = '***'
+    }
+  }
+  return result
+}
+
 const createSchema = z.object({
   name: z.string().min(1, 'name is required'),
   destination_type: z.enum(['bigquery', 'snowflake', 's3', 'csv_download'] as const),
@@ -31,7 +43,11 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Falha ao buscar destinos' }, { status: 500 })
   }
 
-  return NextResponse.json({ destinations: (data ?? []) as ExportDestination[] })
+  const sanitized = (data ?? []).map((d) => ({
+    ...(d as ExportDestination),
+    config: stripSecrets((d as ExportDestination).config as Record<string, unknown>),
+  }))
+  return NextResponse.json({ destinations: sanitized })
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {

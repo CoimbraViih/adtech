@@ -126,7 +126,7 @@ export async function getEventsByWorkspace(
     baseParams['evt_type'] = filters.event_type;
   }
   if (filters.campaign_id) {
-    whereExtra += ' AND campaign_id = {camp_id:String}';
+    whereExtra += " AND JSONExtractString(properties, 'campaign_id') = {camp_id:String}";
     baseParams['camp_id'] = filters.campaign_id;
   }
 
@@ -135,11 +135,11 @@ export async function getEventsByWorkspace(
       AND toDate(event_time) BETWEEN {start:String} AND {end:String}${whereExtra}`;
 
   const dataSql = `SELECT
-      id,
+      event_id AS id,
       event_type,
       url,
       referrer,
-      campaign_id,
+      JSONExtractString(properties, 'campaign_id') AS campaign_id,
       value,
       currency,
       consent_state,
