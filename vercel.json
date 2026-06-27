@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/cron/run-scheduled-exports?type=hourly",
-      "schedule": "0 * * * *"
+      "schedule": "0 4 * * *"
     }
   ]
 }
