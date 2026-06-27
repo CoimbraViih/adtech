@@ -32,7 +32,7 @@
 | M17 | Consent & LGPD / Cookieless | `feat/m17-consent-lgpd` ✅ | M13 |
 | M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | `feat/m16-ecommerce` ✅ | M10, M13 |
 | M18 | Data Transparency (event explorer + export) | `feat/m18-data-transparency` ✅ | M13 |
-| M15 | Creative Asset Uploads + DCO | `feat/m15-dco` | M16, M13, M3 |
+| M15 | Creative Asset Uploads + DCO | `feat/m15-dco` ✅ | M16, M13, M3 |
 | M19 | Predictive & Autonomous Optimization | `feat/m19-predictive-optimization` | M13, M16, M11 |
 | M20 | White-label Agency Portal | `feat/m20-whitelabel` | M18 |
 | M21 | In-app AI Assistant & Guided Onboarding | `feat/m21-ai-assistant` | M13 (parcial) |
@@ -1202,13 +1202,13 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M15 — Creative Asset Uploads ✅ + DCO (planejado)
+## M15 — Creative Asset Uploads ✅ + DCO ✅ CONCLUÍDO
 
 **Branch upload (concluído):** `feat/m15-creative-uploads` → mergeado via PR #14  
-**Branch DCO (planejado):** `feat/m15-dco`  
+**Branch DCO (concluído):** `feat/m15-dco` → mergeado via PR #24 (2026-06-27)  
 **Depende de (DCO):** M16 (feed de produto), M13 (sinais de performance), M3 (geração AI)  
 **Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §10  
-**Objetivo:** Upload de assets já entregue (PR #14). DCO adiciona montagem/rotação de variantes por audiência e feed de produto, devolvendo vencedores ao loop.
+**Objetivo:** Upload de assets já entregue (PR #14). DCO adiciona montagem/rotação de variantes por feed de produto M16, devolvendo vencedores ao loop via bandit epsilon-greedy.
 
 > `lib/storage/creative-assets.ts` e migration `023_creative_assets.sql` **já existem** — confirmar antes de codar o DCO.
 
@@ -1235,24 +1235,39 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 - `vitest run` 425/425 passando · Upload PNG/JPEG/WebP funcional nos 3 contextos
 - Arquivo > 10 MB rejeitado inline no dropzone
 
-### Parte 2 — DCO (Dynamic Creative Optimization) — planejado
+### Parte 2 — DCO (Dynamic Creative Optimization) ✅ CONCLUÍDO (PR #24)
 
 #### Database
-- [ ] `supabase/migrations/031_dco.sql` — tabelas `creative_templates`, `creative_variants`, `variant_performance`; RLS completo
+- [x] `supabase/migrations/032_dco.sql` — tabelas `creative_templates`, `creative_variants`, `variant_performance`; RLS completo (USING + WITH CHECK em todas as writes; `variant_performance` via subquery em `creative_variants`)
 
 #### Backend
-- [ ] `lib/creatives/dco/templates.ts` — template engine com placeholders ligados ao feed de produto M16
-- [ ] `lib/creatives/dco/assembler.ts` — monta criativo a partir de template + feed (preço, imagem, título)
-- [ ] `lib/creatives/dco/rotation.ts` — rotação por bandit (epsilon-greedy/Thompson) usando conversões do event store M13
+- [x] `lib/creatives/dco/templates.ts` — `renderTemplate` + `extractPlaceholders` (placeholders `{{field}}` ligados ao feed M16)
+- [x] `lib/creatives/dco/assembler.ts` — `productToContext` + `assembleVariant` usando `CanonicalProduct` M16; formatação de preço BRL/USD via `Intl.NumberFormat`
+- [x] `lib/creatives/dco/rotation.ts` — bandit epsilon-greedy (ε=0.1): `selectVariantWithStrategy`, `recordImpression`, `recordConversion`, `refreshBanditState`; log imutável em `variant_performance` como source of truth
+
+#### API
+- [x] `app/api/dco/templates/route.ts` — GET (list) + POST (create com auto-extração de placeholders)
+- [x] `app/api/dco/templates/[id]/route.ts` — GET + PATCH + DELETE (soft)
+- [x] `app/api/dco/templates/[id]/variants/route.ts` — GET (com conversionRate) + POST (gera N variantes do catálogo M16)
+- [x] `app/api/dco/rotate/route.ts` — POST retorna `{ variant, strategy: 'exploit' | 'explore' }`
 
 #### Interface
-- [ ] `app/(dashboard)/creatives/dco/page.tsx` — editor de templates dinâmicos
+- [x] `app/(dashboard)/creatives/dco/page.tsx` — dashboard de templates (Server Component)
+- [x] `components/creatives/dco/template-editor.tsx` — editor com chips de placeholders live
+- [x] `components/creatives/dco/variant-table.tsx` — tabela com "Conversion gain per cycle" + gerar variantes
+- [x] `components/creatives/dco/rotation-preview.tsx` — preview de rotação com label Exploit/Explore
 
 #### Entregáveis DCO
+- PR #24 mergeado: https://github.com/CoimbraViih/adtech/pull/24
+- 76 testes DCO passando (7 arquivos) — bandit estatístico, formatação de preço, API 401/422/404
+- `tsc --noEmit` zero erros
 - Um template + feed gera N variantes automaticamente
-- Rotação realoca impressões para variante de maior conversão
-- Métrica do loop exposta: "ganho de conversão por ciclo"
-- `tsc --noEmit` zero erros; `vitest run` passando
+- Rotação epsilon-greedy realoca impressões para variante de maior conversão
+- Métrica "Conversion gain per cycle" exposta na UI
+
+#### Pendências pós-merge
+- Aplicar migration `032_dco.sql` no Supabase prod antes do go-live
+- Follow-up: substituir leitura-incremento não-atômico em `recordImpression`/`recordConversion` por RPC SQL atômico (`UPDATE ... SET impressions = impressions + 1`)
 
 ---
 
