@@ -13,6 +13,7 @@ import {
   GitCompareArrows,
   List,
   Download,
+  Palette,
 } from "lucide-react";
 
 export type NavItem = {
@@ -38,4 +39,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Otimização Preditiva", href: "/automation/predictive", icon: Sparkles },
   { label: "Configurações", href: "/settings",                icon: Settings, matchPrefix: true },
   { label: "Exportações",   href: "/settings/exports",        icon: Download, matchPrefix: false },
+  { label: "Branding",      href: "/settings/branding",       icon: Palette, matchPrefix: false },
 ];
