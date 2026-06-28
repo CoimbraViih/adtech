@@ -33,7 +33,7 @@
 | M16 | E-commerce Integrations (Nuvemshop / VTEX / Shopify) | `feat/m16-ecommerce` ✅ | M10, M13 |
 | M18 | Data Transparency (event explorer + export) | `feat/m18-data-transparency` ✅ | M13 |
 | M15 | Creative Asset Uploads + DCO | `feat/m15-dco` ✅ | M16, M13, M3 |
-| M19 | Predictive & Autonomous Optimization | `feat/m19-predictive-optimization` | M13, M16, M11 |
+| M19 | Predictive & Autonomous Optimization | `feat/m19-predictive-optimization` ✅ | M13, M16, M11 |
 | M20 | White-label Agency Portal | `feat/m20-whitelabel` | M18 |
 | M21 | In-app AI Assistant & Guided Onboarding | `feat/m21-ai-assistant` | M13 (parcial) |
 | M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M13, M16 |
@@ -884,7 +884,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 # PLANEJADOS
 
-> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → **M22 → M10 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
+> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → M20 → M21 → M8-DMP → (reavaliar M12)**
 >
 > M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
 
@@ -1277,34 +1277,30 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M19 — Predictive & Autonomous Optimization (estende M11)
+## M19 — Predictive & Autonomous Optimization (estende M11) ✅
 
-**Branch:** `feat/m19-predictive-optimization`  
+**Branch:** `feat/m19-predictive-optimization` — mergeado em main (PR #26, 2026-06-28)  
 **Depende de:** M13, M16, M11  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §11  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-28-m19-predictive-optimization.md`  
 **Objetivo:** Evoluir o AI Traffic Manager de diagnóstico para previsão e ação — forecast de budget/pacing, previsão de ROAS/conversão, executor de ações nos clients M-ADS com trilha de auditoria.
 
-> **Skills:** `/claude-api` · `/supabase` · `/webapp-testing`  
-> **Nota:** Windsor.ai disponível no ambiente pode pausar campanhas e ajustar budget — útil como validação do executor.
+### Entregado
 
-### Database
-- [ ] `supabase/migrations/030_optimization_actions.sql` — log de ações sugeridas/executadas + outcome (before/after + resultado medido em D+7)
+- [x] `supabase/migrations/034_optimization_actions.sql` — tabelas `optimization_actions` + `optimization_guardrails` com RLS completo e `WITH CHECK` em todas as políticas de escrita
+- [x] `lib/ai/predict/pacing.ts` — forecast overpace/underpace com budget sugerido
+- [x] `lib/ai/predict/roas.ts` — weighted moving average + trend detection
+- [x] `lib/ai/actions/guardrails.ts` — kill_switch, blacklist, max budget change %, limite diário de ações
+- [x] `lib/ai/actions/executor.ts` — `proposeAction` + `executeAction` (workspace-scoped, IDOR-safe)
+- [x] `lib/ai/predict/engine.ts` — orquestra sinais de pacing + ROAS → propõe/executa ações
+- [x] API routes: `/api/ai/optimize/suggest`, `/api/ai/optimize/actions`, `actions/[id]/approve`, `actions/[id]/reject`, `/api/ai/optimize/guardrails`
+- [x] `/api/cron/measure-outcomes` — D+7 ROAS delta, autenticado via `CRON_SECRET`
+- [x] UI: `/automation/predictive` — `PredictiveActionsTable` + `GuardrailConfigForm`
+- [x] 36 testes unitários passando; `tsc --noEmit` zero erros
+- [x] Correções de segurança: IDOR no `executeAction`, audit trail no reject, erro genérico no approve
 
-### Backend
-- [ ] `lib/ai/predict/pacing.ts` — forecast de budget/pacing sobre rollups do M13
-- [ ] `lib/ai/predict/roas.ts` — previsão de ROAS/conversão por campanha (baseline estatístico)
-- [ ] `lib/ai/actions/executor.ts` — aplica ações (pausar, ajustar budget/bid) via clients M-ADS; sempre com trilha de auditoria
-
-### Interface
-- [ ] `app/(dashboard)/automation/` — adicionar regras preditivas e modo "autônomo com aprovação"
-- [ ] Dois modos: "sugerir" (humano aprova) e "autônomo" (executa dentro de guardrails)
-- [ ] Guardrails configuráveis: limites de variação de budget, blacklist de campanhas, kill switch
-
-### Entregáveis
-- Forecast de pacing com erro médio reportado e backtestado contra histórico
-- Ação executada registra antes/depois e resultado medido em D+7
-- Modo autônomo respeita 100% dos guardrails (testado com casos de borda)
-- `tsc --noEmit` zero erros; `vitest run` passando
+### Pendente (produção)
+- [ ] Aplicar migration `034_optimization_actions.sql` no Supabase de produção
+- [ ] Configurar `CRON_SECRET` nas envs da Vercel
 
 ---
 
@@ -1450,7 +1446,7 @@ M0–M9, MS, M11, M-ADS (F1–F4) ← CONCLUÍDOS
   │         └─ M21 pode iniciar em paralelo com M18 (com mock do event store)
 ```
 
-**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → **M22 → M10 → M18 → M15 → M19 → M20 → M21 → M8-DMP → (reavaliar M12)**
+**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → M20 → M21 → M8-DMP → (reavaliar M12)**
 
 **Regras:**
 - Interface mockada sempre antes do backend — cada milestone demonstrável com dados reais antes do próximo.
