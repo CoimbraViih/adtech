@@ -1,62 +1,83 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { updateSession } from '@/lib/supabase/middleware'
+import { resolveWhitelabelDomain } from '@/lib/whitelabel/resolve-domain'
 
 const PUBLIC_PATHS = [
-  "/",
-  "/onboarding",
-  "/callback",
-  "/api/health",
-  "/api/pixel",
-  "/api/leads",
-  "/api/audiences/optout",
-  // dev-login removed from public paths — the route guards itself with ENABLE_DEV_LOGIN
-];
+  '/',
+  '/onboarding',
+  '/callback',
+  '/api/health',
+  '/api/pixel',
+  '/api/leads',
+  '/api/audiences/optout',
+]
 
-const AUTH_ONLY_PATHS = ["/login", "/signup"];
+const AUTH_ONLY_PATHS = ['/login', '/signup']
+
+function isAdflowHost(host: string): boolean {
+  const bare = host.split(':')[0]
+  if (bare === 'localhost') return true
+  if (bare.endsWith('.vercel.app')) return true
+  // Add your production domain here if different
+  if (bare === 'adflow.com.br' || bare === 'www.adflow.com.br') return true
+  return false
+}
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname } = request.nextUrl
+  const host = request.headers.get('host') ?? ''
 
-  const { user, response } = await updateSession(request);
+  // Resolve white-label tenant when request comes from a custom domain
+  let whitelabelWorkspaceId: string | null = null
+  if (!isAdflowHost(host)) {
+    const branding = await resolveWhitelabelDomain(host)
+    if (branding) {
+      whitelabelWorkspaceId = branding.workspace_id
+    }
+  }
 
-  const isAuthenticated = !!user;
+  const { user, response } = await updateSession(request)
+  const isAuthenticated = !!user
+
+  // Propagate whitelabel workspace ID for Server Components downstream
+  if (whitelabelWorkspaceId) {
+    response.headers.set('x-whitelabel-workspace-id', whitelabelWorkspaceId)
+  }
 
   if (AUTH_ONLY_PATHS.some((p) => pathname.startsWith(p))) {
     if (isAuthenticated) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
-    return response;
+    return response
   }
 
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return response;
+    return response
   }
 
-  // Superadmin routes: require authentication here. Role check is
-  // also enforced inside the superadmin layout for defense-in-depth.
-  if (pathname.startsWith("/superadmin")) {
+  if (pathname.startsWith('/superadmin')) {
     if (!isAuthenticated) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL('/login', request.url))
     }
-    return response;
+    return response
   }
 
   if (!isAuthenticated) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL('/login', request.url)
     const safeNext =
-      pathname.startsWith("/") && !pathname.startsWith("//")
+      pathname.startsWith('/') && !pathname.startsWith('//')
         ? pathname
-        : "/dashboard";
-    loginUrl.searchParams.set("next", safeNext);
-    return NextResponse.redirect(loginUrl);
+        : '/dashboard'
+    loginUrl.searchParams.set('next', safeNext)
+    return NextResponse.redirect(loginUrl)
   }
 
-  return response;
+  return response
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|adflow\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)).*)",
+    '/((?!_next/static|_next/image|favicon.ico|adflow\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)).*)',
   ],
-};
+}
