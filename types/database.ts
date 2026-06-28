@@ -798,3 +798,55 @@ export type VariantPerformance = {
   value: number | null
   recorded_at: string
 }
+
+// ─── M19: Predictive & Autonomous Optimization ───────────────────────────────
+
+export type OptimizationActionType =
+  | 'pause'
+  | 'resume'
+  | 'budget_increase'
+  | 'budget_decrease'
+
+export type OptimizationActionStatus =
+  | 'suggested'
+  | 'approved'
+  | 'rejected'
+  | 'executed'
+  | 'failed'
+  | 'outcome_measured'
+
+export type OptimizationAction = {
+  id: string
+  workspace_id: string
+  campaign_id: string | null
+  campaign_external_id: string
+  platform: string
+  action_type: OptimizationActionType
+  status: OptimizationActionStatus
+  mode: 'suggest' | 'autonomous'
+  rationale: string
+  before_snapshot: Record<string, unknown>
+  after_snapshot: Record<string, unknown> | null
+  outcome_d7: Record<string, unknown> | null
+  guardrail_checks: Record<string, unknown>
+  budget_before: number | null
+  budget_after: number | null
+  approved_by: string | null
+  error_message: string | null
+  executed_at: string | null
+  outcome_measured_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type OptimizationGuardrail = {
+  id: string
+  workspace_id: string
+  kill_switch: boolean
+  max_budget_change_pct: number
+  max_daily_actions: number
+  blacklisted_campaign_ids: string[]
+  autonomous_mode: boolean
+  created_at: string
+  updated_at: string
+}
