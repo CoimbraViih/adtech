@@ -35,6 +35,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Pixel",         href: "/pixel",                   icon: Radio },
   { label: "Landing Pages", href: "/landing-pages",           icon: FileText },
   { label: "Automação",     href: "/automation",              icon: Zap },
+  { label: "Otimização Preditiva", href: "/automation/predictive", icon: Sparkles },
   { label: "Configurações", href: "/settings",                icon: Settings, matchPrefix: true },
   { label: "Exportações",   href: "/settings/exports",        icon: Download, matchPrefix: false },
 ];
