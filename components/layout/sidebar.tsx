@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { PlanBadge } from "@/components/billing/plan-badge";
 
-function AdFlowLogo({ collapsed }: { collapsed: boolean }) {
+function AdFlowLogo({ collapsed, logoUrl }: { collapsed: boolean; logoUrl?: string | null }) {
   return (
     <div
       className={cn(
@@ -24,18 +24,25 @@ function AdFlowLogo({ collapsed }: { collapsed: boolean }) {
         collapsed ? "justify-center" : "gap-2"
       )}
     >
-      <div className="w-6 h-6 rounded bg-[color:var(--adflow-accent)] shrink-0" />
-      {!collapsed && (
-        <span className="font-semibold text-[color:var(--adflow-fg)] text-sm tracking-tight">
-          AdFlow
-        </span>
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt="Logo" className={cn("object-contain shrink-0", collapsed ? "h-6 w-6" : "h-7 max-w-[120px]")} />
+      ) : (
+        <>
+          <div className="w-6 h-6 rounded bg-[color:var(--adflow-accent)] shrink-0" />
+          {!collapsed && (
+            <span className="font-semibold text-[color:var(--adflow-fg)] text-sm tracking-tight">
+              AdFlow
+            </span>
+          )}
+        </>
       )}
     </div>
-  );
+  )
 }
 
 /* ── Desktop sidebar (md+) ── */
-function DesktopSidebar() {
+function DesktopSidebar({ logoUrl }: { logoUrl?: string | null }) {
   const [collapsed, setCollapsed] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -52,7 +59,7 @@ function DesktopSidebar() {
           collapsed ? "w-14" : "w-56"
         )}
       >
-        <AdFlowLogo collapsed={collapsed} />
+        <AdFlowLogo collapsed={collapsed} logoUrl={logoUrl} />
 
         <SidebarNav collapsed={collapsed} />
 
@@ -153,6 +160,6 @@ export function MobileSidebarTrigger() {
 }
 
 /* ── Default export: desktop sidebar ── */
-export function Sidebar() {
-  return <DesktopSidebar />;
+export function Sidebar({ logoUrl }: { logoUrl?: string | null }) {
+  return <DesktopSidebar logoUrl={logoUrl} />;
 }
