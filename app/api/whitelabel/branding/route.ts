@@ -33,6 +33,11 @@ async function requireWhitelabelAccess(workspaceId: string) {
   if (!member) return { error: 'Forbidden', status: 403 as const }
 
   const row = member as unknown as WorkspaceMemberRow
+
+  if (!['owner', 'admin'].includes(row.role)) {
+    return { error: 'Forbidden', status: 403 as const }
+  }
+
   const plan = row.workspaces?.organizations?.plan
 
   if (!plan || !canAccessWhiteLabel(plan)) {
