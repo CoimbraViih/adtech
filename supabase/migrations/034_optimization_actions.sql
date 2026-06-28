@@ -40,6 +40,15 @@ CREATE POLICY "og: owners and admins write"
        AND om.user_id = auth.uid()
        AND om.role IN ('owner', 'admin')
     )
+  )
+  WITH CHECK (
+    workspace_id IN (
+      SELECT w.id FROM workspaces w
+      JOIN organization_members om
+        ON om.organization_id = w.organization_id
+       AND om.user_id = auth.uid()
+       AND om.role IN ('owner', 'admin')
+    )
   );
 
 -- ─── optimization_actions ─────────────────────────────────────────────────────
@@ -101,11 +110,21 @@ CREATE POLICY "oa: workspace members read"
 
 CREATE POLICY "oa: service role write"
   ON optimization_actions FOR ALL
-  USING (auth.role() = 'service_role');
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
 
 CREATE POLICY "oa: owners and admins approve/reject"
   ON optimization_actions FOR UPDATE
   USING (
+    workspace_id IN (
+      SELECT w.id FROM workspaces w
+      JOIN organization_members om
+        ON om.organization_id = w.organization_id
+       AND om.user_id = auth.uid()
+       AND om.role IN ('owner', 'admin')
+    )
+  )
+  WITH CHECK (
     workspace_id IN (
       SELECT w.id FROM workspaces w
       JOIN organization_members om
