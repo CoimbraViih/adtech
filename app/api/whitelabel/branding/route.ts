@@ -35,7 +35,7 @@ async function requireWhitelabelAccess(workspaceId: string) {
   const row = member as unknown as WorkspaceMemberRow
   const plan = row.workspaces?.organizations?.plan
 
-  if (!canAccessWhiteLabel(plan)) {
+  if (!plan || !canAccessWhiteLabel(plan)) {
     return { error: 'White-label requer plano Agency', status: 403 as const }
   }
 

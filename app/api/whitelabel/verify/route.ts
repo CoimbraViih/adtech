@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { initDomainVerification, completeDomainVerification } from '@/lib/whitelabel/domains'
+import { canAccessWhiteLabel } from '@/lib/stripe/plans'
+import type { OrgPlan } from '@/types/database'
 
 export async function POST(request: Request) {
   const body = (await request.json()) as {
@@ -27,13 +29,22 @@ export async function POST(request: Request) {
 
   const { data: member } = await supabase
     .from('workspace_members')
-    .select('role')
+    .select('role, workspaces(organizations(plan))')
     .eq('workspace_id', workspaceId)
     .eq('user_id', user.id)
     .single()
 
   if (!member || !['owner', 'admin'].includes((member as { role: string }).role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const memberRow = member as unknown as {
+    role: string
+    workspaces: { organizations: { plan: OrgPlan } }
+  }
+  const plan = memberRow.workspaces?.organizations?.plan
+  if (!plan || !canAccessWhiteLabel(plan)) {
+    return NextResponse.json({ error: 'White-label requer plano Agency' }, { status: 403 })
   }
 
   if (action === 'init') {
@@ -51,7 +62,7 @@ export async function POST(request: Request) {
   if (action === 'complete') {
     const result = await completeDomainVerification(workspaceId)
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 })
+      return NextResponse.json({ error: 'Verificação de domínio falhou. Verifique o registro DNS e tente novamente.' }, { status: 400 })
     }
     return NextResponse.json({ success: true })
   }
