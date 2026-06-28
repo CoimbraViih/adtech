@@ -34,7 +34,7 @@
 | M18 | Data Transparency (event explorer + export) | `feat/m18-data-transparency` ✅ | M13 |
 | M15 | Creative Asset Uploads + DCO | `feat/m15-dco` ✅ | M16, M13, M3 |
 | M19 | Predictive & Autonomous Optimization | `feat/m19-predictive-optimization` ✅ | M13, M16, M11 |
-| M20 | White-label Agency Portal | `feat/m20-whitelabel` | M18 |
+| M20 | White-label Agency Portal | `feat/m20-whitelabel` ✅ | M18 |
 | M21 | In-app AI Assistant & Guided Onboarding | `feat/m21-ai-assistant` | M13 (parcial) |
 | M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M13, M16 |
 | M12 | PMP & Deal Enforcement (adiado) | `feat/m12-pmp` | M19 |
@@ -884,7 +884,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 # PLANEJADOS
 
-> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → M20 → M21 → M8-DMP → (reavaliar M12)**
+> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → M21 → M8-DMP → (reavaliar M12)**
 >
 > M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
 
@@ -1304,30 +1304,48 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M20 — White-label Agency Portal
+## M20 — White-label Agency Portal ✅ CONCLUÍDO
 
-**Branch:** `feat/m20-whitelabel`  
+**Branch:** `feat/m20-whitelabel` → mergeado em `main` via PR #27  
 **Depende de:** M18  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §12  
-**Objetivo:** Atender agências BR — self-serve ou gerenciado, marca/domínio do cliente, billing flexível com markup de revenda. AdFlow já tem workspaces + RBAC + role `viewer`; falta marca/domínio e billing em cascata.
+**Plano detalhado:** `docs/superpowers/plans/2026-06-28-m20-whitelabel-agency-portal.md`  
+**Objetivo:** Atender agências BR — self-serve ou gerenciado, marca/domínio do cliente, billing flexível com markup de revenda.
 
 > **Skills:** `/frontend-design` · `/stripe:stripe-best-practices` · `/supabase`
 
 ### Backend
-- [ ] `lib/whitelabel/theme.ts` — tokens por tenant (logo, cores)
-- [ ] `lib/whitelabel/domains.ts` — domínio custom + verificação CNAME
-- [ ] `middleware.ts` — resolver tenant por domínio custom
-- [ ] `lib/stripe/plans.ts` — markup de revenda (agência cobra cliente final)
-- [ ] `app/api/stripe/webhook/route.ts` — billing em cascata (agência → cliente)
+- [x] `lib/whitelabel/theme.ts` — tokens por tenant (logo, cores); `buildThemeCssVars` injeta `--adflow-accent`
+- [x] `lib/whitelabel/domains.ts` — domínio custom + verificação CNAME via Google DoH TXT
+- [x] `lib/whitelabel/resolve-domain.ts` — resolução de tenant por domínio via Supabase REST (anon key)
+- [x] `middleware.ts` — resolver tenant por domínio custom; injeta `x-whitelabel-workspace-id`
+- [x] `lib/stripe/reseller.ts` — `applyMarkup(baseAmountCents, markupPercent)` 0–500%
+- [x] `app/api/stripe/webhook/route.ts` — billing em cascata (agência → cliente via `logBillingEvent`)
+- [x] `app/api/whitelabel/branding/route.ts` — GET/PUT branding; autenticado + role owner/admin + plano Agency
+- [x] `app/api/whitelabel/verify/route.ts` — init/complete verificação de domínio custom
 
 ### Interface
-- [ ] `app/(dashboard)/settings/branding/page.tsx` — logo, cores, domínio custom por workspace
+- [x] `app/(dashboard)/settings/branding/page.tsx` — logo, cores, domínio custom por workspace
+- [x] `components/whitelabel/branding-form.tsx` — formulário com preview logo (https-only) + color picker
+- [x] `components/whitelabel/domain-verifier.tsx` — máquina de estados idle → pending → verified
+- [x] `components/whitelabel/whitelabel-theme.tsx` — injeta `<style>:root{--adflow-accent}` no layout
+- [x] `components/layout/sidebar.tsx` — suporte a prop `logoUrl` para logo da agência
+- [x] `components/layout/nav-items.ts` — link "Branding" na sidebar (ícone Palette)
+
+### Database
+- [x] `supabase/migrations/035_whitelabel.sql` — tabelas `workspace_branding` + `reseller_billing` com RLS
+  - Anon lê domínios verificados (para middleware); members lêem; owner/admin escrevem
+  - Index parcial único em `custom_domain WHERE domain_verified = TRUE`
+
+### Testes
+- [x] `tests/unit/whitelabel/` — 26 testes (theme, domains, resolve-domain, api-branding, isolation)
+- [x] `tests/unit/stripe/reseller.test.ts` — 6 testes de markup (0%, 30%, 100%, arredondamento, validação)
+- [x] `tsc --noEmit` zero erros; 32 testes M20 passando
 
 ### Entregáveis
 - Agência configura logo/cor/domínio; cliente vê painel com a marca da agência
-- Isolamento total entre tenants white-label (teste cross-tenant)
-- Markup de revenda refletido na cobrança
-- `tsc --noEmit` zero erros; `vitest run` passando
+- Isolamento total entre tenants white-label (5 testes cross-tenant)
+- Markup de revenda 0–500% refletido na cobrança em cascata via webhook Stripe
+- `migration 035` precisa rodar no Supabase prod antes do go-live
 
 ---
 
@@ -1446,7 +1464,7 @@ M0–M9, MS, M11, M-ADS (F1–F4) ← CONCLUÍDOS
   │         └─ M21 pode iniciar em paralelo com M18 (com mock do event store)
 ```
 
-**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → M20 → M21 → M8-DMP → (reavaliar M12)**
+**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → M21 → M8-DMP → (reavaliar M12)**
 
 **Regras:**
 - Interface mockada sempre antes do backend — cada milestone demonstrável com dados reais antes do próximo.

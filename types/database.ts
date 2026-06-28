@@ -850,3 +850,32 @@ export type OptimizationGuardrail = {
   created_at: string
   updated_at: string
 }
+
+// ─── M20: White-label Agency Portal ──────────────────────────────────────────
+
+export type WorkspaceBranding = {
+  id: string
+  workspace_id: string
+  logo_url: string | null
+  primary_color: string
+  custom_domain: string | null
+  domain_verified: boolean
+  cname_token: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type WorkspaceBrandingInsert = Omit<WorkspaceBranding, 'id' | 'created_at' | 'updated_at'>
+export type WorkspaceBrandingUpdate = Partial<WorkspaceBrandingInsert>
+
+export type ResellerBilling = {
+  id: string
+  agency_org_id: string
+  client_org_id: string
+  markup_percent: number
+  created_at: string
+  updated_at: string
+}
+
+export type ResellerBillingInsert = Omit<ResellerBilling, 'id' | 'created_at' | 'updated_at'>
+export type ResellerBillingUpdate = Partial<ResellerBillingInsert>
