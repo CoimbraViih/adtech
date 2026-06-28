@@ -53,7 +53,7 @@ CREATE POLICY "workspace admins write branding"
 
 CREATE TRIGGER workspace_branding_updated_at
   BEFORE UPDATE ON workspace_branding
-  FOR EACH ROW EXECUTE FUNCTION moddatetime(updated_at);
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- reseller_billing: markup % the agency charges over AdFlow's base price
 CREATE TABLE IF NOT EXISTS reseller_billing (
@@ -94,4 +94,4 @@ CREATE POLICY "agency owners write reseller billing"
 
 CREATE TRIGGER reseller_billing_updated_at
   BEFORE UPDATE ON reseller_billing
-  FOR EACH ROW EXECUTE FUNCTION moddatetime(updated_at);
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
