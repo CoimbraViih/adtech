@@ -16,7 +16,7 @@ export async function POST(
   const { id } = await params
 
   try {
-    const result = await executeAction(id, session.organization.id, session.user.id)
+    const result = await executeAction(id, session.organization.id, session.workspace.id, session.user.id)
 
     if (!result.success) {
       // SECURITY: do not expose raw platform error messages to the client

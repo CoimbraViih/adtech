@@ -113,6 +113,7 @@ export async function proposeAction(input: ProposeActionInput): Promise<Optimiza
 export async function executeAction(
   actionId: string,
   organizationId: string,
+  workspaceId: string,
   approvedBy?: string,
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createServerSupabaseClient()
@@ -121,6 +122,7 @@ export async function executeAction(
     .from('optimization_actions')
     .select('*')
     .eq('id', actionId)
+    .eq('workspace_id', workspaceId)
     .single()
 
   if (fetchErr || !action) {

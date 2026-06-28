@@ -16,7 +16,7 @@ export async function POST(
   const supabase = await createServerSupabaseClient()
   const { error } = await supabase
     .from('optimization_actions')
-    .update({ status: 'rejected', approved_by: session.user.id })
+    .update({ status: 'rejected' })
     .eq('id', id)
     .eq('workspace_id', session.workspace.id)
 
