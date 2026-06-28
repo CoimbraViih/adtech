@@ -56,7 +56,7 @@ export function BrandingForm({ workspaceId, initialBranding }: Props) {
           placeholder="https://seusite.com/logo.png"
           className="w-full bg-[color:var(--adflow-base)] border border-[color:var(--adflow-border)] rounded px-3 py-2 text-sm text-[color:var(--adflow-fg)] placeholder-[color:var(--adflow-fg-muted)] focus:outline-none focus:border-[color:var(--adflow-accent)]"
         />
-        {logoUrl.trim() && (
+        {logoUrl.trim() && /^https:\/\//.test(logoUrl.trim()) && (
           <div className="mt-3 p-3 bg-[color:var(--adflow-base)] rounded border border-[color:var(--adflow-border)] inline-block">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={logoUrl} alt="Preview" className="h-8 object-contain" />
