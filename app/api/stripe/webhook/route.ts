@@ -15,6 +15,7 @@ import {
   logBillingEvent,
   isEventAlreadyProcessed,
 } from "@/lib/stripe/subscription-service";
+import { getResellerRelationship, applyMarkup } from "@/lib/stripe/reseller";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,28 @@ export async function POST(request: Request) {
           event.type,
           event.data.object as unknown as Record<string, unknown>
         );
+
+        // Reseller cascade: if this org is a white-label client, log markup event for the agency
+        if (payload.organizationId) {
+          const reseller = await getResellerRelationship(payload.organizationId)
+          if (reseller) {
+            const sessionObj = event.data.object as import('stripe').Stripe.Checkout.Session
+            const baseAmount = sessionObj.amount_total ?? 0
+            const markupAmount = applyMarkup(baseAmount, reseller.markup_percent)
+            await logBillingEvent(
+              reseller.agency_org_id,
+              `reseller_${event.id}`,
+              'reseller.checkout.markup',
+              {
+                client_org_id: payload.organizationId,
+                base_amount: baseAmount,
+                markup_percent: reseller.markup_percent,
+                total_with_markup: markupAmount,
+                currency: sessionObj.currency ?? 'brl',
+              }
+            )
+          }
+        }
         break;
       }
 
