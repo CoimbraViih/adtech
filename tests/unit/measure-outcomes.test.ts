@@ -4,7 +4,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(),
 }))
 
-import { computeOutcomeD7 } from '@/app/api/cron/measure-outcomes/route'
+import { computeOutcomeD7 } from '@/lib/ai/measure-outcomes'
 
 describe('computeOutcomeD7', () => {
   it('calcula delta de ROAS entre before e after', () => {
