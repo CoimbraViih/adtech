@@ -306,6 +306,7 @@ export type PixelEvent = {
   ip: string | null;
   user_agent: string | null;
   session_id: string | null;
+  user_id_hash: string | null;
   value: number | null;
   currency: string | null;
   properties: Record<string, unknown> | null;
