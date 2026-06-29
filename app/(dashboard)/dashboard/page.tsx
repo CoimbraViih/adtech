@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { requireServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import { GlobalDateFilter, type CompareMode } from "@/components/shared/global-date-filter";
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
 import { DashboardKpiStrip } from "@/components/dashboard/dashboard-kpi-strip";
 import { RevenueBarChart } from "@/components/dashboard/revenue-bar-chart";
 import { RoasSpendChart } from "@/components/dashboard/roas-spend-chart";
@@ -162,6 +163,9 @@ export default async function DashboardPage({
 
   return (
     <div className="space-y-6">
+      {/* Guided onboarding checklist — hidden when all steps done or dismissed */}
+      <OnboardingChecklist orgId={session.organization.id} />
+
       {/* Header + date filter */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
