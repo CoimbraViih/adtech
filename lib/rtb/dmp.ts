@@ -63,8 +63,9 @@ export async function getUsersMatchingRule(
 
 /**
  * Returns audience IDs that match the given user.
- * TODO(M8-backend): query audience_segments WHERE user_id_hash = userIdHash
+ * Queries audience_segments WHERE user_id_hash = hash(userId)
  * AND audience_id IN (SELECT id FROM audiences WHERE workspace_id = workspaceId)
+ * AND (expires_at IS NULL OR expires_at > NOW())
  */
 export async function matchUserToSegments(
   userId: string,
@@ -74,6 +75,8 @@ export async function matchUserToSegments(
 
   const userHash = createHash("sha256").update(userId).digest("hex");
   const supabase = createServiceClient();
+
+  // Checar opt-out
   const { data: optOut } = await supabase
     .from("dmp_optouts")
     .select("user_hash")
@@ -82,11 +85,24 @@ export async function matchUserToSegments(
 
   if (optOut) return [];
 
-  // workspaceId reserved for future Supabase swap-in
-  void workspaceId;
+  // Buscar audience_ids do workspace primeiro (dois queries separados — Supabase JS v2)
+  const { data: audiences } = await supabase
+    .from("audiences")
+    .select("id")
+    .eq("workspace_id", workspaceId);
 
-  // TODO(M8-backend): query audience_segments for real matching
-  return [];
+  const audienceIds = (audiences ?? []).map((a: { id: string }) => a.id);
+  if (!audienceIds.length) return [];
+
+  const now = new Date().toISOString();
+  const { data: segments } = await supabase
+    .from("audience_segments")
+    .select("audience_id")
+    .eq("user_id_hash", userHash)
+    .in("audience_id", audienceIds)
+    .or(`expires_at.is.null,expires_at.gt.${now}`);
+
+  return (segments ?? []).map((s: { audience_id: string }) => s.audience_id);
 }
 
 /**
