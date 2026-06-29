@@ -35,7 +35,7 @@
 | M15 | Creative Asset Uploads + DCO | `feat/m15-dco` ✅ | M16, M13, M3 |
 | M19 | Predictive & Autonomous Optimization | `feat/m19-predictive-optimization` ✅ | M13, M16, M11 |
 | M20 | White-label Agency Portal | `feat/m20-whitelabel` ✅ | M18 |
-| M21 | In-app AI Assistant & Guided Onboarding | `feat/m21-ai-assistant` | M13 (parcial) |
+| M21 | In-app AI Assistant & Guided Onboarding | ✅ Done — PR #28 | M13 (parcial) |
 | M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M13, M16 |
 | M12 | PMP & Deal Enforcement (adiado) | `feat/m12-pmp` | M19 |
 
@@ -884,7 +884,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 # PLANEJADOS
 
-> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → M21 → M8-DMP → (reavaliar M12)**
+> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → ~~M21~~ ✅ → M8-DMP → (reavaliar M12)**
 >
 > M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
 
@@ -1349,30 +1349,42 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M21 — In-app AI Assistant & Guided Onboarding
+## M21 — In-app AI Assistant & Guided Onboarding ✅
 
-**Branch:** `feat/m21-ai-assistant`  
+**Branch:** `feat/m21-ai-assistant` — merged PR #28 (2026-06-29)  
 **Depende de:** M13 (parcial — pode iniciar em paralelo com mock do event store)  
-**Plano detalhado:** `docs/superpowers/plans/2026-06-22-MASTER-plano-execucao.md` §13  
+**Plano detalhado:** `docs/superpowers/plans/2026-06-28-m21-ai-assistant.md`  
 **Objetivo:** Reduzir subutilização e tickets de suporte com assistente in-app e onboarding guiado. Reusa OpenAI já no stack.
 
-> **Skills:** `/claude-api` · `/frontend-design` · `/webapp-testing`
-
 ### Backend
-- [ ] `lib/ai/assistant/agent.ts` — orquestração do agente (contexto da tela atual + event store M13)
-- [ ] `lib/ai/assistant/tools.ts` — ações in-app: criar campanha, explicar métrica (com confirmação obrigatória)
-- [ ] `lib/ai/assistant/rag.ts` — contexto de docs (base de conhecimento)
-- [ ] `app/api/assistant/route.ts` — endpoint do agente (streaming)
+- [x] `lib/ai/assistant/agent.ts` — orquestração SSE com tool-calling loop (depth 5), WRITE_TOOLS guard
+- [x] `lib/ai/assistant/tools.ts` — 6 tools: getCampaignSummary, getPixelStats, getCreativesOverview, explainMetric, pauseCampaign, resumeCampaign
+- [x] `lib/ai/assistant/knowledge.ts` — contexto de docs AdFlow injetado no system prompt
+- [x] `lib/ai/assistant/types.ts` — tipos: AssistantMessage, ScreenContext, AssistantAction, StreamEvent
+- [x] `app/api/assistant/route.ts` — endpoint SSE com verificação de org + workspace ownership
+- [x] `app/api/assistant/actions/route.ts` — execução de ações com audit log e org isolation
+- [x] `app/api/assistant/onboarding/route.ts` — GET/POST checklist com membership check
 
 ### Interface
-- [ ] `components/assistant/assistant-panel.tsx` — painel lateral do assistente
-- [ ] `components/assistant/assistant-context.tsx` — contexto da tela atual
-- [ ] Onboarding guiado: fluxos passo-a-passo com checklists por milestone de produto
+- [x] `components/assistant/assistant-panel.tsx` — painel lateral Sheet com streaming cursor e dialog de confirmação
+- [x] `components/assistant/assistant-context.tsx` — Provider + useAssistant hook com useReducer
+- [x] `components/assistant/assistant-trigger.tsx` — botão flutuante bottom-right
+- [x] `components/onboarding/onboarding-checklist.tsx` — checklist 5 passos com progress bar e auto-dismiss
+
+### Database
+- [x] `supabase/migrations/036_assistant.sql` — 3 tabelas: assistant_sessions, assistant_action_log, onboarding_progress
+
+### Testes
+- [x] `tests/unit/assistant-tools.test.ts` — 5 testes
+- [x] `tests/unit/assistant-agent.test.ts` — 1 teste
+- [x] `tests/e2e/assistant.spec.ts` — 5 testes Playwright
 
 ### Entregáveis
-- Assistente responde perguntas sobre dados reais do workspace com citação da fonte
-- Toda ação do agente exige confirmação e fica auditada
-- `tsc --noEmit` zero erros; `vitest run` passando
+- [x] Assistente responde perguntas sobre dados reais do workspace com citação da fonte
+- [x] Toda ação do agente exige confirmação e fica auditada (assistant_action_log)
+- [x] `tsc --noEmit` zero erros; `vitest run` 659 passando
+
+> **Pendente (prod):** rodar migration `036_assistant.sql` no Supabase prod
 
 ---
 
@@ -1464,7 +1476,7 @@ M0–M9, MS, M11, M-ADS (F1–F4) ← CONCLUÍDOS
   │         └─ M21 pode iniciar em paralelo com M18 (com mock do event store)
 ```
 
-**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → M21 → M8-DMP → (reavaliar M12)**
+**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → ~~M21~~ ✅ → M8-DMP → (reavaliar M12)**
 
 **Regras:**
 - Interface mockada sempre antes do backend — cada milestone demonstrável com dados reais antes do próximo.
