@@ -101,4 +101,14 @@ describe("hashUserId", () => {
     const hash2 = hashUserId("some_user_id");
     expect(hash1).toBe(hash2);
   });
+
+  it("produz hash SHA-256 de 64 chars hex", () => {
+    const h = hashUserId("sess_abc");
+    expect(h).toHaveLength(64);
+    expect(h).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("string vazia → string vazia (sem crash)", () => {
+    expect(hashUserId("")).toBe("");
+  });
 });
