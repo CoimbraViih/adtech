@@ -1,6 +1,65 @@
-import type { Audience } from "@/types/database";
+import type { Audience, AudienceRule } from "@/types/database";
 import { createHash } from "crypto";
 import { createServiceClient } from "@/lib/supabase/service";
+
+/**
+ * Returns a set of user_id_hashes from pixel_events that satisfy the given rule.
+ * Queries pixel_events within the lookback window filtered by event_type and operator.
+ */
+export async function getUsersMatchingRule(
+  rule: AudienceRule,
+  workspaceId: string
+): Promise<Set<string>> {
+  const supabase = createServiceClient();
+
+  const { data: pixels } = await supabase
+    .from("pixels")
+    .select("id")
+    .eq("workspace_id", workspaceId);
+
+  const pixelIds = (pixels ?? []).map((p: { id: string }) => p.id);
+  if (!pixelIds.length) return new Set();
+
+  const cutoff = new Date(
+    Date.now() - rule.lookback_days * 86_400_000
+  ).toISOString();
+
+  const query = supabase
+    .from("pixel_events")
+    .select("user_id_hash")
+    .in("pixel_id", pixelIds)
+    .eq("event_type", rule.event_type)
+    .gte("received_at", cutoff)
+    .not("user_id_hash", "is", null);
+
+  const { data: events } = await (
+    rule.operator === "contains" && typeof rule.value === "string"
+      ? query.ilike("event_name", `%${rule.value}%`)
+      : query
+  );
+
+  const counts = new Map<string, number>();
+  for (const ev of (events ?? []) as Array<{ user_id_hash: string | null }>) {
+    if (ev.user_id_hash) {
+      counts.set(ev.user_id_hash, (counts.get(ev.user_id_hash) ?? 0) + 1);
+    }
+  }
+
+  const threshold = typeof rule.value === "number" ? rule.value : 1;
+  const result = new Set<string>();
+
+  for (const [hash, count] of counts) {
+    if (rule.operator === "eq" || rule.operator === "contains") {
+      result.add(hash);
+    } else if (rule.operator === "gte" && count >= threshold) {
+      result.add(hash);
+    } else if (rule.operator === "lte" && count <= threshold) {
+      result.add(hash);
+    }
+  }
+
+  return result;
+}
 
 /**
  * Returns audience IDs that match the given user.
