@@ -1,10 +1,10 @@
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { vi, describe, it, expect } from "vitest";
 
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(),
 }));
 
-import { getUsersMatchingRule, evaluateAudienceRules } from "@/lib/rtb/dmp";
+import { getUsersMatchingRule, evaluateAudienceRules, buildAudienceMemberships } from "@/lib/rtb/dmp";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { AudienceRule, Audience } from "@/types/database";
 
@@ -213,5 +213,84 @@ describe("evaluateAudienceRules", () => {
     const result = await evaluateAudienceRules(twoRuleAudience, "ws_1");
     // hash_a e hash_b estão em ambos os sets; hash_c só no primeiro
     expect(result).toBe(2);
+  });
+});
+
+describe("buildAudienceMemberships", () => {
+  it("retorna { processed: 0, total: 0 } quando workspace não tem audiências", async () => {
+    const from = vi.fn().mockImplementation((table: string) => {
+      const chain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        upsert: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        not: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        ilike: vi.fn().mockReturnThis(),
+        then: undefined as unknown,
+      };
+      if (table === "audiences") {
+        (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
+          Promise.resolve(resolve({ data: [], error: null }));
+      } else {
+        (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
+          Promise.resolve(resolve({ data: null, error: null }));
+      }
+      return chain;
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue({ from });
+    const result = await buildAudienceMemberships("ws_empty");
+    expect(result).toEqual({ processed: 0, total: 0 });
+  });
+
+  it("processa audiências e retorna totais corretos", async () => {
+    const mockAudience = {
+      id: "aud_1",
+      workspace_id: "ws_1",
+      name: "Test",
+      type: "behavioral",
+      description: null,
+      rules: [{ event_type: "page_view", operator: "eq", value: "page_view", lookback_days: 30 }],
+      lookalike_source_id: null,
+      size_estimate: 0,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+
+    const from = vi.fn().mockImplementation((table: string) => {
+      const chain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        not: vi.fn().mockReturnThis(),
+        ilike: vi.fn().mockReturnThis(),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        update: vi.fn().mockReturnThis(),
+        then: undefined as unknown,
+      };
+
+      if (table === "audiences") {
+        (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
+          Promise.resolve(resolve({ data: [mockAudience], error: null }));
+      } else if (table === "pixels") {
+        (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
+          Promise.resolve(resolve({ data: [{ id: "px_1" }], error: null }));
+      } else if (table === "pixel_events") {
+        (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
+          Promise.resolve(resolve({ data: [{ user_id_hash: "hash_a" }, { user_id_hash: "hash_b" }], error: null }));
+      } else {
+        // audience_segments upsert e audiences update
+        (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
+          Promise.resolve(resolve({ data: null, error: null }));
+      }
+      return chain;
+    });
+
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue({ from });
+    const result = await buildAudienceMemberships("ws_1");
+    expect(result.total).toBe(1);
+    expect(result.processed).toBe(1);
   });
 });
