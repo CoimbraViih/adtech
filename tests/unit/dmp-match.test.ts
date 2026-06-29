@@ -19,6 +19,7 @@ type MockChain = {
   gt: ReturnType<typeof vi.fn>;
   gte: ReturnType<typeof vi.fn>;
   ilike: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
   or: ReturnType<typeof vi.fn>;
   maybeSingle: ReturnType<typeof vi.fn>;
   then: unknown;
@@ -33,6 +34,7 @@ function makeChain(): MockChain {
     gt: vi.fn(),
     gte: vi.fn(),
     ilike: vi.fn(),
+    limit: vi.fn(),
     or: vi.fn(),
     maybeSingle: vi.fn(),
     then: undefined,
@@ -44,6 +46,7 @@ function makeChain(): MockChain {
   chain.gt.mockReturnThis();
   chain.gte.mockReturnThis();
   chain.ilike.mockReturnThis();
+  chain.limit.mockReturnThis();
   chain.or.mockReturnThis();
   return chain;
 }

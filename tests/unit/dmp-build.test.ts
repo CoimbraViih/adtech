@@ -15,6 +15,7 @@ type MockChain = {
   gte: ReturnType<typeof vi.fn>;
   not: ReturnType<typeof vi.fn>;
   ilike: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
   then: unknown;
 };
 
@@ -26,6 +27,7 @@ function makeChain(pixelData: unknown, eventData: unknown): { from: ReturnType<t
     gte: vi.fn().mockReturnThis(),
     not: vi.fn().mockReturnThis(),
     ilike: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
     then: undefined,
   };
   (pixelChain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
@@ -38,6 +40,7 @@ function makeChain(pixelData: unknown, eventData: unknown): { from: ReturnType<t
     gte: vi.fn().mockReturnThis(),
     not: vi.fn().mockReturnThis(),
     ilike: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
     then: undefined,
   };
   (eventChain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
@@ -193,6 +196,7 @@ describe("evaluateAudienceRules", () => {
         gte: vi.fn().mockReturnThis(),
         not: vi.fn().mockReturnThis(),
         ilike: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
         then: undefined as unknown,
       };
 
@@ -228,6 +232,7 @@ describe("buildAudienceMemberships", () => {
         not: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
         ilike: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
         then: undefined as unknown,
       };
       if (table === "audiences") {
@@ -258,7 +263,47 @@ describe("buildAudienceMemberships", () => {
       updated_at: "2026-01-01T00:00:00Z",
     };
 
+    let audiencesCallCount = 0;
     const from = vi.fn().mockImplementation((table: string) => {
+      if (table === "audiences") {
+        audiencesCallCount++;
+        if (audiencesCallCount === 1) {
+          // First call: select("*").eq("workspace_id", ...) → return audience list
+          const chain = {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            gte: vi.fn().mockReturnThis(),
+            not: vi.fn().mockReturnThis(),
+            ilike: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+            update: vi.fn().mockReturnThis(),
+            then: undefined as unknown,
+          };
+          (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
+            Promise.resolve(resolve({ data: [mockAudience], error: null }));
+          return chain;
+        } else {
+          // Subsequent calls: update().eq() → return { error: null }
+          const updateChain = {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockResolvedValue({ error: null }),
+            in: vi.fn().mockReturnThis(),
+            gte: vi.fn().mockReturnThis(),
+            not: vi.fn().mockReturnThis(),
+            ilike: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+            update: vi.fn().mockReturnThis(),
+            then: undefined as unknown,
+          };
+          (updateChain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
+            Promise.resolve(resolve({ data: null, error: null }));
+          return updateChain;
+        }
+      }
+
       const chain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -266,22 +311,20 @@ describe("buildAudienceMemberships", () => {
         gte: vi.fn().mockReturnThis(),
         not: vi.fn().mockReturnThis(),
         ilike: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
         upsert: vi.fn().mockResolvedValue({ error: null }),
         update: vi.fn().mockReturnThis(),
         then: undefined as unknown,
       };
 
-      if (table === "audiences") {
-        (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
-          Promise.resolve(resolve({ data: [mockAudience], error: null }));
-      } else if (table === "pixels") {
+      if (table === "pixels") {
         (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
           Promise.resolve(resolve({ data: [{ id: "px_1" }], error: null }));
       } else if (table === "pixel_events") {
         (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
           Promise.resolve(resolve({ data: [{ user_id_hash: "hash_a" }, { user_id_hash: "hash_b" }], error: null }));
       } else {
-        // audience_segments upsert e audiences update
+        // audience_segments upsert
         (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
           Promise.resolve(resolve({ data: null, error: null }));
       }

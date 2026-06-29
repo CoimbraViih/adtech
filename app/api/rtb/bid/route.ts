@@ -117,7 +117,11 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const bidRequest = parsed.data;
 
-    await matchUserToSegments(bidRequest.user?.id ?? "", "demo");
+    // TODO(M8-DMP): replace "demo" with real workspaceId from campaign/bid context.
+    // matchUserToSegments now issues real Supabase queries — hardcoded "demo" means
+    // DMP audience targeting is disabled for all production bid requests.
+    const audiences = await matchUserToSegments(bidRequest.user?.id ?? "", "demo"); // ← broken, see TODO
+    void audiences; // result used once workspaceId wiring is complete
 
     const supabase = createServiceClient();
     const { data: rtbCampaignsData } = await supabase

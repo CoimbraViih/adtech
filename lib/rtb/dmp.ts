@@ -32,10 +32,17 @@ export async function getUsersMatchingRule(
     .gte("received_at", cutoff)
     .not("user_id_hash", "is", null);
 
+  // Escape ilike wildcards to prevent wildcard injection corrupting audience membership
+  const escapedValue =
+    rule.operator === "contains" && typeof rule.value === "string"
+      ? (rule.value as string).replace(/%/g, "\\%").replace(/_/g, "\\_")
+      : "";
+
+  // TODO(M13): replace with ClickHouse aggregation; Postgres path is capped to avoid OOM
   const { data: events } = await (
     rule.operator === "contains" && typeof rule.value === "string"
-      ? query.ilike("event_name", `%${rule.value}%`)
-      : query
+      ? query.ilike("event_name", `%${escapedValue}%`).limit(100_000)
+      : query.limit(100_000)
   );
 
   const counts = new Map<string, number>();
@@ -191,16 +198,18 @@ export async function buildAudienceMemberships(
           matched_at: new Date().toISOString(),
           expires_at: expiresAt,
         }));
-        await supabase
+        const { error: upsertError } = await supabase
           .from("audience_segments")
           .upsert(rows, { onConflict: "audience_id,user_id_hash" });
+        if (upsertError) throw upsertError;
       }
 
       // Update size_estimate on audiences
-      await supabase
+      const { error: updateError } = await supabase
         .from("audiences")
         .update({ size_estimate: matchingHashes.size })
         .eq("id", audience.id);
+      if (updateError) throw updateError;
 
       processed++;
     } catch (err) {
