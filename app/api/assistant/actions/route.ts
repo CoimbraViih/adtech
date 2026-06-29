@@ -96,6 +96,6 @@ export async function POST(req: NextRequest): Promise<Response> {
       .update({ status: 'failed', error_message: msg })
       .eq('id', logEntry.id)
 
-    return Response.json({ error: msg }, { status: 500 })
+    return Response.json({ error: 'Erro ao executar ação' }, { status: 500 })
   }
 }
