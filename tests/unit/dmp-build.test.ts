@@ -4,9 +4,9 @@ vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(),
 }));
 
-import { getUsersMatchingRule } from "@/lib/rtb/dmp";
+import { getUsersMatchingRule, evaluateAudienceRules } from "@/lib/rtb/dmp";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { AudienceRule } from "@/types/database";
+import type { AudienceRule, Audience } from "@/types/database";
 
 type MockChain = {
   select: ReturnType<typeof vi.fn>;
@@ -127,5 +127,91 @@ describe("getUsersMatchingRule", () => {
     const result = await getUsersMatchingRule(pageViewRule, "ws_1");
     expect(result.size).toBe(1);
     expect(result.has("hash_a")).toBe(true);
+  });
+});
+
+const baseAudience: Audience = {
+  id: "aud_1",
+  workspace_id: "ws_1",
+  name: "Compradores",
+  type: "behavioral",
+  description: null,
+  rules: [
+    { event_type: "purchase", operator: "gte", value: 1, lookback_days: 30 },
+  ],
+  lookalike_source_id: null,
+  size_estimate: 0,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+};
+
+describe("evaluateAudienceRules", () => {
+  it("retorna 0 quando audiência não tem regras", async () => {
+    const noRules = { ...baseAudience, rules: [] };
+    // Sem regras → nenhum usuário corresponde por interseção vazia
+    const mock = makeChain([], []);
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mock);
+    const result = await evaluateAudienceRules(noRules, "ws_1");
+    expect(result).toBe(0);
+  });
+
+  it("retorna contagem real de users distintos quando há 1 regra", async () => {
+    const mock = makeChain(
+      [{ id: "px_1" }],
+      [
+        { user_id_hash: "hash_a" },
+        { user_id_hash: "hash_b" },
+        { user_id_hash: "hash_a" },
+      ]
+    );
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mock);
+    const result = await evaluateAudienceRules(baseAudience, "ws_1");
+    expect(result).toBe(2);
+  });
+
+  it("interseção de 2 regras retorna apenas users que satisfazem ambas", async () => {
+    const twoRuleAudience: Audience = {
+      ...baseAudience,
+      rules: [
+        { event_type: "page_view", operator: "eq", value: "page_view", lookback_days: 30 },
+        { event_type: "purchase", operator: "gte", value: 1, lookback_days: 30 },
+      ],
+    };
+
+    let callCount = 0;
+    const from = vi.fn().mockImplementation((table: string) => {
+      // Primeira chamada a pixel_events para regra 1, segunda para regra 2
+      const datasets: Array<{ user_id_hash: string }[]> = [
+        [{ user_id_hash: "hash_a" }, { user_id_hash: "hash_b" }, { user_id_hash: "hash_c" }],
+        [{ user_id_hash: "hash_a" }, { user_id_hash: "hash_b" }],
+      ];
+
+      const chain = {
+        select: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        not: vi.fn().mockReturnThis(),
+        ilike: vi.fn().mockReturnThis(),
+        then: undefined as unknown,
+      };
+
+      if (table === "pixels") {
+        (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
+          Promise.resolve(resolve({ data: [{ id: "px_1" }], error: null }));
+      } else {
+        const dataIdx = callCount % 2;
+        callCount++;
+        const data = datasets[dataIdx] ?? [];
+        (chain as unknown as { then: unknown }).then = (resolve: (v: unknown) => void) =>
+          Promise.resolve(resolve({ data, error: null }));
+      }
+      return chain;
+    });
+
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue({ from });
+    const result = await evaluateAudienceRules(twoRuleAudience, "ws_1");
+    // hash_a e hash_b estão em ambos os sets; hash_c só no primeiro
+    expect(result).toBe(2);
   });
 });

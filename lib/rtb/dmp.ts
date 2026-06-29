@@ -91,16 +91,32 @@ export async function matchUserToSegments(
 
 /**
  * Estimates audience size by evaluating rules against pixel_events.
- * TODO(M8-backend): COUNT pixel_events matching audience rules (lookback_days, event_type, etc.)
+ * Returns the count of distinct users satisfying ALL rules (set intersection).
  */
 export async function evaluateAudienceRules(
   audience: Audience,
   workspaceId: string
 ): Promise<number> {
-  // workspaceId reserved for future Supabase swap-in
-  void workspaceId;
+  if (!audience.rules.length) return 0;
 
-  return audience.rules.length * 3000 + audience.id.charCodeAt(0) * 100;
+  const sets = await Promise.all(
+    audience.rules.map((rule) => getUsersMatchingRule(rule, workspaceId))
+  );
+
+  // Interseção: só contam usuários que satisfazem TODAS as regras
+  let intersection = sets[0];
+  for (let i = 1; i < sets.length; i++) {
+    const next = sets[i];
+    const smaller = intersection.size <= next.size ? intersection : next;
+    const larger = intersection.size > next.size ? intersection : next;
+    const result = new Set<string>();
+    for (const hash of smaller) {
+      if (larger.has(hash)) result.add(hash);
+    }
+    intersection = result;
+  }
+
+  return intersection.size;
 }
 
 /**
