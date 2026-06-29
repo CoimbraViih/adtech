@@ -38,9 +38,15 @@ CREATE TABLE assistant_action_log (
 
 ALTER TABLE assistant_action_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "assistant_action_log_org_member" ON assistant_action_log
-  FOR ALL USING (
-    organization_id IN (
+-- Users can only read their own action log entries
+CREATE POLICY "assistant_action_log_select_own" ON assistant_action_log
+  FOR SELECT USING (user_id = auth.uid());
+
+-- Users can insert their own entries scoped to their org
+CREATE POLICY "assistant_action_log_insert_own" ON assistant_action_log
+  FOR INSERT WITH CHECK (
+    user_id = auth.uid()
+    AND organization_id IN (
       SELECT organization_id FROM organization_members
       WHERE user_id = auth.uid()
     )

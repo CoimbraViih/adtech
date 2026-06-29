@@ -148,7 +148,7 @@ async function getCampaignSummary(
   }
 
   const { data: campaigns, error } = await query
-  if (error) throw new Error(`Erro ao buscar campanhas: ${error.message}`)
+  if (error) { console.error('[assistant/tools] getCampaignSummary error:', error.message); throw new Error('Erro ao buscar dados de campanhas.') }
 
   // Fetch last 7-day metrics for these campaigns
   const ids = (campaigns ?? []).map((c) => c.id)
@@ -216,7 +216,7 @@ async function getPixelStats(
     .eq('workspace_id', ctx.workspaceId)
     .gte('created_at', since)
 
-  if (error) throw new Error(`Erro ao buscar eventos: ${error.message}`)
+  if (error) { console.error('[assistant/tools] getPixelStats error:', error.message); throw new Error('Erro ao buscar dados de pixel.') }
 
   const counts: Record<string, number> = {}
   for (const e of data ?? []) {
@@ -241,7 +241,7 @@ async function getCreativesOverview(ctx: ScreenContext): Promise<string> {
     .order('created_at', { ascending: false })
     .limit(15)
 
-  if (error) throw new Error(`Erro ao buscar criativos: ${error.message}`)
+  if (error) { console.error('[assistant/tools] getCreativesOverview error:', error.message); throw new Error('Erro ao buscar dados de criativos.') }
 
   return JSON.stringify({
     creatives: data ?? [],

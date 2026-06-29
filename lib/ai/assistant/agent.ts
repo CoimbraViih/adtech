@@ -162,6 +162,7 @@ async function runLoop(
 
       if (delta.tool_calls) {
         for (const tc of delta.tool_calls) {
+          if (tc.index === undefined || tc.index === null) continue
           if (tc.index !== currentToolIdx) {
             currentToolIdx = tc.index
             toolCalls[tc.index] = { id: tc.id ?? '', name: tc.function?.name ?? '', args: '' }
@@ -221,6 +222,9 @@ async function runLoop(
       }
     }
   }
+
+  // If every tool call was a write-tool, the loop waits for user confirmation — don't recurse
+  if (toolCalls.every((tc) => WRITE_TOOLS.has(tc.name))) return
 
   await runLoop(
     controller,

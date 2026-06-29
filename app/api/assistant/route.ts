@@ -36,6 +36,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
+  // Verify workspaceId belongs to this org (prevents cross-tenant data leak)
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('id')
+    .eq('id', body.context.workspaceId)
+    .eq('organization_id', body.orgId)
+    .single()
+
+  if (!workspace) {
+    return Response.json({ error: 'Workspace inválido' }, { status: 403 })
+  }
+
   try {
     const stream = await runAssistantStream({
       orgId: body.orgId,

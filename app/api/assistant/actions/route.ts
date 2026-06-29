@@ -68,6 +68,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       .select('platform, external_id')
       .eq('id', body.payload.campaignId)
       .eq('workspace_id', body.workspaceId)
+      .eq('organization_id', body.orgId)
       .single()
 
     if (campError || !campaign) {

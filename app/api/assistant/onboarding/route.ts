@@ -56,6 +56,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: 'Step inválido' }, { status: 400 })
   }
 
+  // Verify the user belongs to this org
+  const { data: member } = await supabase
+    .from('organization_members')
+    .select('id')
+    .eq('organization_id', body.orgId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!member) {
+    return Response.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
   const { error: dbError } = await supabase
     .from('onboarding_progress')
     .upsert(

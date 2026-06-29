@@ -105,6 +105,7 @@ export function AssistantProvider({ children, orgId, workspaceId }: ProviderProp
   // Track API messages for context
   const apiMessagesRef = useRef<AssistantMessage[]>([])
   const assistantIdRef = useRef<string>('')
+  const screenContextRef = useRef<ScreenContext>(state.screenContext)
 
   const sendMessage = useCallback(async (text: string) => {
     if (state.isStreaming) return
@@ -119,6 +120,8 @@ export function AssistantProvider({ children, orgId, workspaceId }: ProviderProp
     dispatch({ type: 'ADD_USER_MESSAGE', id: userId, content: text })
     dispatch({ type: 'START_ASSISTANT_MESSAGE', id: assistantId })
 
+    let fullAssistantContent = ''
+
     try {
       const res = await fetch('/api/assistant', {
         method: 'POST',
@@ -126,7 +129,7 @@ export function AssistantProvider({ children, orgId, workspaceId }: ProviderProp
         body: JSON.stringify({
           orgId,
           messages: apiMessagesRef.current,
-          context: state.screenContext,
+          context: screenContextRef.current,
         }),
       })
 
@@ -135,7 +138,6 @@ export function AssistantProvider({ children, orgId, workspaceId }: ProviderProp
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
-      let fullAssistantContent = ''
 
       while (true) {
         const { done, value } = await reader.read()
@@ -156,11 +158,6 @@ export function AssistantProvider({ children, orgId, workspaceId }: ProviderProp
             dispatch({ type: 'APPEND_ASSISTANT_DELTA', id: assistantId, delta: event.content })
           } else if (event.type === 'action_required') {
             dispatch({ type: 'SET_PENDING_ACTION', action: event.action })
-          } else if (event.type === 'done') {
-            apiMessagesRef.current = [
-              ...apiMessagesRef.current,
-              { role: 'assistant', content: fullAssistantContent },
-            ]
           }
         }
       }
@@ -168,9 +165,15 @@ export function AssistantProvider({ children, orgId, workspaceId }: ProviderProp
       const msg = err instanceof Error ? err.message : 'Erro de conexão'
       dispatch({ type: 'APPEND_ASSISTANT_DELTA', id: assistantId, delta: `\n\nErro: ${msg}` })
     } finally {
+      if (fullAssistantContent) {
+        apiMessagesRef.current = [
+          ...apiMessagesRef.current,
+          { role: 'assistant', content: fullAssistantContent },
+        ]
+      }
       dispatch({ type: 'FINISH_STREAMING' })
     }
-  }, [state.isStreaming, state.screenContext, orgId])
+  }, [state.isStreaming, orgId])
 
   const confirmAction = useCallback(async () => {
     const action = state.pendingAction
@@ -194,6 +197,11 @@ export function AssistantProvider({ children, orgId, workspaceId }: ProviderProp
         dispatch({ type: 'START_ASSISTANT_MESSAGE', id: errorId })
         dispatch({ type: 'APPEND_ASSISTANT_DELTA', id: errorId, delta: 'Erro ao executar ação. Verifique as configurações da campanha e tente novamente.' })
         dispatch({ type: 'FINISH_STREAMING' })
+      } else {
+        const successId = crypto.randomUUID()
+        dispatch({ type: 'START_ASSISTANT_MESSAGE', id: successId })
+        dispatch({ type: 'APPEND_ASSISTANT_DELTA', id: successId, delta: `Ação concluída: ${action.description}` })
+        dispatch({ type: 'FINISH_STREAMING' })
       }
     } catch {
       dispatch({ type: 'START_ASSISTANT_MESSAGE', id: errorId })
@@ -207,6 +215,7 @@ export function AssistantProvider({ children, orgId, workspaceId }: ProviderProp
   }, [])
 
   const setScreenContext = useCallback((ctx: Partial<ScreenContext>) => {
+    screenContextRef.current = { ...screenContextRef.current, ...ctx }
     dispatch({ type: 'SET_SCREEN_CONTEXT', ctx })
   }, [])
 
