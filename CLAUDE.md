@@ -312,7 +312,7 @@ See `.env.local.example` for the full list.
 | M19 | Predictive & Autonomous Optimization | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
 | M20 | White-label Agency Portal | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
 | M21 | In-app AI Assistant & Guided Onboarding | ✅ Done | `docs/superpowers/plans/2026-06-28-m21-ai-assistant.md` |
-| M8-DMP | DMP Completion (real audience rule evaluation) | Planned | — |
+| M8-DMP | DMP Completion (real audience rule evaluation) | ✅ Done | `docs/superpowers/plans/2026-06-29-m8-dmp-completion.md` |
 | M12 | PMP & Deal Enforcement | Planned (adiado — pós-M19) | — |
 
 **Recommended execution order:** M14 → M13 → M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → ~~M21~~ ✅ → M8-DMP → (reavaliar M12)
