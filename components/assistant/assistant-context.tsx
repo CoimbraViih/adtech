@@ -177,8 +177,9 @@ export function AssistantProvider({ children, orgId, workspaceId }: ProviderProp
     if (!action) return
     dispatch({ type: 'CLEAR_PENDING_ACTION' })
 
+    const errorId = crypto.randomUUID()
     try {
-      await fetch('/api/assistant/actions', {
+      const res = await fetch('/api/assistant/actions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -188,8 +189,16 @@ export function AssistantProvider({ children, orgId, workspaceId }: ProviderProp
           workspaceId,
         }),
       })
+
+      if (!res.ok) {
+        dispatch({ type: 'START_ASSISTANT_MESSAGE', id: errorId })
+        dispatch({ type: 'APPEND_ASSISTANT_DELTA', id: errorId, delta: 'Erro ao executar ação. Verifique as configurações da campanha e tente novamente.' })
+        dispatch({ type: 'FINISH_STREAMING' })
+      }
     } catch {
-      // silently log — user already dismissed the dialog
+      dispatch({ type: 'START_ASSISTANT_MESSAGE', id: errorId })
+      dispatch({ type: 'APPEND_ASSISTANT_DELTA', id: errorId, delta: 'Erro ao executar ação. Verifique as configurações da campanha e tente novamente.' })
+      dispatch({ type: 'FINISH_STREAMING' })
     }
   }, [state.pendingAction, orgId, workspaceId])
 

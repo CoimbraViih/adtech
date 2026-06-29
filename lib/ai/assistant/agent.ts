@@ -119,7 +119,8 @@ async function runLoop(
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`OpenAI ${res.status}: ${err}`)
+    console.error('[assistant] OpenAI error', res.status, err)
+    throw new Error('Erro ao processar requisição com IA.')
   }
 
   const reader = res.body!.getReader()
