@@ -2,6 +2,7 @@ import type {
   RtbCampaign,
   OpenRtbBidRequest,
   OpenRtbBidResponse,
+  PmpDeal,
 } from "@/types/database";
 
 /**
@@ -37,10 +38,11 @@ export function calculateCpm(
 
 /**
  * Selects the best bid from eligible active campaigns.
- * Returns the campaign + CPM, or null if no campaign is eligible.
+ * Returns the campaign + CPM + optional dealid, or null if no campaign is eligible.
  *
  * context.todaySpend: Map<campaignId, spendSoFarToday>
  * context.impressionCounts: Map<campaignId+userId, impressionCount>
+ * deals: active PmpDeal records for deal validation and guaranteed pricing
  */
 export function selectBid(
   campaigns: RtbCampaign[],
@@ -48,15 +50,28 @@ export function selectBid(
   context: {
     todaySpend: Map<string, number>;
     impressionCounts: Map<string, number>;
-  }
-): { campaign: RtbCampaign; cpm: number } | null {
-  const floorCpm = request.imp[0]?.bidfloor ?? 0;
+  },
+  deals: PmpDeal[] = []
+): { campaign: RtbCampaign; cpm: number; dealid?: string } | null {
+  const imp = request.imp[0];
+  const floorCpm = imp?.bidfloor ?? 0;
   const userId = request.user?.id ?? "";
 
-  let best: { campaign: RtbCampaign; cpm: number } | null = null;
+  // Build a set of deal IDs present in the impression's pmp.deals for fast lookup
+  const impDealIds = new Set<string>(
+    imp?.pmp?.deals?.map((d) => d.id) ?? []
+  );
+  const isPrivateAuction = imp?.pmp?.private_auction === 1;
+
+  let best: { campaign: RtbCampaign; cpm: number; dealid?: string } | null = null;
 
   for (const campaign of campaigns) {
     if (campaign.status !== "active") continue;
+
+    // Change 2: Private auction filtering
+    if (isPrivateAuction) {
+      if (!campaign.deal_id || !impDealIds.has(campaign.deal_id)) continue;
+    }
 
     const todaySpend = context.todaySpend.get(campaign.id) ?? 0;
     if (!checkPacing(campaign, todaySpend)) continue;
@@ -65,11 +80,23 @@ export function selectBid(
     const impressionCount = context.impressionCounts.get(impressionKey) ?? 0;
     if (!checkFrequencyCap(campaign, impressionCount)) continue;
 
+    // Change 3: Guaranteed bypass — skip CPM comparison, return immediately
+    if (campaign.deal_type === "guaranteed") {
+      const matchingDeal = deals.find((d) => d.deal_id === campaign.deal_id);
+      if (!matchingDeal) continue; // can't guarantee without deal record
+      return { campaign, cpm: matchingDeal.floor_price, dealid: matchingDeal.deal_id };
+    }
+
     const cpm = calculateCpm(campaign, floorCpm);
     if (cpm === null) continue;
 
+    // Change 4: Include dealid for deal wins in regular auction path
     if (best === null || cpm > best.cpm) {
-      best = { campaign, cpm };
+      best = {
+        campaign,
+        cpm,
+        ...(campaign.deal_id ? { dealid: campaign.deal_id } : {}),
+      };
     }
   }
 
@@ -83,7 +110,7 @@ export function selectBid(
 export function buildBidResponse(
   requestId: string,
   impId: string,
-  bid: { campaign: RtbCampaign; cpm: number } | null
+  bid: { campaign: RtbCampaign; cpm: number; dealid?: string } | null
 ): OpenRtbBidResponse {
   if (bid === null) {
     return { id: requestId, seatbid: [] };
@@ -100,6 +127,7 @@ export function buildBidResponse(
             price: bid.cpm,
             adid: bid.campaign.id,
             crid: bid.campaign.creative_id ?? undefined,
+            dealid: bid.dealid, // Change 5: propagate dealid
           },
         ],
         seat: bid.campaign.workspace_id,
