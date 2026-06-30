@@ -36,7 +36,7 @@
 | M19 | Predictive & Autonomous Optimization | `feat/m19-predictive-optimization` ✅ | M13, M16, M11 |
 | M20 | White-label Agency Portal | `feat/m20-whitelabel` ✅ | M18 |
 | M21 | In-app AI Assistant & Guided Onboarding | ✅ Done — PR #28 | M13 (parcial) |
-| M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` | M13, M16 |
+| M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` ✅ | M13, M16 |
 | M12 | PMP & Deal Enforcement (adiado) | `feat/m12-pmp` | M19 |
 
 ---
@@ -884,7 +884,7 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 # PLANEJADOS
 
-> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → ~~M21~~ ✅ → M8-DMP → (reavaliar M12)**
+> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → ~~M21~~ ✅ → ~~M8-DMP~~ ✅ → (reavaliar M12)**
 >
 > M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
 
@@ -1388,23 +1388,35 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M8-DMP — DMP Completion (reposicionado — depende de M13)
+## M8-DMP — DMP Completion (reposicionado — depende de M13) ✅ CONCLUÍDO
 
-**Branch:** `feat/m8-dmp-complete`  
-**Depende de:** M13 (event store), M16 (sinais de catálogo/conversão)  
-**Objetivo:** Completar avaliação real de regras de audiência. `evaluateAudienceRules` é atualmente stub com estimativas hardcoded. Com M13, a segmentação roda sobre eventos no ClickHouse — sem M13, o DMP repetiria o problema de "dado inacessível".
+**Branch:** `feat/m8-dmp-complete` (mergeado em `main`)
+**Depende de:** M13 (event store), M16 (sinais de catálogo/conversão)
+**Plano:** `docs/superpowers/plans/2026-06-29-m8-dmp-completion.md`
+**Objetivo:** Completar avaliação real de regras de audiência. `evaluateAudienceRules` era stub com estimativas hardcoded; agora roda sobre `pixel_events` no Postgres com `user_id_hash`.
 
 > **Skills:** `/supabase` · `/supabase-postgres-best-practices` · `/webapp-testing`
 
 ### Backend
-- [ ] `lib/rtb/dmp.ts` — `evaluateAudienceRules(rules, userId)`: substituir estimativa hardcoded por query real em `pixel_events` filtrada por `user_id_hash` + `lookback_days`
-- [ ] `lib/rtb/dmp.ts` — `buildAudienceMemberships(workspaceId)`: job que popula `audience_segments` com memberships calculados
-- [ ] Migration `032_audience_membership.sql`: schedule ou trigger em `pixel_events` para manter `audience_segments` atualizado
+- [x] `lib/rtb/dmp.ts` — `getUsersMatchingRule(rule, workspaceId)`: query real em `pixel_events` filtrada por `event_type` + `lookback_days` + `user_id_hash` não-nulo; operadores `eq` (contagem exata), `gte`, `lte`, `contains` (com escape de `%`/`_`)
+- [x] `lib/rtb/dmp.ts` — `evaluateAudienceRules(rules, workspaceId)`: interseção real de sets entre regras
+- [x] `lib/rtb/dmp.ts` — `buildAudienceMemberships(workspaceId)`: job batch que popula `audience_segments` via upsert (90 dias de expiração) e atualiza `size_estimate`
+- [x] `lib/rtb/dmp.ts` — `matchUserToSegments(sessionId, workspaceId)`: hash SHA-256 → checa `dmp_optouts` → retorna audiences reais
+- [x] `app/api/pixel/[id]/route.ts` — persiste `user_id_hash` (hash do `session_id`, respeitando consent) em cada `pixel_event`
+- [x] `app/api/rtb/audiences/rebuild/route.ts` — POST para disparar `buildAudienceMemberships` manualmente, com auth + checagem de `workspace_members`
+- [x] Migration `037_audience_membership.sql`: coluna `user_id_hash` em `pixel_events` + índices parciais (`CREATE INDEX CONCURRENTLY`)
+
+### Decisões/limitações conhecidas (pós-review)
+- Query de `pixel_events` tem `.limit(100_000)` com `.order("user_id_hash")` como mitigação de OOM — `TODO(M13)`: substituir por agregação ClickHouse quando M13 estiver disponível para este path
+- `matchUserToSegments` está **desabilitado no hot path do bid** (`app/api/rtb/bid/route.ts`) até o wiring de `workspaceId` real existir — chamada comentada com `TODO(M8-DMP)`
+- `buildAudienceMemberships` não remove memberships obsoletos automaticamente (expiram em 90 dias via `expires_at`)
 
 ### Entregáveis
-- `evaluateAudienceRules` retorna resultado real baseado em pixel events do usuário
-- `audience_segments` populado com user-to-audience memberships válidos
-- `tsc --noEmit` zero erros; `vitest run` passando
+- [x] `evaluateAudienceRules` retorna resultado real baseado em pixel events do usuário
+- [x] `audience_segments` populado com user-to-audience memberships válidos
+- [x] `tsc --noEmit` zero erros; testes unitários novos passando (`dmp-build.test.ts`, `dmp-match.test.ts`)
+
+> **Pendente (prod):** rodar migration `037_audience_membership.sql` no Supabase prod; concluir wiring de `workspaceId` real no bid path para reativar `matchUserToSegments`
 
 ---
 
@@ -1471,12 +1483,12 @@ M0–M9, MS, M11, M-ADS (F1–F4) ← CONCLUÍDOS
   │         │    └─ M15 (Creative Uploads + DCO)
   │         │         └─ M19 (Predictive & Autonomous Optimization)
   │         │              └─ M21 (In-app AI Assistant)  ← paralelo, pode iniciar em M13
-  │         │                   └─ M8-DMP (avaliação real de audiências)
+  │         │                   └─ ~~M8-DMP~~ ✅ (avaliação real de audiências)
   │         │                        └─ M12 (PMP — adiado pós-M19)
   │         └─ M21 pode iniciar em paralelo com M18 (com mock do event store)
 ```
 
-**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → ~~M21~~ ✅ → M8-DMP → (reavaliar M12)**
+**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → ~~M21~~ ✅ → ~~M8-DMP~~ ✅ → (reavaliar M12)**
 
 **Regras:**
 - Interface mockada sempre antes do backend — cada milestone demonstrável com dados reais antes do próximo.
