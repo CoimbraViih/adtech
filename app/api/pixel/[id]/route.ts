@@ -3,6 +3,7 @@ import { parsePixelEvent } from "@/lib/pixel/validate";
 import { fanoutToPlatforms } from "@/lib/pixel/fanout";
 import { createServiceClient } from "@/lib/supabase/service";
 import { maskIp } from "@/lib/security/ip";
+import { hashUserId } from "@/lib/rtb/dmp";
 import { createRateLimiter } from "@/lib/security/rate-limit";
 import { writeToDeadLetter } from "@/lib/pixel/dead-letter";
 import { logPixelMetric } from "@/lib/observability/metrics";
@@ -163,6 +164,7 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
   const maskedIp = maskIp(rawIp === "unknown" ? null : rawIp);
   const safeIp        = resolvedConsent === 'denied' ? null : maskedIp;
   const safeSessionId = resolvedConsent === 'denied' ? null : (parsed.data.session_id ?? null);
+  const safeUserIdHash = safeSessionId ? hashUserId(safeSessionId) : null;
   const safeUrl       = resolvedConsent === 'denied'
     ? (parsed.data.url ? new URL(parsed.data.url).origin : null)
     : (parsed.data.url ?? null);
@@ -172,17 +174,18 @@ export async function POST(req: NextRequest, ctx: RouteContext): Promise<NextRes
 
   // 9. Store event in pixel_events
   const eventInsert: PixelEventInsert = {
-    pixel_id:   pixelId,
-    event_type: parsed.data.event_type,
-    event_name: parsed.data.event_name ?? null,
-    url:        safeUrl,
-    referrer:   safeReferrer,
-    ip:         safeIp,
-    user_agent: safeUserAgent,
-    session_id: safeSessionId,
-    value:      parsed.data.value ?? null,
-    currency:   parsed.data.currency ?? null,
-    properties: safeProps,
+    pixel_id:      pixelId,
+    event_type:    parsed.data.event_type,
+    event_name:    parsed.data.event_name ?? null,
+    url:           safeUrl,
+    referrer:      safeReferrer,
+    ip:            safeIp,
+    user_agent:    safeUserAgent,
+    session_id:    safeSessionId,
+    user_id_hash:  safeUserIdHash,
+    value:         parsed.data.value ?? null,
+    currency:      parsed.data.currency ?? null,
+    properties:    safeProps,
   };
 
   const { data: savedEvent, error: insertError } = await (supabase.from("pixel_events") as unknown as EventQueryChain)

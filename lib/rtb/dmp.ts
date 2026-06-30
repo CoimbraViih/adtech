@@ -1,11 +1,86 @@
-import type { Audience } from "@/types/database";
+import type { Audience, AudienceRule } from "@/types/database";
 import { createHash } from "crypto";
 import { createServiceClient } from "@/lib/supabase/service";
 
 /**
+ * Returns a set of user_id_hashes from pixel_events that satisfy the given rule.
+ * Queries pixel_events within the lookback window filtered by event_type and operator.
+ */
+export async function getUsersMatchingRule(
+  rule: AudienceRule,
+  workspaceId: string
+): Promise<Set<string>> {
+  const supabase = createServiceClient();
+
+  const { data: pixels } = await supabase
+    .from("pixels")
+    .select("id")
+    .eq("workspace_id", workspaceId);
+
+  const pixelIds = (pixels ?? []).map((p: { id: string }) => p.id);
+  if (!pixelIds.length) return new Set();
+
+  const cutoff = new Date(
+    Date.now() - rule.lookback_days * 86_400_000
+  ).toISOString();
+
+  const query = supabase
+    .from("pixel_events")
+    .select("user_id_hash")
+    .in("pixel_id", pixelIds)
+    .eq("event_type", rule.event_type)
+    .gte("received_at", cutoff)
+    .not("user_id_hash", "is", null);
+
+  // Escape ilike wildcards to prevent wildcard injection corrupting audience membership
+  const escapedValue =
+    rule.operator === "contains" && typeof rule.value === "string"
+      ? (rule.value as string).replace(/%/g, "\\%").replace(/_/g, "\\_")
+      : "";
+
+  // TODO(M13): replace with ClickHouse aggregation; Postgres path is capped to
+  // avoid OOM. Ordering by user_id_hash keeps each user's events contiguous so
+  // truncation can only affect hashes exactly at the 100k boundary, not corrupt
+  // counts arbitrarily across the whole result set.
+  const { data: events } = await (
+    rule.operator === "contains" && typeof rule.value === "string"
+      ? query
+          .ilike("event_name", `%${escapedValue}%`)
+          .order("user_id_hash", { ascending: true })
+          .limit(100_000)
+      : query.order("user_id_hash", { ascending: true }).limit(100_000)
+  );
+
+  const counts = new Map<string, number>();
+  for (const ev of (events ?? []) as Array<{ user_id_hash: string | null }>) {
+    if (ev.user_id_hash) {
+      counts.set(ev.user_id_hash, (counts.get(ev.user_id_hash) ?? 0) + 1);
+    }
+  }
+
+  const threshold = typeof rule.value === "number" ? rule.value : 1;
+  const result = new Set<string>();
+
+  for (const [hash, count] of counts) {
+    if (rule.operator === "contains") {
+      result.add(hash);
+    } else if (rule.operator === "eq" && count === Number(rule.value)) {
+      result.add(hash);
+    } else if (rule.operator === "gte" && count >= threshold) {
+      result.add(hash);
+    } else if (rule.operator === "lte" && count <= threshold) {
+      result.add(hash);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Returns audience IDs that match the given user.
- * TODO(M8-backend): query audience_segments WHERE user_id_hash = userIdHash
+ * Queries audience_segments WHERE user_id_hash = hash(userId)
  * AND audience_id IN (SELECT id FROM audiences WHERE workspace_id = workspaceId)
+ * AND (expires_at IS NULL OR expires_at > NOW())
  */
 export async function matchUserToSegments(
   userId: string,
@@ -15,6 +90,8 @@ export async function matchUserToSegments(
 
   const userHash = createHash("sha256").update(userId).digest("hex");
   const supabase = createServiceClient();
+
+  // Checar opt-out
   const { data: optOut } = await supabase
     .from("dmp_optouts")
     .select("user_hash")
@@ -23,25 +100,132 @@ export async function matchUserToSegments(
 
   if (optOut) return [];
 
-  // workspaceId reserved for future Supabase swap-in
-  void workspaceId;
+  // Buscar audience_ids do workspace primeiro (dois queries separados — Supabase JS v2)
+  const { data: audiences } = await supabase
+    .from("audiences")
+    .select("id")
+    .eq("workspace_id", workspaceId);
 
-  // TODO(M8-backend): query audience_segments for real matching
-  return [];
+  const audienceIds = (audiences ?? []).map((a: { id: string }) => a.id);
+  if (!audienceIds.length) return [];
+
+  const now = new Date().toISOString();
+  const { data: segments } = await supabase
+    .from("audience_segments")
+    .select("audience_id")
+    .eq("user_id_hash", userHash)
+    .in("audience_id", audienceIds)
+    .or(`expires_at.is.null,expires_at.gt.${now}`);
+
+  return (segments ?? []).map((s: { audience_id: string }) => s.audience_id);
 }
 
 /**
  * Estimates audience size by evaluating rules against pixel_events.
- * TODO(M8-backend): COUNT pixel_events matching audience rules (lookback_days, event_type, etc.)
+ * Returns the count of distinct users satisfying ALL rules (set intersection).
  */
 export async function evaluateAudienceRules(
   audience: Audience,
   workspaceId: string
 ): Promise<number> {
-  // workspaceId reserved for future Supabase swap-in
-  void workspaceId;
+  if (!audience.rules.length) return 0;
 
-  return audience.rules.length * 3000 + audience.id.charCodeAt(0) * 100;
+  const sets = await Promise.all(
+    audience.rules.map((rule) => getUsersMatchingRule(rule, workspaceId))
+  );
+
+  // Interseção: só contam usuários que satisfazem TODAS as regras
+  let intersection = sets[0];
+  for (let i = 1; i < sets.length; i++) {
+    const next = sets[i];
+    const smaller = intersection.size <= next.size ? intersection : next;
+    const larger = intersection.size > next.size ? intersection : next;
+    const result = new Set<string>();
+    for (const hash of smaller) {
+      if (larger.has(hash)) result.add(hash);
+    }
+    intersection = result;
+  }
+
+  return intersection.size;
+}
+
+/**
+ * Batch job: iterates all audiences for a workspace, evaluates rules via
+ * getUsersMatchingRule (set intersection), upserts matching users into
+ * audience_segments, and updates size_estimate on the audiences table.
+ * Returns { processed, total } where processed = audiences without errors.
+ */
+export async function buildAudienceMemberships(
+  workspaceId: string
+): Promise<{ processed: number; total: number }> {
+  const supabase = createServiceClient();
+
+  const { data: audiences } = await supabase
+    .from("audiences")
+    .select("*")
+    .eq("workspace_id", workspaceId);
+
+  const audienceList = (audiences ?? []) as Audience[];
+  if (!audienceList.length) return { processed: 0, total: 0 };
+
+  let processed = 0;
+  const total = audienceList.length;
+  const EXPIRES_DAYS = 90;
+
+  for (const audience of audienceList) {
+    try {
+      // Calcular memberships via set intersection
+      const sets = audience.rules.length
+        ? await Promise.all(audience.rules.map((r) => getUsersMatchingRule(r, workspaceId)))
+        : [];
+
+      let matchingHashes: Set<string>;
+      if (!sets.length) {
+        matchingHashes = new Set();
+      } else {
+        matchingHashes = sets[0];
+        for (let i = 1; i < sets.length; i++) {
+          const next = sets[i];
+          const result = new Set<string>();
+          for (const hash of matchingHashes) {
+            if (next.has(hash)) result.add(hash);
+          }
+          matchingHashes = result;
+        }
+      }
+
+      // Upsert matching users into audience_segments
+      if (matchingHashes.size > 0) {
+        const expiresAt = new Date(
+          Date.now() + EXPIRES_DAYS * 86_400_000
+        ).toISOString();
+        const rows = Array.from(matchingHashes).map((hash) => ({
+          audience_id: audience.id,
+          user_id_hash: hash,
+          matched_at: new Date().toISOString(),
+          expires_at: expiresAt,
+        }));
+        const { error: upsertError } = await supabase
+          .from("audience_segments")
+          .upsert(rows, { onConflict: "audience_id,user_id_hash" });
+        if (upsertError) throw upsertError;
+      }
+
+      // Update size_estimate on audiences
+      const { error: updateError } = await supabase
+        .from("audiences")
+        .update({ size_estimate: matchingHashes.size })
+        .eq("id", audience.id);
+      if (updateError) throw updateError;
+
+      processed++;
+    } catch (err) {
+      console.error(`[dmp] buildAudienceMemberships error for audience ${audience.id}:`, err);
+    }
+  }
+
+  return { processed, total };
 }
 
 /**

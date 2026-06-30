@@ -2,7 +2,8 @@ import { z } from "zod";
 import { selectBid, buildBidResponse } from "@/lib/rtb/bidder";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { RtbCampaign } from "@/types/database";
-import { matchUserToSegments } from "@/lib/rtb/dmp";
+// TODO(M8-DMP): re-enable once real workspaceId wiring lands (see usage below)
+// import { matchUserToSegments } from "@/lib/rtb/dmp";
 import { maskIp } from "@/lib/security/ip";
 import { createRateLimiter } from "@/lib/security/rate-limit";
 
@@ -117,7 +118,11 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const bidRequest = parsed.data;
 
-    await matchUserToSegments(bidRequest.user?.id ?? "", "demo");
+    // TODO(M8-DMP): matchUserToSegments disabled until real workspaceId wiring
+    // lands — calling it with hardcoded "demo" wastes 3 Supabase round-trips
+    // per bid request for a result that's discarded. Re-enable once the bid
+    // context carries a real workspaceId.
+    // const audiences = await matchUserToSegments(bidRequest.user?.id ?? "", "demo");
 
     const supabase = createServiceClient();
     const { data: rtbCampaignsData } = await supabase
