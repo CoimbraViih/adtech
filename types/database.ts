@@ -526,6 +526,15 @@ export type OpenRtbImp = {
   banner?: { w: number; h: number; format?: Array<{ w: number; h: number }> };
   bidfloor?: number;
   bidfloorcur?: string;
+  pmp?: {
+    private_auction: 0 | 1;
+    deals?: Array<{
+      id: string;
+      bidfloor?: number;
+      bidfloorcur?: string;
+      wseat?: string[];
+    }>;
+  };
 };
 
 // ─── Integrations & API Keys ─────────────────────────────────────────────────
@@ -552,6 +561,9 @@ export type OpenRtbBid = {
   crid?: string;
   w?: number;
   h?: number;
+  dealid?: string;
+  nurl?: string;
+  burl?: string;
 };
 
 export type OpenRtbSeatBid = {
@@ -565,6 +577,39 @@ export type OpenRtbBidResponse = {
   bidid?: string;
   cur?: string;
   nbr?: number;
+};
+
+// ─── M12: PMP & Deal Enforcement ─────────────────────────────────────────────
+
+export type PmpDealType = 'private' | 'preferred' | 'guaranteed';
+export type PmpDealStatus = 'active' | 'paused' | 'expired';
+
+export type PmpDeal = {
+  id: string;
+  workspace_id: string;
+  deal_id: string;
+  deal_name: string;
+  deal_type: PmpDealType;
+  floor_price: number;
+  publisher_name: string | null;
+  status: PmpDealStatus;
+  wseat: string[] | null;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PmpDealCreateInput = {
+  deal_id: string;
+  deal_name: string;
+  deal_type: PmpDealType;
+  floor_price: number;
+  publisher_name?: string | null;
+  status?: PmpDealStatus;
+  wseat?: string[] | null;
+  start_date?: string | null;
+  end_date?: string | null;
 };
 
 // ─── M9: Billing / Stripe ────────────────────────────────────────────────────
