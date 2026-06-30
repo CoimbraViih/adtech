@@ -15,6 +15,7 @@ type MockChain = {
   gte: ReturnType<typeof vi.fn>;
   not: ReturnType<typeof vi.fn>;
   ilike: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
   limit: ReturnType<typeof vi.fn>;
   then: unknown;
 };
@@ -27,6 +28,7 @@ function makeChain(pixelData: unknown, eventData: unknown): { from: ReturnType<t
     gte: vi.fn().mockReturnThis(),
     not: vi.fn().mockReturnThis(),
     ilike: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
     then: undefined,
   };
@@ -40,6 +42,7 @@ function makeChain(pixelData: unknown, eventData: unknown): { from: ReturnType<t
     gte: vi.fn().mockReturnThis(),
     not: vi.fn().mockReturnThis(),
     ilike: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
     then: undefined,
   };
@@ -56,7 +59,7 @@ function makeChain(pixelData: unknown, eventData: unknown): { from: ReturnType<t
 
 const pageViewRule: AudienceRule = {
   event_type: "page_view",
-  operator: "eq",
+  operator: "contains",
   value: "page_view",
   lookback_days: 30,
 };
@@ -66,6 +69,13 @@ const gteRule: AudienceRule = {
   operator: "gte",
   value: 2,
   lookback_days: 7,
+};
+
+const eqRule: AudienceRule = {
+  event_type: "purchase",
+  operator: "eq",
+  value: 2,
+  lookback_days: 30,
 };
 
 describe("getUsersMatchingRule", () => {
@@ -86,7 +96,7 @@ describe("getUsersMatchingRule", () => {
     expect(result.size).toBe(0);
   });
 
-  it("operador eq: retorna todos os users com ao menos 1 evento do tipo", async () => {
+  it("operador contains: retorna todos os users com ao menos 1 evento do tipo", async () => {
     const mock = makeChain(
       [{ id: "px_1" }],
       [
@@ -115,6 +125,26 @@ describe("getUsersMatchingRule", () => {
     const result = await getUsersMatchingRule(gteRule, "ws_1");
     expect(result.has("hash_a")).toBe(false);
     expect(result.has("hash_b")).toBe(true);
+    expect(result.size).toBe(1);
+  });
+
+  it("operador eq: inclui apenas users com count === value (exato)", async () => {
+    const mock = makeChain(
+      [{ id: "px_1" }],
+      [
+        { user_id_hash: "hash_a" }, // 1 evento — não bate eq:2
+        { user_id_hash: "hash_b" },
+        { user_id_hash: "hash_b" }, // 2 eventos — bate eq:2
+        { user_id_hash: "hash_c" },
+        { user_id_hash: "hash_c" },
+        { user_id_hash: "hash_c" }, // 3 eventos — não bate eq:2
+      ]
+    );
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mock);
+    const result = await getUsersMatchingRule(eqRule, "ws_1");
+    expect(result.has("hash_a")).toBe(false);
+    expect(result.has("hash_b")).toBe(true);
+    expect(result.has("hash_c")).toBe(false);
     expect(result.size).toBe(1);
   });
 
@@ -176,7 +206,7 @@ describe("evaluateAudienceRules", () => {
     const twoRuleAudience: Audience = {
       ...baseAudience,
       rules: [
-        { event_type: "page_view", operator: "eq", value: "page_view", lookback_days: 30 },
+        { event_type: "page_view", operator: "contains", value: "page_view", lookback_days: 30 },
         { event_type: "purchase", operator: "gte", value: 1, lookback_days: 30 },
       ],
     };
@@ -196,6 +226,7 @@ describe("evaluateAudienceRules", () => {
         gte: vi.fn().mockReturnThis(),
         not: vi.fn().mockReturnThis(),
         ilike: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         then: undefined as unknown,
       };
@@ -232,6 +263,7 @@ describe("buildAudienceMemberships", () => {
         not: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
         ilike: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         then: undefined as unknown,
       };
@@ -256,7 +288,7 @@ describe("buildAudienceMemberships", () => {
       name: "Test",
       type: "behavioral",
       description: null,
-      rules: [{ event_type: "page_view", operator: "eq", value: "page_view", lookback_days: 30 }],
+      rules: [{ event_type: "page_view", operator: "contains", value: "page_view", lookback_days: 30 }],
       lookalike_source_id: null,
       size_estimate: 0,
       created_at: "2026-01-01T00:00:00Z",
@@ -276,6 +308,7 @@ describe("buildAudienceMemberships", () => {
             gte: vi.fn().mockReturnThis(),
             not: vi.fn().mockReturnThis(),
             ilike: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
             limit: vi.fn().mockReturnThis(),
             upsert: vi.fn().mockResolvedValue({ error: null }),
             update: vi.fn().mockReturnThis(),
@@ -293,6 +326,7 @@ describe("buildAudienceMemberships", () => {
             gte: vi.fn().mockReturnThis(),
             not: vi.fn().mockReturnThis(),
             ilike: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
             limit: vi.fn().mockReturnThis(),
             upsert: vi.fn().mockResolvedValue({ error: null }),
             update: vi.fn().mockReturnThis(),
@@ -311,6 +345,7 @@ describe("buildAudienceMemberships", () => {
         gte: vi.fn().mockReturnThis(),
         not: vi.fn().mockReturnThis(),
         ilike: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         upsert: vi.fn().mockResolvedValue({ error: null }),
         update: vi.fn().mockReturnThis(),

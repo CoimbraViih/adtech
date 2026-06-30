@@ -38,11 +38,17 @@ export async function getUsersMatchingRule(
       ? (rule.value as string).replace(/%/g, "\\%").replace(/_/g, "\\_")
       : "";
 
-  // TODO(M13): replace with ClickHouse aggregation; Postgres path is capped to avoid OOM
+  // TODO(M13): replace with ClickHouse aggregation; Postgres path is capped to
+  // avoid OOM. Ordering by user_id_hash keeps each user's events contiguous so
+  // truncation can only affect hashes exactly at the 100k boundary, not corrupt
+  // counts arbitrarily across the whole result set.
   const { data: events } = await (
     rule.operator === "contains" && typeof rule.value === "string"
-      ? query.ilike("event_name", `%${escapedValue}%`).limit(100_000)
-      : query.limit(100_000)
+      ? query
+          .ilike("event_name", `%${escapedValue}%`)
+          .order("user_id_hash", { ascending: true })
+          .limit(100_000)
+      : query.order("user_id_hash", { ascending: true }).limit(100_000)
   );
 
   const counts = new Map<string, number>();
@@ -56,7 +62,9 @@ export async function getUsersMatchingRule(
   const result = new Set<string>();
 
   for (const [hash, count] of counts) {
-    if (rule.operator === "eq" || rule.operator === "contains") {
+    if (rule.operator === "contains") {
+      result.add(hash);
+    } else if (rule.operator === "eq" && count === Number(rule.value)) {
       result.add(hash);
     } else if (rule.operator === "gte" && count >= threshold) {
       result.add(hash);
