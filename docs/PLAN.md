@@ -37,7 +37,7 @@
 | M20 | White-label Agency Portal | `feat/m20-whitelabel` ✅ | M18 |
 | M21 | In-app AI Assistant & Guided Onboarding | ✅ Done — PR #28 | M13 (parcial) |
 | M8-DMP | DMP Completion (avaliação real de regras) | `feat/m8-dmp-complete` ✅ | M13, M16 |
-| M12 | PMP & Deal Enforcement (adiado) | `feat/m12-pmp` | M19 |
+| M12 | PMP & Deal Enforcement | `feat/m12-pmp` ✅ | M19 |
 
 ---
 
@@ -884,9 +884,9 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 # PLANEJADOS
 
-> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → ~~M21~~ ✅ → ~~M8-DMP~~ ✅ → (reavaliar M12)**
+> Sequência de execução: ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → ~~M21~~ ✅ → ~~M8-DMP~~ ✅ → ~~M12~~ ✅**
 >
-> M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) deliberadamente adiado para depois de M19.
+> M10 pode subir em beta sem M22 — mas **cobrar clientes exige M22** primeiro. M12 (PMP) ✅ concluído em 2026-06-30.
 
 ---
 
@@ -1420,49 +1420,28 @@ Segunda passagem de auditoria cobrindo segurança + qualidade de código + compa
 
 ---
 
-## M12 — PMP: Deal Enforcement & Programmatic Guaranteed (adiado)
+## M12 — PMP: Deal Enforcement & Programmatic Guaranteed ✅ CONCLUÍDO
 
-**Branch:** `feat/m12-pmp`  
-**Depende de:** M8, M8-DMP, **M19 (estável)**  
-**Status:** Deliberadamente adiado para depois de M19. O moat defensável no BR é dado first-party + loop de IA + commerce + LGPD — não infra de deal RTB contra DSPs estabelecidas. Reavaliar após M19 estável ou se houver contrato/cliente que exija PMP.  
-**Objetivo:** Fechar o ciclo programático privado. Atualmente campanhas `private`/`preferred`/`guaranteed` competem em todo leilão aberto porque `selectBid` não filtra por deal_id. PMP real exige que deal IDs sejam negociados e enforced no bid path.
+**Branch:** `feat/m12-pmp` → PR mergeado em `main`  
+**Depende de:** M8, M8-DMP, M19  
+**Status:** ✅ Done — PR #29 mergeado em 2026-06-30  
+**Objetivo:** Fechar o ciclo programático privado com enforcement real de deal IDs no bid path.
 
-> **Skills:** `/supabase` · `/webapp-testing` · `/frontend-design`
+### Entregáveis concluídos
+- ✅ Migration `038_pmp_deals.sql` — tabela `pmp_deals` com RLS, índices e trigger `updated_at`
+- ✅ `types/database.ts` — `PmpDeal`, `PmpDealType`, `PmpDealStatus`, `PmpDealCreateInput`; `OpenRtbImp` e `OpenRtbBid` estendidos
+- ✅ `lib/rtb/bidder.ts` — hierarquia de três níveis: guaranteed bypass → preferred first-look → private/open auction; `dealid` propagado no `OpenRtbBid`
+- ✅ `app/api/rtb/bid/route.ts` — schema Zod com `pmp` object; lookup de deals scoped por `workspace_id` (previne cross-tenant)
+- ✅ `app/api/rtb/deals/route.ts` — GET + POST com RBAC owner/admin
+- ✅ `app/api/rtb/deals/[id]/route.ts` — PATCH (ativo/pausado) + DELETE soft (status → `expired`)
+- ✅ `app/(dashboard)/campaigns/programmatic/deals/page.tsx` + `deals-client.tsx` — tabela CRUD completa
+- ✅ `components/campaigns/deal-selector.tsx` — selector condicional no form de campanha
+- ✅ `components/layout/nav-items.ts` — link "Deals" na sidebar
+- ✅ 15 testes unitários + 16 E2E (vitest + playwright)
+- ✅ `tsc --noEmit` zero erros; 690 testes passando
 
-### Database
-- [ ] Migration `016_pmp_deals.sql`:
-  - Tabela `pmp_deals`: `id`, `workspace_id`, `deal_id TEXT UNIQUE`, `deal_name`, `deal_type` (`private|preferred|guaranteed`), `floor_price NUMERIC`, `publisher_name TEXT`, `status TEXT`, `wseat TEXT[]`, `start_date TIMESTAMPTZ`, `end_date TIMESTAMPTZ`
-  - Índice em `deal_id` para lookup O(log n) no bid path (latência crítica)
-  - RLS: workspace members leem; owners/admins escrevem
-
-### TypeScript / Biblioteca
-- [ ] `types/database.ts` — `PmpDeal` type
-- [ ] `types/database.ts` — Estender `OpenRtbImp`: `pmp?: { private_auction: 0|1; deals: Array<{ id: string; bidfloor?: number; bidfloorcur?: string; wseat?: string[] }> }`
-- [ ] `types/database.ts` — Estender `OpenRtbBid`: `dealid?: string`, `nurl?: string`, `burl?: string`
-- [ ] `lib/rtb/bidder.ts` — `selectBid`: se `imp.pmp.private_auction === 1`, filtrar somente campanhas cujo `deal_id` está em `imp.pmp.deals[].id`
-- [ ] `lib/rtb/bidder.ts` — campanha `guaranteed`: bypass de leilão, preço fixo = `deal.floor_price`; retornar `dealid` no `OpenRtbBid`
-
-### API Routes
-- [ ] `app/api/rtb/bid/route.ts` — estender Zod schema: aceitar `imp[].pmp` object
-- [ ] `app/api/rtb/deals/route.ts` — GET (lista deals do workspace) + POST (criar deal)
-- [ ] `app/api/rtb/deals/[id]/route.ts` — PATCH + DELETE
-
-### Interface
-- [ ] `app/(dashboard)/campaigns/programmatic/deals/page.tsx` — tabela de deals: publisher, deal_id, floor price, tipo, status, datas; botão "Novo Deal"
-- [ ] `components/campaigns/deal-selector.tsx` — select de deal disponível ao criar campanha; aparece apenas quando `deal_type !== "open"`
-- [ ] `components/campaigns/rtb-campaign-form.tsx` — integrar `DealSelector` no step 1 (Deal)
-- [ ] Sidebar: link "Deals" sob Programático
-
-### Testes
-- [ ] `tests/unit/rtb-bidder-pmp.test.ts` — private auction só seleciona campanhas com deal matching; guaranteed bypassa leilão com preço fixo; open auction ignora deals
-- [ ] `tests/unit/pmp-deals.test.ts` — validação Zod de criação de deal
-- [ ] `tests/e2e/programmatic-pmp.spec.ts` — criação de deal, criação de campanha privada vinculada ao deal
-
-### Entregáveis
-- `tsc --noEmit` zero erros
-- `vitest run` passando com novos testes de PMP
-- Campanha `private` não ganha bids sem deal ID correspondente no BidRequest
-- Campanha `guaranteed` retorna preço fixo do deal sem entrar em leilão
+### Pendente (infra)
+- Migration `038_pmp_deals.sql` precisa ser aplicada no Supabase prod
 
 ---
 
@@ -1484,15 +1463,15 @@ M0–M9, MS, M11, M-ADS (F1–F4) ← CONCLUÍDOS
   │         │         └─ M19 (Predictive & Autonomous Optimization)
   │         │              └─ M21 (In-app AI Assistant)  ← paralelo, pode iniciar em M13
   │         │                   └─ ~~M8-DMP~~ ✅ (avaliação real de audiências)
-  │         │                        └─ M12 (PMP — adiado pós-M19)
+  │         │                        └─ ~~M12~~ ✅ (PMP — deal enforcement)
   │         └─ M21 pode iniciar em paralelo com M18 (com mock do event store)
 ```
 
-**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → ~~M21~~ ✅ → ~~M8-DMP~~ ✅ → (reavaliar M12)**
+**Sequência linear recomendada:** ~~M14~~ ✅ → ~~M13~~ ✅ → ~~M17~~ ✅ → ~~M16~~ ✅ → ~~M19~~ ✅ → **M22 → M10 → M18 → M15 → ~~M20~~ ✅ → ~~M21~~ ✅ → ~~M8-DMP~~ ✅ → ~~M12~~ ✅**
 
 **Regras:**
 - Interface mockada sempre antes do backend — cada milestone demonstrável com dados reais antes do próximo.
 - M10 pode subir em **beta gratuito** sem M22; cobrar clientes exige M22 verde primeiro.
-- M12 (PMP/Deal Enforcement) deliberadamente adiado: o moat defensável no BR é dado first-party + loop de IA + commerce + LGPD, não infra de deal RTB. Reavaliar após M19 estável.
+- M12 (PMP/Deal Enforcement) ✅ concluído em 2026-06-30.
 - M15 neste plano inclui DCO (Dynamic Creative Optimization) além do upload de assets já implementado.
 - M21 pode começar em paralelo com M16 usando mocks do event store, mas precisa de M13 para dados reais.
