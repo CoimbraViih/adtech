@@ -14,8 +14,8 @@ CREATE TABLE pmp_deals (
   wseat TEXT[],
   start_date TIMESTAMPTZ,
   end_date TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_pmp_deals_deal_id ON pmp_deals(deal_id);

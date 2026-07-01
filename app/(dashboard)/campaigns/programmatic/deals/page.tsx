@@ -1,10 +1,12 @@
+import { redirect } from "next/navigation";
 import { getServerSession, createServerSupabaseClient } from "@/lib/supabase/server";
 import type { PmpDeal, PmpDealType, PmpDealStatus } from "@/types/database";
 import { DealsClient } from "./deals-client";
 
 export default async function DealsPage() {
   const session = await getServerSession();
-  const workspaceId = session?.workspace.id ?? "";
+  if (!session) redirect("/login");
+  const workspaceId = session.workspace.id;
 
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase

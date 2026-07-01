@@ -6,7 +6,7 @@ import type { PmpDeal } from "@/types/database";
 const PmpDealUpdateSchema = z.object({
   deal_name: z.string().min(1).optional(),
   floor_price: z.number().min(0).optional(),
-  status: z.enum(["active", "paused", "expired"]).optional(),
+  status: z.enum(["active", "paused"]).optional(),
   wseat: z.array(z.string()).nullable().optional(),
   start_date: z.string().datetime().nullable().optional(),
   end_date: z.string().datetime().nullable().optional(),
@@ -41,12 +41,12 @@ export async function PATCH(
 
   const { data: wsMember } = await supabase
     .from("workspace_members")
-    .select("workspace_id")
+    .select("workspace_id, role")
     .eq("workspace_id", existing.workspace_id)
     .eq("user_id", session.user.id)
     .maybeSingle();
 
-  if (!wsMember) {
+  if (!wsMember || !["owner", "admin"].includes(wsMember.role)) {
     return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
   }
 
@@ -117,12 +117,12 @@ export async function DELETE(
 
   const { data: wsMember } = await supabase
     .from("workspace_members")
-    .select("workspace_id")
+    .select("workspace_id, role")
     .eq("workspace_id", existing.workspace_id)
     .eq("user_id", session.user.id)
     .maybeSingle();
 
-  if (!wsMember) {
+  if (!wsMember || !["owner", "admin"].includes(wsMember.role)) {
     return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
   }
 

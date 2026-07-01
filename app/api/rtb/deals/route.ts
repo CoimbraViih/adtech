@@ -98,12 +98,12 @@ export async function POST(request: NextRequest) {
 
   const { data: wsMember } = await supabase
     .from("workspace_members")
-    .select("workspace_id")
+    .select("workspace_id, role")
     .eq("workspace_id", workspace_id)
     .eq("user_id", session.user.id)
     .maybeSingle();
 
-  if (!wsMember) {
+  if (!wsMember || !["owner", "admin"].includes(wsMember.role)) {
     return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
   }
 

@@ -65,6 +65,21 @@ export function selectBid(
 
   let best: { campaign: RtbCampaign; cpm: number; dealid?: string } | null = null;
 
+  // Preferred deals: first-look at floor_price before open auction
+  for (const campaign of campaigns) {
+    if (campaign.deal_type !== "preferred") continue;
+    if (campaign.status !== "active") continue;
+    const todaySpend = context.todaySpend.get(campaign.id) ?? 0;
+    if (!checkPacing(campaign, todaySpend)) continue;
+    const impressionKey = campaign.id + userId;
+    const impressionCount = context.impressionCounts.get(impressionKey) ?? 0;
+    if (!checkFrequencyCap(campaign, impressionCount)) continue;
+    const matchingDeal = deals.find((d) => d.deal_id === campaign.deal_id);
+    if (matchingDeal && matchingDeal.floor_price >= floorCpm) {
+      return { campaign, cpm: matchingDeal.floor_price, dealid: matchingDeal.deal_id };
+    }
+  }
+
   for (const campaign of campaigns) {
     if (campaign.status !== "active") continue;
 

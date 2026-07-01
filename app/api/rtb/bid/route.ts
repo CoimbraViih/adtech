@@ -152,10 +152,12 @@ export async function POST(request: Request): Promise<Response> {
     let deals: PmpDeal[] = [];
     if (isPrivateAuction && imp0.pmp?.deals && imp0.pmp.deals.length > 0) {
       const dealIds = imp0.pmp.deals.map((d) => d.id);
+      const workspaceIds = [...new Set(campaigns.map((c) => c.workspace_id))];
       const { data: dealsData } = await supabase
         .from("pmp_deals")
         .select("*")
         .in("deal_id", dealIds)
+        .in("workspace_id", workspaceIds)
         .eq("status", "active");
       deals = (dealsData ?? []) as PmpDeal[];
     }
