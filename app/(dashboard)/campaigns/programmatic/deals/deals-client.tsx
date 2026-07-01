@@ -263,9 +263,187 @@ function NewDealDialog({ workspaceId }: { workspaceId: string }) {
   );
 }
 
+// ─── Edit Deal Form ───────────────────────────────────────────────────────────
+
+type EditDealFormState = {
+  deal_name: string;
+  floor_price: string;
+  publisher_name: string;
+  start_date: string;
+  end_date: string;
+  status: "active" | "paused";
+};
+
+function EditDealDialog({ deal, workspaceId }: { deal: PmpDeal; workspaceId: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<EditDealFormState>({
+    deal_name: deal.deal_name,
+    floor_price: String(deal.floor_price),
+    publisher_name: deal.publisher_name ?? "",
+    start_date: deal.start_date ? deal.start_date.slice(0, 10) : "",
+    end_date: deal.end_date ? deal.end_date.slice(0, 10) : "",
+    status: deal.status === "expired" ? "paused" : deal.status,
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleChange(field: keyof EditDealFormState, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    const body = {
+      deal_name: form.deal_name.trim(),
+      floor_price: parseFloat(form.floor_price) || 0,
+      publisher_name: form.publisher_name.trim() || null,
+      start_date: form.start_date || null,
+      end_date: form.end_date || null,
+      status: form.status,
+      workspace_id: workspaceId,
+    };
+
+    const res = await fetch(`/api/rtb/deals/${deal.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const json = (await res.json()) as { error?: string };
+      setError(json.error ?? "Erro ao editar deal.");
+      return;
+    }
+
+    setOpen(false);
+    startTransition(() => router.refresh());
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={
+          <button
+            title="Editar"
+            className="p-1 rounded text-[color:var(--adflow-fg-muted)] hover:text-[color:var(--adflow-fg)] hover:bg-[color:var(--adflow-border)] transition-colors"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        }
+      />
+      <DialogContent className="sm:max-w-md bg-[color:var(--adflow-surface)] border border-[color:var(--adflow-border)]">
+        <DialogHeader>
+          <DialogTitle>Editar Deal — {deal.deal_id}</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="edit_deal_name" className="text-xs text-[color:var(--adflow-fg-muted)]">
+              Nome do Deal *
+            </Label>
+            <Input
+              id="edit_deal_name"
+              required
+              value={form.deal_name}
+              onChange={(e) => handleChange("deal_name", e.target.value)}
+              placeholder="Premium Display"
+              className="h-8 text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="edit_floor_price" className="text-xs text-[color:var(--adflow-fg-muted)]">
+                Floor Price (R$)
+              </Label>
+              <Input
+                id="edit_floor_price"
+                type="number"
+                min={0}
+                step={0.01}
+                value={form.floor_price}
+                onChange={(e) => handleChange("floor_price", e.target.value)}
+                placeholder="5.00"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="edit_status" className="text-xs text-[color:var(--adflow-fg-muted)]">
+                Status
+              </Label>
+              <select
+                id="edit_status"
+                value={form.status}
+                onChange={(e) => handleChange("status", e.target.value as "active" | "paused")}
+                className="h-8 rounded-md border border-[color:var(--adflow-border)] bg-[color:var(--adflow-base)] px-2 text-sm text-[color:var(--adflow-fg)] focus:outline-none focus:ring-1 focus:ring-[color:var(--adflow-accent)]"
+              >
+                <option value="active">Ativo</option>
+                <option value="paused">Pausado</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="edit_publisher_name" className="text-xs text-[color:var(--adflow-fg-muted)]">
+              Publisher
+            </Label>
+            <Input
+              id="edit_publisher_name"
+              value={form.publisher_name}
+              onChange={(e) => handleChange("publisher_name", e.target.value)}
+              placeholder="publisher.com"
+              className="h-8 text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="edit_start_date" className="text-xs text-[color:var(--adflow-fg-muted)]">
+                Data de Início
+              </Label>
+              <Input
+                id="edit_start_date"
+                type="date"
+                value={form.start_date}
+                onChange={(e) => handleChange("start_date", e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="edit_end_date" className="text-xs text-[color:var(--adflow-fg-muted)]">
+                Data de Fim
+              </Label>
+              <Input
+                id="edit_end_date"
+                type="date"
+                value={form.end_date}
+                onChange={(e) => handleChange("end_date", e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-xs text-[color:var(--adflow-danger)]">{error}</p>
+          )}
+
+          <DialogFooter className="-mx-4 -mb-4 px-4 pb-4 mt-2">
+            <Button type="submit" size="sm" disabled={isPending}>
+              {isPending ? "Salvando…" : "Salvar Alterações"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Deals Table ──────────────────────────────────────────────────────────────
 
-function DealsTable({ deals }: { deals: PmpDeal[] }) {
+function DealsTable({ deals, workspaceId }: { deals: PmpDeal[]; workspaceId: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -346,6 +524,7 @@ function DealsTable({ deals }: { deals: PmpDeal[] }) {
                 </td>
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-1">
+                    <EditDealDialog deal={deal} workspaceId={workspaceId} />
                     <button
                       onClick={() => handleToggle(deal)}
                       disabled={isPending || deal.status === "expired"}
@@ -397,7 +576,7 @@ export function DealsClient({
         </div>
         <NewDealDialog workspaceId={workspaceId} />
       </div>
-      <DealsTable deals={deals} />
+      <DealsTable deals={deals} workspaceId={workspaceId} />
     </>
   );
 }
