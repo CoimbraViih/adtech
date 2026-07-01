@@ -14,6 +14,7 @@ import {
   List,
   Download,
   Palette,
+  Handshake,
 } from "lucide-react";
 
 export type NavItem = {
@@ -28,6 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard",     href: "/dashboard",               icon: LayoutDashboard },
   { label: "Campanhas",     href: "/campaigns",               icon: Megaphone },
   { label: "Programático",  href: "/campaigns/programmatic",  icon: Layers },
+  { label: "Deals",         href: "/campaigns/programmatic/deals", icon: Handshake },
   { label: "Audiências",    href: "/audiences",               icon: Users },
   { label: "Criativos",     href: "/creatives",               icon: Sparkles },
   { label: "Analytics",     href: "/analytics",               icon: BarChart3 },

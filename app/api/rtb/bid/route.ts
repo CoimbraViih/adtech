@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { selectBid, buildBidResponse } from "@/lib/rtb/bidder";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { RtbCampaign } from "@/types/database";
+import type { RtbCampaign, PmpDeal } from "@/types/database";
 // TODO(M8-DMP): re-enable once real workspaceId wiring lands (see usage below)
 // import { matchUserToSegments } from "@/lib/rtb/dmp";
 import { maskIp } from "@/lib/security/ip";
@@ -15,6 +15,21 @@ const BidRequestSchema = z.object({
         id: z.string(),
         bidfloor: z.number().optional(),
         bidfloorcur: z.string().optional(),
+        pmp: z
+          .object({
+            private_auction: z.union([z.literal(0), z.literal(1)]),
+            deals: z
+              .array(
+                z.object({
+                  id: z.string().min(1),
+                  bidfloor: z.number().optional(),
+                  bidfloorcur: z.string().optional(),
+                  wseat: z.array(z.string()).optional(),
+                })
+              )
+              .optional(),
+          })
+          .optional(),
       })
     )
     .min(1),
@@ -131,10 +146,26 @@ export async function POST(request: Request): Promise<Response> {
       .eq("status", "active");
     const campaigns = (rtbCampaignsData ?? []) as RtbCampaign[];
 
+    const imp0 = bidRequest.imp[0];
+    const isPrivateAuction = imp0.pmp?.private_auction === 1;
+
+    let deals: PmpDeal[] = [];
+    if (isPrivateAuction && imp0.pmp?.deals && imp0.pmp.deals.length > 0) {
+      const dealIds = imp0.pmp.deals.map((d) => d.id);
+      const workspaceIds = [...new Set(campaigns.map((c) => c.workspace_id))];
+      const { data: dealsData } = await supabase
+        .from("pmp_deals")
+        .select("*")
+        .in("deal_id", dealIds)
+        .in("workspace_id", workspaceIds)
+        .eq("status", "active");
+      deals = (dealsData ?? []) as PmpDeal[];
+    }
+
     const bid = selectBid(campaigns, bidRequest, {
       todaySpend: new Map(),
       impressionCounts: new Map(),
-    });
+    }, deals);
 
     const response = buildBidResponse(bidRequest.id, bidRequest.imp[0].id, bid);
     const elapsed = Date.now() - startTime;

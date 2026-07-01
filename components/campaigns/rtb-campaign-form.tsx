@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import type { Audience } from "@/types/database";
+import DealSelector from "@/components/campaigns/deal-selector";
 
 // ── schema ─────────────────────────────────────────────────────────────────
 
@@ -201,8 +202,10 @@ function FormInput({
 
 function Step1Deal({
   form,
+  workspaceId,
 }: {
   form: ReturnType<typeof useForm<RtbFormValues>>;
+  workspaceId: string;
 }) {
   const {
     register,
@@ -211,6 +214,7 @@ function Step1Deal({
     formState: { errors },
   } = form;
   const selectedDeal = watch("deal_type");
+  const dealIdValue = watch("deal_id");
   const showDealId = selectedDeal !== "open";
 
   return (
@@ -232,9 +236,12 @@ function Step1Deal({
             <button
               key={dt.value}
               type="button"
-              onClick={() =>
-                setValue("deal_type", dt.value, { shouldValidate: true })
-              }
+              onClick={() => {
+                setValue("deal_type", dt.value, { shouldValidate: true });
+                if (dt.value === "open") {
+                  setValue("deal_id", "", { shouldValidate: false });
+                }
+              }}
               className={cn(
                 "flex items-start gap-3 p-4 rounded-lg border text-left transition-all",
                 selectedDeal === dt.value
@@ -268,10 +275,13 @@ function Step1Deal({
 
       {showDealId && (
         <div>
-          <FormLabel>Deal ID (negociado com o SSP)</FormLabel>
-          <FormInput
-            {...register("deal_id")}
-            placeholder="Ex.: deal_globo_rtb_2026"
+          <FormLabel>Deal (negociado com o SSP)</FormLabel>
+          <DealSelector
+            workspaceId={workspaceId}
+            value={dealIdValue ?? null}
+            onSelect={(id) =>
+              setValue("deal_id", id ?? "", { shouldValidate: true })
+            }
           />
           <FieldError message={errors.deal_id?.message} />
         </div>
@@ -684,7 +694,11 @@ function Step4Review({
 
 // ── main form ──────────────────────────────────────────────────────────────
 
-export default function RtbCampaignForm() {
+export default function RtbCampaignForm({
+  workspaceId = "",
+}: {
+  workspaceId?: string;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -786,7 +800,7 @@ export default function RtbCampaignForm() {
         <StepBar current={step} />
 
         <div className="min-h-[360px]">
-          {step === 1 && <Step1Deal form={form} />}
+          {step === 1 && <Step1Deal form={form} workspaceId={workspaceId} />}
           {step === 2 && <Step2Audience form={form} audiences={audiences} />}
           {step === 3 && <Step3BidBudget form={form} />}
           {step === 4 && <Step4Review form={form} audiences={audiences} />}
