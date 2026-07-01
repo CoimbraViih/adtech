@@ -154,9 +154,10 @@ test.describe("PMP Bid Enforcement — API", () => {
   });
 
   test("invalid json body returns 400", async ({ request }) => {
-    const res = await request.post(BID_URL, {
-      data: "not-valid-json",
+    const res = await request.fetch(BID_URL, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: "this-is-not-json{{{",
     });
     // Will be caught by JSON.parse or schema validation
     expect(res.status()).toBe(400);
