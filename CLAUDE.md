@@ -313,11 +313,11 @@ See `.env.local.example` for the full list.
 | M20 | White-label Agency Portal | Planned | `docs/superpowers/plans/2026-06-22-competitive-roadmap-expansion-plan.md` |
 | M21 | In-app AI Assistant & Guided Onboarding | ✅ Done | `docs/superpowers/plans/2026-06-28-m21-ai-assistant.md` |
 | M8-DMP | DMP Completion (real audience rule evaluation) | ✅ Done | `docs/superpowers/plans/2026-06-29-m8-dmp-completion.md` |
-| M12 | PMP & Deal Enforcement | Planned (adiado — pós-M19) | — |
+| M12 | PMP & Deal Enforcement | ✅ Done | — |
 
-**Recommended execution order:** M14 → M13 → M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → ~~M21~~ ✅ → M8-DMP → (reavaliar M12)
+**Recommended execution order:** M14 → M13 → M22 → M10 → M17 → M16 → M18 → M15 → M19 → M20 → ~~M21~~ ✅ → ~~M8-DMP~~ ✅ → ~~M12~~ ✅
 
-> **Nota:** M10 (deploy) pode subir em beta sem M22, mas **comercializar exige M22** (usage-based billing + fiscal BR). M12 (PMP/Deal Enforcement) deliberadamente adiado para depois de M19 — ver plano de expansão competitiva.
+> **Nota:** M10 (deploy) pode subir em beta sem M22, mas **comercializar exige M22** (usage-based billing + fiscal BR). M12 (PMP/Deal Enforcement) ✅ concluído em 2026-06-30 — migration `038_pmp_deals.sql` pendente no Supabase prod.
 
 ### M-ADS — Integrations Architecture (current state, post Fase 4)
 
